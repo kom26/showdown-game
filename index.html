@@ -121,15 +121,15 @@
     
     .abort-btn {
       position: fixed;
-      top: 3.5rem;
+      top: 5rem;
       right: 1rem;
       z-index: 150;
       background: rgba(255, 0, 102, 0.3);
       color: var(--color-danger);
       border: 2px solid var(--color-danger);
-      padding: 8px 16px;
+      padding: 6px 12px;
       border-radius: 8px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       cursor: pointer;
       box-shadow: 0 0 15px rgba(255, 0, 102, 0.4);
@@ -146,10 +146,10 @@
     }
     .logo { 
       font-family: 'M PLUS Rounded 1c', sans-serif;
-      font-size: 42px;
+      font-size: 32px;
       text-align: center;
       margin-bottom: 0.25rem;
-      letter-spacing: 6px;
+      letter-spacing: 4px;
       font-weight: 800;
       color: var(--color-neon-pink);
       cursor: pointer;
@@ -160,6 +160,7 @@
         0 0 30px var(--color-neon-pink);
       position: relative;
       animation: logoFlicker 4s ease-in-out infinite;
+      white-space: nowrap;
     }
     @keyframes logoFlicker {
       0%, 100% { opacity: 1; }
@@ -168,13 +169,13 @@
     }
     .logo::before {
       content: '✧ ';
-      font-size: 22px;
+      font-size: 18px;
       color: var(--color-neon-purple);
       text-shadow: 0 0 10px var(--color-neon-purple);
     }
     .logo::after {
       content: ' ✧';
-      font-size: 22px;
+      font-size: 18px;
       color: var(--color-neon-purple);
       text-shadow: 0 0 10px var(--color-neon-purple);
     }
@@ -749,10 +750,10 @@
     </div>
     
     <div id="diceRolling" style="display: none;">
-      <div style="text-align: center; padding: 3rem 1rem;">
-        <h2 style="font-size: 22px; margin-bottom: 2rem; color: var(--color-neon-pink);">神のさいころ...</h2>
-        <div id="diceDisplay" style="margin: 2rem 0; min-height: 150px; display: flex; align-items: center; justify-content: center;">
-          <div id="diceBox" style="width: 120px; height: 120px; position: relative; transform-style: preserve-3d; animation: diceRotate 0.3s infinite;">
+      <div style="text-align: center; padding: 1.5rem 1rem;">
+        <h2 style="font-size: 18px; margin-bottom: 1.5rem; color: var(--color-neon-pink);">タップで停止</h2>
+        <div id="diceDisplay" style="margin: 1rem 0; min-height: 150px; display: flex; align-items: center; justify-content: center;" onclick="stopDiceRoll()">
+          <div id="diceBox" style="width: 120px; height: 120px; position: relative; transform-style: preserve-3d; animation: diceRotate 0.3s infinite; cursor: pointer;">
             <div class="dice-face dice-front" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateZ(60px);">×0</div>
             <div class="dice-face dice-back" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateZ(-60px) rotateY(180deg);">×2</div>
             <div class="dice-face dice-left" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateX(-60px) rotateY(-90deg);">×3</div>
@@ -858,6 +859,8 @@
     let chancePlayer = null;
     let chanceOriginalCups = 0;
     let roundFinalCups = {};
+    let diceInterval = null;
+    let diceStopped = false;
     
     // ブラウザバック対策
     window.addEventListener('load', function() {
@@ -1460,6 +1463,8 @@
       document.getElementById('chanceConfirm').style.display = 'none';
       document.getElementById('diceRolling').style.display = 'block';
       
+      diceStopped = false;
+      
       const diceBox = document.getElementById('diceBox');
       diceBox.style.animation = 'diceRotate 0.3s infinite';
       
@@ -1468,14 +1473,14 @@
       let count = 0;
       const maxCount = 20 + Math.floor(Math.random() * 10);
       
-      const interval = setInterval(() => {
+      diceInterval = setInterval(() => {
         faces.forEach(face => {
           face.textContent = options[Math.floor(Math.random() * 3)];
         });
         count++;
         
         if (count >= maxCount) {
-          clearInterval(interval);
+          clearInterval(diceInterval);
           
           const rand = Math.random() * 100;
           let multiplier;
@@ -1503,6 +1508,38 @@
           }, 300);
         }
       }, 100);
+    }
+    
+    function stopDiceRoll() {
+      if (diceStopped || !diceInterval) return;
+      
+      diceStopped = true;
+      clearInterval(diceInterval);
+      
+      const rand = Math.random() * 100;
+      let multiplier;
+      let finalResult;
+      
+      if (rand < 50) {
+        multiplier = 0;
+        finalResult = '×0';
+      } else if (rand < 90) {
+        multiplier = 2;
+        finalResult = '×2';
+      } else {
+        multiplier = 3;
+        finalResult = '×3';
+      }
+      
+      const diceBox = document.getElementById('diceBox');
+      const faces = document.querySelectorAll('.dice-face');
+      
+      diceBox.style.animation = 'none';
+      faces[0].textContent = finalResult;
+      
+      setTimeout(() => {
+        applyChanceResult(multiplier);
+      }, 1000);
     }
     
     function applyChanceResult(multiplier) {
