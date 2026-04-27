@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0014">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SHOWDOWN">
+  <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiU0hPV0RPV04iLCJzaG9ydF9uYW1lIjoiU0hPV0RPV04iLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwYTAwMTQiLCJ0aGVtZV9jb2xvciI6IiMwYTAwMTQiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCM2FXUjBhRDBpTVRJNElpQm9aV2xuYUhROUlqRXlPQ0lnZG1sbGQwSnZlRDBpTUNBd0lERXlPQ0F4TWpnaUlIaHRiRzV6UFNKb2RIUndPaTh2ZDNkM0xuY3pMbTl5Wnk4eU1EQXdMM04yWnlJK1BISmxZM1FnZUQwaU1DSWdlVDBpTUNJZ2QybGtkR2c5SWpFeU9DSWdhR1ZwWjJoMFBTSXhNamdpSUdacGJHdzlJaU13WVRBd01UUWlMejQ4ZEdWNGRDQjRQU0kyTkNJZ2VUMGlOalFpSUdacGJHdzlJaU5tWmpFME9UTWlJR1p2Ym5RdGMybDZaVDBpTmpRaUlHWnZiblF0ZDJWcFoyaDBQU0k0TURBaUlIUmxlSFF0WVc1amFHOXlQU0p0YVdSa2JHVWlQbE5JVDFkRVQxZE9QQzkwWlhoMFBqd3ZjM1puUGc9PSIsInNpemVzIjoiMTI4eDEyOCIsInR5cGUiOiJpbWFnZS9zdmcreG1sIn0seyJzcmMiOiJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUIzYVdSMGFEMGlOVEV5SWlCb1pXbG5hSFE5SWpVeE1pSWdkbWxsZDBKdmVEMGlNQ0F3SURVeE1pQTFNVElpSUhodGJHNXpQU0pvZEhSd09pOHZkM2QzTG5jekxtOXlaeTh5TURBd0wzTjJaeUkrUEhKbFkzUWdlRDBpTUNJZ2VUMGlNQ0lnZDJsa2RHZzlJalV4TWlJZ2FHVnBaMmgwUFNJMU1USWlJR1pwYkd3OUlpTXdZVEF3TVRRaUx6NDhkR1Y0ZENCNFBTSTFOVFlpSUhrOUlqSTFOaUlnWm1sc2JEMGlJMlptTVRRNU15SWdabTl1ZEMxemFYcGxQU0l4TWpnaUlHWnZiblF0ZDJWcFoyaDBQU0k0TURBaUlIUmxlSFF0WVc1amFHOXlQU0p0YVdSa2JHVWlQbE5JVDFkRVQxZE9QQzkwWlhoMFBqd3ZjM1puUGc9PSIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9zdmcreG1sIn1dfQ==">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSIxODAiIGZpbGw9IiMwYTAwMTQiLz48dGV4dCB4PSI5MCIgeT0iMTEwIiBmaWxsPSIjZmYxNDkzIiBmb250LXNpemU9IjQ4IiBmb250LXdlaWdodD0iODAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5TPC90ZXh0Pjwvc3ZnPg==">
   <title>SHOWDOWN</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap');
@@ -613,7 +619,6 @@
   </style>
 </head>
 <body>
-  <button class="abort-btn" id="abortBtn" style="display: none;" onclick="confirmAbort()">✕ 中止</button>
   
   <div class="back-warning" id="backWarning">
     <div class="back-warning-content">
@@ -623,8 +628,11 @@
         他のプレイヤーの手札が見えてしまうため<br>
         ブラウザバックは禁止されています
       </div>
-      <button class="primary" onclick="returnToGame()" style="width: 100%; font-size: 16px;">
+      <button class="primary" onclick="returnToGame()" style="width: 100%; font-size: 16px; margin-bottom: 0.75rem;">
         ゲームに戻る ➜
+      </button>
+      <button onclick="confirmAbortFromWarning()" style="width: 100%; font-size: 14px; background: rgba(255, 0, 102, 0.2); color: var(--color-danger); border: 2px solid var(--color-danger);">
+        ゲームを中止してTOPに戻る
       </button>
     </div>
   </div>
@@ -883,20 +891,24 @@
       }
     }
     
+    function confirmAbortFromWarning() {
+      if (confirm('本当にゲームを中止してTOPに戻りますか？')) {
+        document.getElementById('backWarning').classList.remove('show');
+        abortGame();
+      }
+    }
+    
     function abortGame() {
       isGameActive = false;
-      document.getElementById('abortBtn').style.display = 'none';
       resetGame();
     }
     
     function showAbortButton() {
       isGameActive = true;
-      document.getElementById('abortBtn').style.display = 'block';
     }
     
     function hideAbortButton() {
       isGameActive = false;
-      document.getElementById('abortBtn').style.display = 'none';
     }
 
     function checkAdminAccess() {
@@ -1798,6 +1810,38 @@
     }
 
     updatePlayerInputs();
+    
+    // PWA Service Worker 登録
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swCode = `
+          self.addEventListener('install', (e) => {
+            e.waitUntil(
+              caches.open('showdown-v1').then((cache) => {
+                return cache.addAll(['/']);
+              })
+            );
+          });
+          
+          self.addEventListener('fetch', (e) => {
+            e.respondWith(
+              caches.match(e.request).then((response) => {
+                return response || fetch(e.request);
+              })
+            );
+          });
+        `;
+        
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        
+        navigator.serviceWorker.register(swUrl).then(() => {
+          console.log('PWA ready!');
+        }).catch(() => {
+          console.log('PWA not available');
+        });
+      });
+    }
   </script>
 </body>
 </html>
