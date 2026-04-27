@@ -1,0 +1,1766 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SHOWDOWN</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap');
+    
+    :root {
+      --color-bg: #0a0014;
+      --color-surface: #1a0a28;
+      --color-surface-hover: #2a1438;
+      --color-border: #ff1493;
+      --color-text-primary: #ffe6ff;
+      --color-text-secondary: #c77dff;
+      --color-accent: #ff1493;
+      --color-accent-hover: #ff69b4;
+      --color-success: #00ff9f;
+      --color-danger: #ff0066;
+      --color-purple: #a855f7;
+      --color-card: #1a0a28;
+      --color-neon-pink: #ff1493;
+      --color-neon-purple: #a855f7;
+      --color-neon-cyan: #00ffff;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: 'M PLUS Rounded 1c', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1a0a28 0%, #0a0014 50%, #000000 100%);
+      background-attachment: fixed;
+      color: var(--color-text-primary);
+      padding: 0;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, 
+        var(--color-neon-pink) 0%, 
+        var(--color-neon-purple) 25%, 
+        var(--color-neon-cyan) 50%, 
+        var(--color-neon-purple) 75%, 
+        var(--color-neon-pink) 100%);
+      box-shadow: 0 0 20px var(--color-neon-pink), 0 0 40px var(--color-neon-pink);
+      z-index: 100;
+      animation: neonPulse 3s ease-in-out infinite;
+    }
+    @keyframes neonPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    @keyframes neonFlash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    @keyframes bounceIn {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes diceShake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+    @keyframes diceRotate {
+      0% { transform: rotateX(0deg) rotateY(0deg); }
+      100% { transform: rotateX(360deg) rotateY(360deg); }
+    }
+    
+    .back-warning {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 0, 20, 0.98);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+    .back-warning.show { display: flex; }
+    .back-warning-content {
+      text-align: center;
+      padding: 2rem;
+      max-width: 400px;
+    }
+    .back-warning-icon {
+      font-size: 64px;
+      margin-bottom: 1rem;
+      animation: warningPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes warningPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    .back-warning-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--color-neon-pink);
+      text-shadow: 0 0 20px var(--color-neon-pink);
+      margin-bottom: 1rem;
+      letter-spacing: 2px;
+    }
+    .back-warning-text {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    
+    .abort-btn {
+      position: fixed;
+      top: 3.5rem;
+      right: 1rem;
+      z-index: 150;
+      background: rgba(255, 0, 102, 0.3);
+      color: var(--color-danger);
+      border: 2px solid var(--color-danger);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(255, 0, 102, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .abort-btn:active {
+      transform: scale(0.95);
+    }
+    .container { 
+      padding: 1.5rem 1rem 1rem; 
+      max-width: 480px; 
+      margin: 0 auto; 
+    }
+    .logo { 
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      font-size: 42px;
+      text-align: center;
+      margin-bottom: 0.25rem;
+      letter-spacing: 6px;
+      font-weight: 800;
+      color: var(--color-neon-pink);
+      cursor: pointer;
+      user-select: none;
+      text-shadow: 
+        0 0 10px var(--color-neon-pink),
+        0 0 20px var(--color-neon-pink),
+        0 0 30px var(--color-neon-pink);
+      position: relative;
+      animation: logoFlicker 4s ease-in-out infinite;
+    }
+    @keyframes logoFlicker {
+      0%, 100% { opacity: 1; }
+      45%, 55% { opacity: 0.95; }
+      50% { opacity: 0.9; }
+    }
+    .logo::before {
+      content: '✧ ';
+      font-size: 22px;
+      color: var(--color-neon-purple);
+      text-shadow: 0 0 10px var(--color-neon-purple);
+    }
+    .logo::after {
+      content: ' ✧';
+      font-size: 22px;
+      color: var(--color-neon-purple);
+      text-shadow: 0 0 10px var(--color-neon-purple);
+    }
+    .tagline {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--color-neon-cyan);
+      margin-bottom: 1.25rem;
+      font-weight: 500;
+      text-shadow: 0 0 10px var(--color-neon-cyan);
+      text-transform: uppercase;
+    }
+    h2 { 
+      font-size: 18px; 
+      font-weight: 700; 
+      color: var(--color-text-primary); 
+      margin-bottom: 1rem;
+      letter-spacing: 2px;
+      text-align: center;
+      text-shadow: 0 0 10px var(--color-neon-pink);
+    }
+    h2::before {
+      content: '♥ ';
+      color: var(--color-neon-pink);
+      text-shadow: 0 0 15px var(--color-neon-pink);
+    }
+    h2::after {
+      content: ' ♥';
+      color: var(--color-neon-pink);
+      text-shadow: 0 0 15px var(--color-neon-pink);
+    }
+    input, select, button { font-family: inherit; font-size: 15px; }
+    button { 
+      cursor: pointer; 
+      padding: 11px 20px; 
+      border-radius: 10px; 
+      border: 2px solid var(--color-border);
+      background: rgba(26, 10, 40, 0.8);
+      color: var(--color-text-primary); 
+      transition: all 0.3s;
+      font-weight: 700;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 0 15px rgba(255, 20, 147, 0.3), inset 0 0 10px rgba(255, 20, 147, 0.1);
+      position: relative;
+    }
+    button:hover { 
+      transform: translateY(-2px);
+      box-shadow: 0 0 25px rgba(255, 20, 147, 0.6), inset 0 0 15px rgba(255, 20, 147, 0.2);
+      border-color: var(--color-neon-pink);
+    }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.primary { 
+      background: linear-gradient(135deg, rgba(255, 20, 147, 0.3) 0%, rgba(168, 85, 247, 0.3) 100%);
+      color: white;
+      border: 2px solid var(--color-neon-pink);
+      font-weight: 800;
+      text-shadow: 0 0 10px var(--color-neon-pink);
+      box-shadow: 0 0 25px rgba(255, 20, 147, 0.5), inset 0 0 20px rgba(255, 20, 147, 0.2);
+    }
+    button.primary:hover { 
+      box-shadow: 0 0 35px rgba(255, 20, 147, 0.8), inset 0 0 25px rgba(255, 20, 147, 0.3);
+    }
+    input[type="text"] { 
+      width: 100%; 
+      padding: 10px 14px; 
+      border: 2px solid var(--color-border);
+      border-radius: 10px; 
+      background: rgba(26, 10, 40, 0.6);
+      color: var(--color-text-primary); 
+      transition: all 0.3s;
+      font-weight: 500;
+      box-shadow: inset 0 0 10px rgba(255, 20, 147, 0.1);
+    }
+    input[type="text"]:focus { 
+      outline: none; 
+      border-color: var(--color-neon-pink);
+      box-shadow: 0 0 15px rgba(255, 20, 147, 0.4), inset 0 0 15px rgba(255, 20, 147, 0.2);
+    }
+    input[type="text"]::placeholder {
+      color: var(--color-text-secondary);
+      opacity: 0.6;
+    }
+    select { 
+      padding: 10px 14px; 
+      border: 2px solid var(--color-border);
+      border-radius: 10px; 
+      background: rgba(26, 10, 40, 0.8);
+      color: var(--color-text-primary); 
+      width: 100%;
+      font-weight: 500;
+      box-shadow: inset 0 0 10px rgba(255, 20, 147, 0.1);
+    }
+    .player-inputs { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 8px; 
+      margin-bottom: 1.25rem; 
+    }
+    .player-input { 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+    }
+    .player-input span { 
+      font-size: 13px; 
+      color: var(--color-neon-purple); 
+      min-width: 75px;
+      font-weight: 700;
+      text-shadow: 0 0 10px var(--color-neon-purple);
+    }
+    .card-grid { 
+      display: grid; 
+      grid-template-columns: repeat(5, 1fr); 
+      gap: 8px; 
+      margin-bottom: 1rem; 
+    }
+    .card { 
+      aspect-ratio: 2/3; 
+      border: 2px solid var(--color-border);
+      border-radius: 10px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 26px; 
+      font-weight: 800; 
+      cursor: pointer; 
+      transition: all 0.3s; 
+      background: rgba(26, 10, 40, 0.8);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      box-shadow: 0 0 12px rgba(255, 20, 147, 0.2), inset 0 0 15px rgba(168, 85, 247, 0.1);
+      position: relative;
+      color: var(--color-text-primary);
+    }
+    .card::before {
+      content: '♡';
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      font-size: 12px;
+      color: var(--color-neon-pink);
+      text-shadow: 0 0 10px var(--color-neon-pink);
+      opacity: 0.6;
+    }
+    .card:active:not(.selected) { 
+      transform: translateY(-3px) rotate(-2deg);
+      border-color: var(--color-neon-cyan);
+      box-shadow: 0 0 25px var(--color-neon-cyan);
+    }
+    .card.selected { 
+      background: linear-gradient(135deg, rgba(255, 20, 147, 0.4) 0%, rgba(168, 85, 247, 0.4) 100%);
+      color: white;
+      border-color: var(--color-neon-pink);
+      transform: scale(1.08) rotate(-3deg);
+      box-shadow: 0 0 35px var(--color-neon-pink), 0 0 50px var(--color-neon-pink);
+      text-shadow: 0 0 10px white;
+    }
+    .card.selected::before {
+      content: '♥';
+      color: white;
+      text-shadow: 0 0 15px var(--color-neon-pink);
+      opacity: 1;
+    }
+    .info-box { 
+      background: rgba(26, 10, 40, 0.8);
+      border-radius: 12px; 
+      padding: 1rem; 
+      margin-bottom: 1rem; 
+      border: 2px solid var(--color-border);
+      box-shadow: 0 0 15px rgba(255, 20, 147, 0.3), inset 0 0 12px rgba(168, 85, 247, 0.1);
+    }
+    .info-row { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 8px; 
+    }
+    .info-row:last-child { margin-bottom: 0; }
+    .info-label { 
+      font-size: 11px; 
+      color: var(--color-neon-purple);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      text-shadow: 0 0 10px var(--color-neon-purple);
+    }
+    .info-value { 
+      font-size: 16px; 
+      font-weight: 800; 
+      color: var(--color-text-primary); 
+      text-shadow: 0 0 10px var(--color-neon-pink);
+    }
+    .results { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 8px; 
+      margin-bottom: 1rem; 
+    }
+    .result-card { 
+      background: rgba(26, 10, 40, 0.8);
+      border: 2px solid var(--color-border);
+      border-radius: 12px; 
+      padding: 0.85rem; 
+      box-shadow: 0 0 15px rgba(255, 20, 147, 0.3), inset 0 0 12px rgba(168, 85, 247, 0.1);
+    }
+    .result-card.loser { 
+      border: 2px solid var(--color-danger);
+      background: rgba(255, 0, 102, 0.15);
+      box-shadow: 0 0 25px rgba(255, 0, 102, 0.5), inset 0 0 15px rgba(255, 0, 102, 0.2);
+    }
+    .result-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 8px; 
+    }
+    .player-name { 
+      font-size: 14px; 
+      font-weight: 700;
+      text-shadow: 0 0 10px var(--color-neon-pink);
+    }
+    .card-value { 
+      font-size: 36px; 
+      font-weight: 800; 
+      color: var(--color-neon-pink);
+      text-shadow: 0 0 15px var(--color-neon-pink), 0 0 30px var(--color-neon-pink);
+    }
+    .loser-badge { 
+      display: inline-block; 
+      background: rgba(255, 0, 102, 0.4);
+      color: white;
+      font-size: 10px; 
+      padding: 5px 10px; 
+      border-radius: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid var(--color-danger);
+      box-shadow: 0 0 12px var(--color-danger);
+      text-shadow: 0 0 8px white;
+    }
+    .final-results { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 8px; 
+    }
+    .final-card { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      padding: 12px; 
+      background: rgba(26, 10, 40, 0.8);
+      border-radius: 12px;
+      border: 2px solid var(--color-border);
+      box-shadow: 0 0 15px rgba(255, 20, 147, 0.3), inset 0 0 12px rgba(168, 85, 247, 0.1);
+    }
+    .final-card.winner { 
+      background: rgba(0, 255, 159, 0.15);
+      border: 2px solid var(--color-success);
+      box-shadow: 0 0 25px rgba(0, 255, 159, 0.5), inset 0 0 15px rgba(0, 255, 159, 0.2);
+    }
+    .score { 
+      font-size: 20px; 
+      font-weight: 800; 
+      color: var(--color-danger);
+      text-shadow: 0 0 12px var(--color-danger);
+    }
+    .actions { 
+      display: flex; 
+      gap: 8px; 
+    }
+    .actions button { flex: 1; }
+    
+    .admin-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 0, 20, 0.97);
+      z-index: 1000;
+      overflow-y: auto;
+      padding: 0.5rem 0.75rem;
+      display: none;
+      backdrop-filter: blur(10px);
+    }
+    .admin-panel.show { display: block; }
+    .admin-content { max-width: 480px; margin: 0 auto; }
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.4rem;
+    }
+    .admin-title {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      font-size: 18px;
+      letter-spacing: 2px;
+      font-weight: 800;
+      color: var(--color-neon-pink);
+      text-shadow: 0 0 15px var(--color-neon-pink);
+    }
+    .close-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(26, 10, 40, 0.8);
+      border: 2px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      padding: 0;
+      font-weight: 700;
+      color: var(--color-neon-pink);
+    }
+    .player-status {
+      background: rgba(26, 10, 40, 0.8);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 0.4rem;
+      margin-bottom: 0.3rem;
+      box-shadow: 0 0 10px rgba(255, 20, 147, 0.3), inset 0 0 8px rgba(168, 85, 247, 0.1);
+    }
+    .player-status.current {
+      border: 1px solid var(--color-neon-pink);
+      box-shadow: 0 0 20px var(--color-neon-pink);
+    }
+    .player-status.completed { opacity: 0.5; }
+    .player-status-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.2rem;
+    }
+    .status-badge {
+      font-size: 7px;
+      padding: 2px 5px;
+      border-radius: 6px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+    .status-badge.completed {
+      background: rgba(0, 255, 159, 0.3);
+      color: var(--color-success);
+      border-color: var(--color-success);
+      box-shadow: 0 0 6px var(--color-success);
+    }
+    .status-badge.pending {
+      background: rgba(199, 125, 255, 0.3);
+      color: var(--color-neon-purple);
+      border-color: var(--color-neon-purple);
+      box-shadow: 0 0 6px var(--color-neon-purple);
+    }
+    .status-badge.current {
+      background: rgba(255, 20, 147, 0.3);
+      color: var(--color-neon-pink);
+      border-color: var(--color-neon-pink);
+      box-shadow: 0 0 10px var(--color-neon-pink);
+    }
+    .cards-display {
+      display: flex;
+      gap: 2px;
+      margin-top: 0.2rem;
+      width: 100%;
+    }
+    .mini-card {
+      flex: 1;
+      aspect-ratio: 2/3;
+      border: 1px solid var(--color-border);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgba(26, 10, 40, 0.6);
+      color: var(--color-text-primary);
+      min-width: 0;
+    }
+    .mini-card.selected-card {
+      background: rgba(0, 255, 159, 0.5);
+      color: white;
+      border-color: var(--color-success);
+      font-size: 16px;
+      font-weight: 800;
+      box-shadow: 0 0 10px var(--color-success);
+      text-shadow: 0 0 5px white;
+    }
+    .mini-card.used {
+      opacity: 0.2;
+      background: rgba(80, 80, 80, 0.3);
+      color: #555;
+    }
+    .mini-card.available {
+      background: rgba(255, 20, 147, 0.35);
+      color: var(--color-neon-pink);
+      border-color: rgba(255, 20, 147, 0.5);
+      box-shadow: 0 0 6px rgba(255, 20, 147, 0.3);
+      text-shadow: 0 0 3px var(--color-neon-pink);
+    }
+    
+    .lottery-result {
+      text-align: center;
+      padding: 1.5rem 0;
+    }
+    .lottery-result h2 {
+      margin-bottom: 1.5rem;
+      font-size: 20px;
+    }
+    .lottery-winner {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--color-neon-pink);
+      text-shadow: 0 0 25px var(--color-neon-pink), 0 0 50px var(--color-neon-pink);
+      margin: 1.5rem 0;
+      animation: neonBounce 0.6s ease-in-out;
+    }
+    @keyframes neonBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); text-shadow: 0 0 35px var(--color-neon-pink), 0 0 70px var(--color-neon-pink); }
+    }
+    .lottery-subtitle {
+      font-size: 14px;
+      color: var(--color-neon-cyan);
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+      text-shadow: 0 0 10px var(--color-neon-cyan);
+    }
+  </style>
+</head>
+<body>
+  <button class="abort-btn" id="abortBtn" style="display: none;" onclick="confirmAbort()">✕ 中止</button>
+  
+  <div class="back-warning" id="backWarning">
+    <div class="back-warning-content">
+      <div class="back-warning-icon">⚠️</div>
+      <div class="back-warning-title">ブラウザバック検出</div>
+      <div class="back-warning-text">
+        他のプレイヤーの手札が見えてしまうため<br>
+        ブラウザバックは禁止されています
+      </div>
+      <button class="primary" onclick="returnToGame()" style="width: 100%; font-size: 16px;">
+        ゲームに戻る ➜
+      </button>
+    </div>
+  </div>
+  
+  <div class="container" id="app">
+    <div class="logo" onclick="checkAdminAccess()">SHOWDOWN</div>
+    <div class="tagline">✧ card battle ✧</div>
+    
+    <div id="setup">
+      <h2>プレイヤー設定</h2>
+      <div style="margin-bottom: 1rem;">
+        <label class="info-label" style="display: block; margin-bottom: 8px;">ラウンド数</label>
+        <select id="roundCount" style="margin-bottom: 1rem;">
+          <option value="5">5回戦</option>
+          <option value="6">6回戦</option>
+          <option value="7">7回戦</option>
+          <option value="8">8回戦</option>
+          <option value="9">9回戦</option>
+          <option value="10" selected>10回戦</option>
+        </select>
+        
+        <label class="info-label" style="display: block; margin-bottom: 8px;">人数選択</label>
+        <select id="playerCount" onchange="updatePlayerInputs()">
+          <option value="2">2人</option>
+          <option value="3">3人</option>
+          <option value="4" selected>4人</option>
+          <option value="5">5人</option>
+          <option value="6">6人</option>
+        </select>
+      </div>
+      
+      <div id="playerInputs" class="player-inputs"></div>
+      
+      <button class="primary" onclick="startGame()" style="width: 100%;">ゲーム開始</button>
+    </div>
+    
+    <div id="lottery" style="display: none;">
+      <div id="lotterySpinning" style="text-align: center; padding: 2rem 0;">
+        <h2 style="margin-bottom: 1.5rem;">♡ 先攻抽選中 ♡</h2>
+        <div id="lotteryWheel" style="font-size: 40px; font-weight: 800; background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-purple) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 1.5rem 0; min-height: 50px;">
+        </div>
+        <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 1.5rem; font-weight: 500;">
+          ✧ ルーレット回転中 ✧
+        </div>
+      </div>
+      
+      <div id="lotteryResult" style="display: none;">
+        <div class="lottery-result">
+          <h2>♥ 先攻プレイヤー決定 ♥</h2>
+          <div class="lottery-winner" id="lotteryWinner"></div>
+          <div class="lottery-subtitle">からスタート ✧</div>
+          <button class="primary" onclick="startRoundFromLottery()" style="width: 100%; font-size: 16px;">
+            ♡ 第<span id="roundNumber">1</span>回戦 スタート ♡
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="handover" style="display: none;">
+      <div style="text-align: center; padding: 3rem 1rem;">
+        <div style="font-size: 48px; margin-bottom: 1.5rem;">📱</div>
+        <h2 style="font-size: 22px; margin-bottom: 1rem;">スマホを渡してください</h2>
+        <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 2rem;">
+          次のプレイヤー: <span id="nextPlayerName" style="color: var(--color-neon-pink); font-weight: 700; font-size: 18px;"></span>
+        </div>
+        <button class="primary" onclick="showNextPlayerCard()" style="width: 100%; font-size: 16px;">
+          準備OK ➜
+        </button>
+      </div>
+    </div>
+    
+    <div id="readyToShowResult" style="display: none;">
+      <div style="text-align: center; padding: 3rem 1rem;">
+        <div style="font-size: 64px; margin-bottom: 1.5rem;">🎲</div>
+        <h2 style="font-size: 24px; margin-bottom: 1rem;">全員カード選択完了</h2>
+        <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 2rem;">
+          準備ができたら結果を表示してください
+        </div>
+        <button class="primary" onclick="showRoundResults()" style="width: 100%; font-size: 18px;">
+          ♡ 結果を表示 ♡
+        </button>
+      </div>
+    </div>
+    
+    <div id="lastRoundAnnounce" style="display: none;">
+      <div style="text-align: center; padding: 4rem 1rem;">
+        <div style="font-size: 80px; margin-bottom: 2rem; animation: bounceIn 0.8s ease-out;">⚡</div>
+        <h2 style="font-size: 42px; margin-bottom: 1rem; color: var(--color-neon-pink); text-shadow: 0 0 30px var(--color-neon-pink), 0 0 60px var(--color-neon-pink); font-weight: 800; letter-spacing: 4px; animation: neonFlash 0.5s ease-in-out 3;">
+          LAST ROUND!
+        </h2>
+        <div style="font-size: 18px; color: var(--color-neon-cyan); margin-bottom: 1rem; text-shadow: 0 0 15px var(--color-neon-cyan); font-weight: 700;">
+          最終回戦
+        </div>
+        <div style="font-size: 28px; color: var(--color-danger); margin-bottom: 3rem; font-weight: 800; text-shadow: 0 0 20px var(--color-danger);">
+          杯数 ×2
+        </div>
+        <button class="primary" onclick="startFinalRound()" style="width: 100%; font-size: 18px;">
+          最終決戦 開始 ⚡
+        </button>
+      </div>
+    </div>
+    
+    <div id="chanceConfirm" style="display: none;">
+      <div style="text-align: center; padding: 3rem 1rem;">
+        <div style="font-size: 64px; margin-bottom: 1.5rem;">🎲</div>
+        <h2 style="font-size: 24px; margin-bottom: 1rem; color: var(--color-neon-pink);" id="chancePlayerName"></h2>
+        <div style="font-size: 18px; color: var(--color-text-secondary); margin-bottom: 2rem;">
+          神のさいころを振りますか？
+        </div>
+        <div style="background: rgba(26, 10, 40, 0.8); border-radius: 12px; padding: 1rem; margin-bottom: 2rem; border: 2px solid var(--color-border);">
+          <div style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 0.5rem;">確率</div>
+          <div style="font-size: 14px; line-height: 1.8;">
+            <div>🍺 × 0（帳消し）: <span style="color: var(--color-success); font-weight: 700;">50%</span></div>
+            <div>🍺 × 2（倍増）: <span style="color: var(--color-neon-cyan); font-weight: 700;">40%</span></div>
+            <div>🍺 × 3（3倍）: <span style="color: var(--color-danger); font-weight: 700;">10%</span></div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button onclick="cancelChance()" style="flex: 1;">キャンセル</button>
+          <button class="primary" onclick="startDiceRoll()" style="flex: 1;">さいころを振る 🎲</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="diceRolling" style="display: none;">
+      <div style="text-align: center; padding: 3rem 1rem;">
+        <h2 style="font-size: 22px; margin-bottom: 2rem; color: var(--color-neon-pink);">神のさいころ...</h2>
+        <div id="diceDisplay" style="margin: 2rem 0; min-height: 150px; display: flex; align-items: center; justify-content: center;">
+          <div id="diceBox" style="width: 120px; height: 120px; position: relative; transform-style: preserve-3d; animation: diceRotate 0.3s infinite;">
+            <div class="dice-face dice-front" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateZ(60px);">×0</div>
+            <div class="dice-face dice-back" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateZ(-60px) rotateY(180deg);">×2</div>
+            <div class="dice-face dice-left" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateX(-60px) rotateY(-90deg);">×3</div>
+            <div class="dice-face dice-right" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateX(60px) rotateY(90deg);">×0</div>
+            <div class="dice-face dice-top" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateY(-60px) rotateX(90deg);">×2</div>
+            <div class="dice-face dice-bottom" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateY(60px) rotateX(-90deg);">×3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="chanceResult" style="display: none;">
+      <div style="text-align: center; padding: 3rem 1rem;">
+        <div id="chanceResultIcon" style="font-size: 80px; margin-bottom: 1.5rem;"></div>
+        <h2 style="font-size: 28px; margin-bottom: 1rem; color: var(--color-neon-pink);" id="chanceResultText"></h2>
+        <div style="font-size: 48px; margin-bottom: 2rem;" id="chanceResultBeer"></div>
+        <button class="primary" onclick="closeChanceResult()" style="width: 100%; font-size: 18px;">
+          OK
+        </button>
+      </div>
+    </div>
+
+    <div id="cardSelect" style="display: none;">
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">現在のプレイヤー</span>
+          <span class="info-value" id="currentPlayer"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">ラウンド</span>
+          <span class="info-value" id="roundInfo"></span>
+        </div>
+        <div class="info-row" id="doubleDownStatus">
+          <span class="info-label">ダブルダウン</span>
+          <span class="info-value" id="doubleDownValue" style="color: var(--color-accent);">使用可能 ⚡</span>
+        </div>
+      </div>
+      
+      <h2 style="margin-bottom: 1rem;">カードを選択</h2>
+      <div class="card-grid" id="cardGrid"></div>
+      
+      <div id="doubleDownToggle" style="margin-bottom: 1rem; text-align: center;">
+        <button id="toggleDoubleDown" onclick="toggleDoubleDown()" style="width: 100%; background: var(--color-surface); border: 2px dashed var(--color-border);">
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">⚡ DOUBLE DOWN ⚡</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); line-height: 1.4;">勝ったら負けが2杯、負けたら自分が2杯<br>どこかで必ず1回使う必要あり</div>
+        </button>
+      </div>
+      
+      <button id="confirmBtn" onclick="confirmCard()" style="width: 100%;" disabled>このカードで決定</button>
+    </div>
+    
+    <div id="roundResults" style="display: none;">
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">ラウンド</span>
+          <span class="info-value" id="resultRoundInfo"></span>
+        </div>
+      </div>
+      
+      <h2>結果発表</h2>
+      <div class="results" id="resultsContainer"></div>
+      
+      <div class="actions" style="margin-top: 1.5rem;" id="roundResultActions">
+      </div>
+    </div>
+    
+    <div id="finalResults" style="display: none;">
+      <h2 style="text-align: center; margin-bottom: 1.5rem;">🏆 通算成績</h2>
+      <div class="final-results" id="finalContainer"></div>
+      
+      <div style="margin-top: 1.5rem;">
+        <button class="primary" onclick="resetGame()" style="width: 100%;">TOPに戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-panel" id="adminPanel">
+    <div class="admin-content">
+      <div class="admin-header">
+        <div class="admin-title">ADMIN MODE</div>
+        <button class="close-btn" onclick="closeAdmin()">×</button>
+      </div>
+      <div id="adminContent"></div>
+    </div>
+  </div>
+
+  <script>
+    let gameState = {
+      players: [],
+      currentRound: 1,
+      currentPlayerIndex: 0,
+      roundData: [],
+      playerOrder: [],
+      usedCards: {},
+      totalRounds: 10,
+      diceUsedThisRound: []
+    };
+    
+    let adminClicks = 0;
+    let adminTimeout = null;
+    let isGameActive = false;
+    
+    let chancePlayer = null;
+    let chanceOriginalCups = 0;
+    let roundFinalCups = {};
+    
+    // ブラウザバック対策
+    window.addEventListener('load', function() {
+      history.pushState(null, null, location.href);
+      window.addEventListener('popstate', function() {
+        if (isGameActive) {
+          history.pushState(null, null, location.href);
+          document.getElementById('backWarning').classList.add('show');
+        }
+      });
+    });
+    
+    function returnToGame() {
+      document.getElementById('backWarning').classList.remove('show');
+    }
+    
+    function confirmAbort() {
+      if (confirm('本当にゲームを中止してTOPに戻りますか？')) {
+        abortGame();
+      }
+    }
+    
+    function abortGame() {
+      isGameActive = false;
+      document.getElementById('abortBtn').style.display = 'none';
+      resetGame();
+    }
+    
+    function showAbortButton() {
+      isGameActive = true;
+      document.getElementById('abortBtn').style.display = 'block';
+    }
+    
+    function hideAbortButton() {
+      isGameActive = false;
+      document.getElementById('abortBtn').style.display = 'none';
+    }
+
+    function checkAdminAccess() {
+      adminClicks++;
+      clearTimeout(adminTimeout);
+      
+      if (adminClicks === 5) {
+        if (gameState.players.length > 0 && document.getElementById('cardSelect').style.display === 'block') {
+          showAdminPanel();
+        }
+        adminClicks = 0;
+      } else {
+        adminTimeout = setTimeout(() => { adminClicks = 0; }, 2000);
+      }
+    }
+    
+    function showAdminPanel() {
+      const panel = document.getElementById('adminPanel');
+      const content = document.getElementById('adminContent');
+      content.innerHTML = '';
+      
+      const maxCard = gameState.totalRounds;
+      
+      gameState.playerOrder.forEach((playerIndex, turnIndex) => {
+        const player = gameState.players[playerIndex];
+        const isCompleted = turnIndex < gameState.currentPlayerIndex;
+        const isCurrent = turnIndex === gameState.currentPlayerIndex;
+        const isPending = turnIndex > gameState.currentPlayerIndex;
+        
+        const playerDiv = document.createElement('div');
+        playerDiv.className = 'player-status';
+        if (isCurrent) playerDiv.classList.add('current');
+        if (isCompleted) playerDiv.classList.add('completed');
+        
+        let statusBadge = '';
+        if (isCompleted) statusBadge = '<span class="status-badge completed">選択済み</span>';
+        else if (isCurrent) statusBadge = '<span class="status-badge current">選択中</span>';
+        else statusBadge = '<span class="status-badge pending">待機中</span>';
+        
+        let doubleDownBadge = '';
+        const roundInfo = gameState.roundData.find(r => r.player === player.name);
+        const isUsingDDNow = roundInfo && roundInfo.isDoubleDown;
+        
+        if (isUsingDDNow && !player.hasUsedDoubleDown) {
+          doubleDownBadge = '<span class="status-badge" style="background: var(--color-accent); border-color: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); color: white;">⚡DOUBLE DOWN発動中</span>';
+        } else if (player.hasUsedDoubleDown || isUsingDDNow) {
+          doubleDownBadge = '<span class="status-badge" style="background: #666; color: #aaa;">DOUBLE DOWN発動済み</span>';
+        } else {
+          doubleDownBadge = '<span class="status-badge" style="background: rgba(168, 85, 247, 0.3); border-color: var(--color-neon-purple); box-shadow: 0 0 6px var(--color-neon-purple); color: var(--color-neon-purple);">DOUBLE DOWN未発動</span>';
+        }
+        
+        const usedCardsByPlayer = gameState.usedCards[player.name] || [];
+        const selectedCardThisRound = isCompleted ? gameState.roundData.find(r => r.player === player.name)?.card : null;
+        
+        let cardsHTML = '<div class="cards-display">';
+        for (let i = 1; i <= maxCard; i++) {
+          const isUsedBefore = usedCardsByPlayer.includes(i) && i !== selectedCardThisRound;
+          const isSelected = selectedCardThisRound === i;
+          const isAvailable = !usedCardsByPlayer.includes(i);
+          
+          let cardClass = 'mini-card';
+          if (isSelected) {
+            cardClass += ' selected-card';
+          } else if (isUsedBefore) {
+            cardClass += ' used';
+          } else if (isAvailable) {
+            cardClass += ' available';
+          }
+          
+          cardsHTML += `<div class="${cardClass}">${i}</div>`;
+        }
+        cardsHTML += '</div>';
+        
+        playerDiv.innerHTML = `
+          <div class="player-status-header">
+            <div class="player-name" style="font-size: 11px;">${player.name}${turnIndex === 0 ? '★' : ''}</div>
+            <div style="display: flex; gap: 2px;">
+              ${statusBadge}
+              ${doubleDownBadge}
+            </div>
+          </div>
+          ${cardsHTML}
+        `;
+        
+        content.appendChild(playerDiv);
+      });
+      
+      panel.classList.add('show');
+    }
+    
+    function closeAdmin() {
+      document.getElementById('adminPanel').classList.remove('show');
+    }
+
+    function updatePlayerInputs() {
+      const count = parseInt(document.getElementById('playerCount').value);
+      const container = document.getElementById('playerInputs');
+      
+      const existingValues = [];
+      for (let i = 0; i < 6; i++) {
+        const input = document.getElementById(`player${i}`);
+        if (input) {
+          existingValues[i] = input.value;
+        }
+      }
+      
+      container.innerHTML = '';
+      
+      for (let i = 0; i < count; i++) {
+        const div = document.createElement('div');
+        div.className = 'player-input';
+        div.innerHTML = `
+          <span>Player ${i + 1}</span>
+          <input type="text" id="player${i}" placeholder="Player ${i + 1}" value="${existingValues[i] || ''}">
+        `;
+        container.appendChild(div);
+      }
+    }
+
+    function startGame() {
+      const count = parseInt(document.getElementById('playerCount').value);
+      const rounds = parseInt(document.getElementById('roundCount').value);
+      
+      gameState.totalRounds = rounds;
+      gameState.players = [];
+      gameState.usedCards = {};
+      
+      for (let i = 0; i < count; i++) {
+        const input = document.getElementById(`player${i}`);
+        const name = input.value.trim() || `Player ${i + 1}`;
+        gameState.players.push({
+          name: name,
+          losses: 0,
+          hasUsedDoubleDown: false
+        });
+        gameState.usedCards[name] = [];
+      }
+      
+      gameState.currentRound = 1;
+      gameState.currentPlayerIndex = 0;
+      gameState.roundData = [];
+      
+      startLottery();
+    }
+
+    function startLottery() {
+      showAbortButton();
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('lottery').style.display = 'block';
+      document.getElementById('lotterySpinning').style.display = 'block';
+      document.getElementById('lotteryResult').style.display = 'none';
+      document.getElementById('cardSelect').style.display = 'none';
+      document.getElementById('roundResults').style.display = 'none';
+      document.getElementById('finalResults').style.display = 'none';
+      
+      const wheel = document.getElementById('lotteryWheel');
+      let count = 0;
+      const maxCount = 20 + Math.floor(Math.random() * 10);
+      
+      const interval = setInterval(() => {
+        const randomPlayer = gameState.players[Math.floor(Math.random() * gameState.players.length)];
+        wheel.textContent = randomPlayer.name;
+        count++;
+        
+        if (count >= maxCount) {
+          clearInterval(interval);
+          
+          const firstPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+          gameState.playerOrder = [];
+          for (let i = 0; i < gameState.players.length; i++) {
+            gameState.playerOrder.push((firstPlayerIndex + i) % gameState.players.length);
+          }
+          
+          const winnerName = gameState.players[firstPlayerIndex].name;
+          
+          setTimeout(() => {
+            document.getElementById('lotterySpinning').style.display = 'none';
+            document.getElementById('lotteryResult').style.display = 'block';
+            document.getElementById('lotteryWinner').textContent = winnerName;
+            document.getElementById('roundNumber').textContent = gameState.currentRound;
+          }, 500);
+        }
+      }, 100);
+    }
+    
+    function startRoundFromLottery() {
+      showCardSelect();
+    }
+
+    function showCardSelect() {
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('lottery').style.display = 'none';
+      document.getElementById('cardSelect').style.display = 'block';
+      document.getElementById('roundResults').style.display = 'none';
+      document.getElementById('finalResults').style.display = 'none';
+      
+      updateCardSelect();
+    }
+
+    function updateCardSelect() {
+      const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
+      const player = gameState.players[playerIndex];
+      document.getElementById('currentPlayer').textContent = player.name;
+      document.getElementById('roundInfo').textContent = `第${gameState.currentRound}回戦`;
+      
+      const grid = document.getElementById('cardGrid');
+      grid.innerHTML = '';
+      
+      for (let i = 1; i <= 10; i++) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.textContent = i;
+        card.onclick = () => selectCard(i, card);
+        grid.appendChild(card);
+      }
+      
+      document.getElementById('confirmBtn').disabled = true;
+    }
+
+    let selectedCard = null;
+    let selectedElement = null;
+    let isDoubleDownActive = false;
+
+    function updateCardSelect() {
+      const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
+      const player = gameState.players[playerIndex];
+      document.getElementById('currentPlayer').textContent = player.name;
+      document.getElementById('roundInfo').textContent = `第${gameState.currentRound}回戦`;
+      
+      isDoubleDownActive = false;
+      
+      const isFinalRound = gameState.currentRound === gameState.totalRounds;
+      const mustUseDD = isFinalRound && !player.hasUsedDoubleDown;
+      
+      if (mustUseDD) {
+        isDoubleDownActive = true;
+        document.getElementById('doubleDownStatus').style.display = 'flex';
+        document.getElementById('doubleDownToggle').style.display = 'block';
+        document.getElementById('doubleDownValue').textContent = '強制発動 ⚡⚡';
+        document.getElementById('doubleDownValue').style.color = 'var(--color-danger)';
+        const toggleBtn = document.getElementById('toggleDoubleDown');
+        toggleBtn.style.background = 'var(--color-accent)';
+        toggleBtn.style.border = '3px solid var(--color-accent)';
+        toggleBtn.style.color = 'white';
+        toggleBtn.style.boxShadow = '0 8px 24px rgba(255, 105, 180, 0.5)';
+        toggleBtn.disabled = true;
+        toggleBtn.style.opacity = '1';
+        toggleBtn.innerHTML = `
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">⚡⚡ DOUBLE DOWN 強制発動 ⚡⚡</div>
+          <div style="font-size: 11px; color: white; line-height: 1.4;">最終回戦のため自動的に使用されます</div>
+        `;
+      } else if (player.hasUsedDoubleDown) {
+        document.getElementById('doubleDownStatus').style.display = 'none';
+        document.getElementById('doubleDownToggle').style.display = 'none';
+      } else {
+        document.getElementById('doubleDownStatus').style.display = 'flex';
+        document.getElementById('doubleDownToggle').style.display = 'block';
+        document.getElementById('doubleDownValue').textContent = '使用可能 ⚡';
+        document.getElementById('doubleDownValue').style.color = 'var(--color-accent)';
+        const toggleBtn = document.getElementById('toggleDoubleDown');
+        toggleBtn.disabled = false;
+        toggleBtn.style.background = 'var(--color-surface)';
+        toggleBtn.style.border = '2px dashed var(--color-border)';
+        toggleBtn.style.color = 'var(--color-text-primary)';
+        toggleBtn.style.boxShadow = 'none';
+        toggleBtn.innerHTML = `
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">⚡ DOUBLE DOWN ⚡</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); line-height: 1.4;">勝ったら負けが2杯、負けたら自分が2杯<br>どこかで必ず1回使う必要あり</div>
+        `;
+      }
+      
+      const grid = document.getElementById('cardGrid');
+      grid.innerHTML = '';
+      
+      const usedCardsByPlayer = gameState.usedCards[player.name] || [];
+      const maxCard = gameState.totalRounds;
+      
+      for (let i = 1; i <= maxCard; i++) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.textContent = i;
+        
+        if (usedCardsByPlayer.includes(i)) {
+          card.classList.add('used');
+          card.style.opacity = '0.3';
+          card.style.cursor = 'not-allowed';
+          card.style.pointerEvents = 'none';
+        } else {
+          card.onclick = () => selectCard(i, card);
+        }
+        
+        grid.appendChild(card);
+      }
+      
+      document.getElementById('confirmBtn').disabled = true;
+    }
+    
+    function toggleDoubleDown() {
+      const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
+      const player = gameState.players[playerIndex];
+      
+      if (player.hasUsedDoubleDown) return;
+      
+      isDoubleDownActive = !isDoubleDownActive;
+      const toggleBtn = document.getElementById('toggleDoubleDown');
+      const statusValue = document.getElementById('doubleDownValue');
+      
+      if (isDoubleDownActive) {
+        toggleBtn.style.background = 'var(--color-accent)';
+        toggleBtn.style.border = '2px solid var(--color-accent)';
+        toggleBtn.style.color = 'white';
+        toggleBtn.style.boxShadow = '0 8px 24px rgba(255, 107, 53, 0.4)';
+        statusValue.textContent = '発動中 ⚡⚡';
+        statusValue.style.color = 'var(--color-accent)';
+      } else {
+        toggleBtn.style.background = 'var(--color-surface)';
+        toggleBtn.style.border = '2px dashed var(--color-border)';
+        toggleBtn.style.color = 'var(--color-text-primary)';
+        toggleBtn.style.boxShadow = 'none';
+        statusValue.textContent = '使用可能 ⚡';
+        statusValue.style.color = 'var(--color-accent)';
+      }
+    }
+
+    function selectCard(value, element) {
+      if (selectedElement) {
+        selectedElement.classList.remove('selected');
+      }
+      
+      selectedCard = value;
+      selectedElement = element;
+      element.classList.add('selected');
+      
+      document.getElementById('confirmBtn').disabled = false;
+    }
+
+    function confirmCard() {
+      if (!selectedCard) return;
+      
+      const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
+      const player = gameState.players[playerIndex];
+      
+      gameState.roundData.push({
+        player: player.name,
+        card: selectedCard,
+        isDoubleDown: isDoubleDownActive
+      });
+      
+      if (!gameState.usedCards[player.name]) {
+        gameState.usedCards[player.name] = [];
+      }
+      gameState.usedCards[player.name].push(selectedCard);
+      
+      selectedCard = null;
+      selectedElement = null;
+      isDoubleDownActive = false;
+      
+      gameState.currentPlayerIndex++;
+      
+      if (gameState.currentPlayerIndex >= gameState.players.length) {
+        showReadyToShowResult();
+      } else {
+        showHandover();
+      }
+    }
+    
+    function showReadyToShowResult() {
+      document.getElementById('cardSelect').style.display = 'none';
+      document.getElementById('readyToShowResult').style.display = 'block';
+    }
+    
+    function showHandover() {
+      const nextPlayerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
+      const nextPlayer = gameState.players[nextPlayerIndex];
+      
+      document.getElementById('cardSelect').style.display = 'none';
+      document.getElementById('handover').style.display = 'block';
+      document.getElementById('nextPlayerName').textContent = nextPlayer.name;
+    }
+    
+    function showNextPlayerCard() {
+      document.getElementById('handover').style.display = 'none';
+      document.getElementById('cardSelect').style.display = 'block';
+      updateCardSelect();
+    }
+
+    function showRoundResults() {
+      document.getElementById('cardSelect').style.display = 'none';
+      document.getElementById('handover').style.display = 'none';
+      document.getElementById('readyToShowResult').style.display = 'none';
+      document.getElementById('roundResults').style.display = 'block';
+      
+      document.getElementById('resultRoundInfo').textContent = `第${gameState.currentRound}回戦`;
+      
+      gameState.roundData.forEach(data => {
+        if (data.isDoubleDown) {
+          const player = gameState.players.find(p => p.name === data.player);
+          player.hasUsedDoubleDown = true;
+        }
+      });
+      
+      const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
+      
+      const maxCardNumber = gameState.totalRounds;
+      const hasCard1 = gameState.roundData.some(d => d.card === 1);
+      const hasCardMax = gameState.roundData.some(d => d.card === maxCardNumber);
+      const reverseRule = hasCard1 && hasCardMax;
+      
+      let minCard;
+      let losers;
+      let winners;
+      
+      if (reverseRule) {
+        minCard = maxCardNumber;
+        losers = gameState.roundData.filter(p => p.card === maxCardNumber);
+        winners = gameState.roundData.filter(p => p.card !== maxCardNumber);
+      } else {
+        minCard = sorted[0].card;
+        losers = sorted.filter(p => p.card === minCard);
+        winners = sorted.filter(p => p.card !== minCard);
+      }
+      
+      const anyWinnerUsedDD = winners.some(w => w.isDoubleDown);
+      
+      losers.forEach(loser => {
+        const player = gameState.players.find(p => p.name === loser.player);
+        let penalty = 1;
+        
+        if (loser.isDoubleDown) {
+          penalty = 2;
+        } else if (anyWinnerUsedDD) {
+          penalty = 2;
+        }
+        
+        const isFinalRound = gameState.currentRound === gameState.totalRounds;
+        if (isFinalRound) {
+          penalty = penalty * 2;
+        }
+        
+        player.losses += penalty;
+      });
+      
+      const container = document.getElementById('resultsContainer');
+      container.innerHTML = '';
+      
+      roundFinalCups = {};
+      
+      sorted.forEach(data => {
+        const isLoser = data.card === minCard;
+        let cups = 0;
+        let reasonText = '';
+        
+        if (isLoser) {
+          if (data.isDoubleDown) {
+            cups = 2;
+            reasonText = '自分のDOUBLE DOWN';
+          } else if (anyWinnerUsedDD) {
+            cups = 2;
+            reasonText = '相手が発動したDOUBLE DOWN';
+          } else {
+            cups = 1;
+            reasonText = '';
+          }
+          
+          if (reverseRule && data.card === maxCardNumber) {
+            reasonText = reasonText ? `天地逆転 + ${reasonText}` : '天地逆転';
+          }
+          
+          const isFinalRound = gameState.currentRound === gameState.totalRounds;
+          if (isFinalRound) {
+            cups = cups * 2;
+            reasonText = reasonText ? `${reasonText} + 最終ラウンド` : '最終ラウンド';
+          }
+          
+          roundFinalCups[data.player] = cups;
+        }
+        
+        const card = document.createElement('div');
+        card.className = 'result-card' + (isLoser ? ' loser' : '');
+        
+        let badgeHTML = '';
+        let beerDisplay = '';
+        
+        if (isLoser) {
+          const beerIcons = '🍺'.repeat(cups);
+          const diceUsed = gameState.diceUsedThisRound.includes(data.player);
+          const diceButtonStyle = diceUsed 
+            ? 'opacity: 0.3; cursor: not-allowed; pointer-events: none;' 
+            : 'cursor: pointer;';
+          
+          badgeHTML = `<span class="loser-badge">LOSE 💔</span>`;
+          beerDisplay = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="card-value" style="margin: 0;">${data.card}</div>
+                <div style="font-size: 28px;">${beerIcons}</div>
+              </div>
+              <button class="dice-btn" data-player="${data.player}" data-cups="${cups}" 
+                style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
+                ${diceUsed ? 'disabled' : ''}>
+                🎲
+              </button>
+            </div>`;
+          if (reasonText) {
+            beerDisplay += `<div style="font-size: 10px; color: var(--color-text-secondary); margin-top: 4px;">(${reasonText})</div>`;
+          }
+        } else {
+          badgeHTML = `<span class="loser-badge" style="background: rgba(0, 255, 159, 0.4); border-color: var(--color-success); box-shadow: 0 0 12px var(--color-success);">WIN ✨</span>`;
+          beerDisplay = `<div class="card-value" style="margin-top: 8px;">${data.card}</div>`;
+        }
+        
+        card.innerHTML = `
+          <div class="result-header">
+            <div>
+              <span class="player-name">${data.player}</span>
+              ${data.isDoubleDown && !isLoser ? '<span style="font-size: 10px; color: var(--color-neon-purple); margin-left: 6px;">⚡DOUBLE DOWN発動中</span>' : ''}
+            </div>
+            ${badgeHTML}
+          </div>
+          ${beerDisplay}
+        `;
+        container.appendChild(card);
+      });
+      
+      const actionsContainer = document.getElementById('roundResultActions');
+      const isFinalRound = gameState.currentRound >= gameState.totalRounds;
+      
+      if (isFinalRound) {
+        actionsContainer.innerHTML = '<button class="primary" onclick="showFinalResults()" style="width: 100%;">最終結果を見る</button>';
+      } else {
+        const nextRoundNumber = gameState.currentRound + 1;
+        actionsContainer.innerHTML = `<button class="primary" onclick="nextRound()" style="width: 100%;">第${nextRoundNumber}回戦へ</button>`;
+      }
+      
+      setTimeout(() => {
+        const diceBtns = document.querySelectorAll('.dice-btn');
+        diceBtns.forEach(btn => {
+          btn.addEventListener('click', function() {
+            const playerName = this.getAttribute('data-player');
+            const cups = parseInt(this.getAttribute('data-cups'));
+            showChanceConfirm(playerName, cups);
+          });
+        });
+      }, 100);
+    }
+
+    function showChanceConfirm(playerName, cups) {
+      chancePlayer = playerName;
+      chanceOriginalCups = cups;
+      
+      document.getElementById('chancePlayerName').textContent = `${playerName}さん`;
+      document.getElementById('roundResults').style.display = 'none';
+      document.getElementById('chanceConfirm').style.display = 'block';
+    }
+    
+    function cancelChance() {
+      document.getElementById('chanceConfirm').style.display = 'none';
+      document.getElementById('roundResults').style.display = 'block';
+      chancePlayer = null;
+      chanceOriginalCups = 0;
+    }
+    
+    function startDiceRoll() {
+      document.getElementById('chanceConfirm').style.display = 'none';
+      document.getElementById('diceRolling').style.display = 'block';
+      
+      const diceBox = document.getElementById('diceBox');
+      diceBox.style.animation = 'diceRotate 0.3s infinite';
+      
+      const options = ['×0', '×2', '×3'];
+      const faces = document.querySelectorAll('.dice-face');
+      let count = 0;
+      const maxCount = 20 + Math.floor(Math.random() * 10);
+      
+      const interval = setInterval(() => {
+        faces.forEach(face => {
+          face.textContent = options[Math.floor(Math.random() * 3)];
+        });
+        count++;
+        
+        if (count >= maxCount) {
+          clearInterval(interval);
+          
+          const rand = Math.random() * 100;
+          let multiplier;
+          let finalResult;
+          
+          if (rand < 50) {
+            multiplier = 0;
+            finalResult = '×0';
+          } else if (rand < 90) {
+            multiplier = 2;
+            finalResult = '×2';
+          } else {
+            multiplier = 3;
+            finalResult = '×3';
+          }
+          
+          setTimeout(() => {
+            diceBox.style.animation = 'none';
+            
+            faces[0].textContent = finalResult;
+            
+            setTimeout(() => {
+              applyChanceResult(multiplier);
+            }, 1000);
+          }, 300);
+        }
+      }, 100);
+    }
+    
+    function applyChanceResult(multiplier) {
+      const player = gameState.players.find(p => p.name === chancePlayer);
+      const newCups = chanceOriginalCups * multiplier;
+      const diff = newCups - chanceOriginalCups;
+      
+      player.losses += diff;
+      
+      roundFinalCups[chancePlayer] = newCups;
+      
+      gameState.diceUsedThisRound.push(chancePlayer);
+      
+      document.getElementById('diceRolling').style.display = 'none';
+      document.getElementById('chanceResult').style.display = 'block';
+      
+      const beerIcons = '🍺'.repeat(newCups);
+      
+      if (multiplier === 0) {
+        document.getElementById('chanceResultIcon').textContent = '🎉';
+        document.getElementById('chanceResultText').textContent = '帳消し！';
+      } else if (multiplier === 2) {
+        document.getElementById('chanceResultIcon').textContent = '😰';
+        document.getElementById('chanceResultText').textContent = '2倍...';
+      } else {
+        document.getElementById('chanceResultIcon').textContent = '💀';
+        document.getElementById('chanceResultText').textContent = '3倍！！！';
+      }
+      
+      document.getElementById('chanceResultBeer').textContent = beerIcons || 'セーフ！';
+    }
+    
+    function closeChanceResult() {
+      document.getElementById('chanceResult').style.display = 'none';
+      document.getElementById('roundResults').style.display = 'block';
+      
+      const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
+      
+      const maxCardNumber = gameState.totalRounds;
+      const hasCard1 = gameState.roundData.some(d => d.card === 1);
+      const hasCardMax = gameState.roundData.some(d => d.card === maxCardNumber);
+      const reverseRule = hasCard1 && hasCardMax;
+      
+      let minCard;
+      let losers;
+      let winners;
+      
+      if (reverseRule) {
+        minCard = maxCardNumber;
+        losers = gameState.roundData.filter(p => p.card === maxCardNumber);
+        winners = gameState.roundData.filter(p => p.card !== maxCardNumber);
+      } else {
+        minCard = sorted[0].card;
+        losers = sorted.filter(p => p.card === minCard);
+        winners = sorted.filter(p => p.card !== minCard);
+      }
+      
+      const anyWinnerUsedDD = winners.some(w => w.isDoubleDown);
+      
+      const container = document.getElementById('resultsContainer');
+      container.innerHTML = '';
+      
+      sorted.forEach(data => {
+        const isLoser = data.card === minCard;
+        let cups = 0;
+        let reasonText = '';
+        
+        if (isLoser) {
+          if (data.isDoubleDown) {
+            cups = 2;
+            reasonText = '自分のDOUBLE DOWN';
+          } else if (anyWinnerUsedDD) {
+            cups = 2;
+            reasonText = '相手が発動したDOUBLE DOWN';
+          } else {
+            cups = 1;
+            reasonText = '';
+          }
+          
+          if (reverseRule && data.card === maxCardNumber) {
+            reasonText = reasonText ? `天地逆転 + ${reasonText}` : '天地逆転';
+          }
+          
+          const isFinalRound = gameState.currentRound === gameState.totalRounds;
+          if (isFinalRound) {
+            cups = cups * 2;
+            reasonText = reasonText ? `${reasonText} + 最終ラウンド` : '最終ラウンド';
+          }
+        }
+        
+        const card = document.createElement('div');
+        card.className = 'result-card' + (isLoser ? ' loser' : '');
+        
+        let badgeHTML = '';
+        let beerDisplay = '';
+        
+        if (isLoser) {
+          const displayCups = roundFinalCups[data.player] !== undefined ? roundFinalCups[data.player] : cups;
+          const beerIcons = '🍺'.repeat(displayCups);
+          const diceUsed = gameState.diceUsedThisRound.includes(data.player);
+          const diceButtonStyle = diceUsed 
+            ? 'opacity: 0.3; cursor: not-allowed; pointer-events: none;' 
+            : 'cursor: pointer;';
+          
+          badgeHTML = `<span class="loser-badge">LOSE 💔</span>`;
+          beerDisplay = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="card-value" style="margin: 0;">${data.card}</div>
+                <div style="font-size: 28px;">${beerIcons}</div>
+              </div>
+              <button class="dice-btn" data-player="${data.player}" data-cups="${displayCups}" 
+                style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
+                ${diceUsed ? 'disabled' : ''}>
+                🎲
+              </button>
+            </div>`;
+          if (reasonText) {
+            beerDisplay += `<div style="font-size: 10px; color: var(--color-text-secondary); margin-top: 4px;">(${reasonText})</div>`;
+          }
+        } else {
+          badgeHTML = `<span class="loser-badge" style="background: rgba(0, 255, 159, 0.4); border-color: var(--color-success); box-shadow: 0 0 12px var(--color-success);">WIN ✨</span>`;
+          beerDisplay = `<div class="card-value" style="margin-top: 8px;">${data.card}</div>`;
+        }
+        
+        card.innerHTML = `
+          <div class="result-header">
+            <div>
+              <span class="player-name">${data.player}</span>
+              ${data.isDoubleDown && !isLoser ? '<span style="font-size: 10px; color: var(--color-neon-purple); margin-left: 6px;">⚡DOUBLE DOWN発動中</span>' : ''}
+            </div>
+            ${badgeHTML}
+          </div>
+          ${beerDisplay}
+        `;
+        container.appendChild(card);
+      });
+      
+      setTimeout(() => {
+        const diceBtns = document.querySelectorAll('.dice-btn');
+        diceBtns.forEach(btn => {
+          btn.addEventListener('click', function() {
+            const playerName = this.getAttribute('data-player');
+            const cups = parseInt(this.getAttribute('data-cups'));
+            showChanceConfirm(playerName, cups);
+          });
+        });
+      }, 100);
+      
+      chancePlayer = null;
+      chanceOriginalCups = 0;
+    }
+
+    function nextRound() {
+      gameState.currentRound++;
+      gameState.currentPlayerIndex = 0;
+      gameState.roundData = [];
+      gameState.diceUsedThisRound = [];
+      
+      if (gameState.currentRound === gameState.totalRounds) {
+        showLastRoundAnnounce();
+      } else {
+        startLottery();
+      }
+    }
+    
+    function showLastRoundAnnounce() {
+      document.getElementById('roundResults').style.display = 'none';
+      document.getElementById('lastRoundAnnounce').style.display = 'block';
+    }
+    
+    function startFinalRound() {
+      document.getElementById('lastRoundAnnounce').style.display = 'none';
+      startLottery();
+    }
+
+    function showFinalResults() {
+      hideAbortButton();
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('cardSelect').style.display = 'none';
+      document.getElementById('roundResults').style.display = 'none';
+      document.getElementById('finalResults').style.display = 'block';
+      
+      const sorted = [...gameState.players].sort((a, b) => b.losses - a.losses);
+      
+      const container = document.getElementById('finalContainer');
+      container.innerHTML = '';
+      
+      sorted.forEach(player => {
+        const beerIcons = '🍺'.repeat(player.losses);
+        const card = document.createElement('div');
+        card.className = 'final-card';
+        card.innerHTML = `
+          <div>
+            <div class="player-name">${player.name}</div>
+            <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">
+              累計杯数: ${player.losses}杯
+            </div>
+          </div>
+          <div class="score">${beerIcons}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function resetGame() {
+      hideAbortButton();
+      
+      const savedPlayerNames = gameState.players.map(p => p.name);
+      
+      gameState = {
+        players: [],
+        currentRound: 1,
+        currentPlayerIndex: 0,
+        roundData: [],
+        playerOrder: [],
+        usedCards: {},
+        totalRounds: 10,
+        diceUsedThisRound: []
+      };
+      
+      document.getElementById('setup').style.display = 'block';
+      document.getElementById('lottery').style.display = 'none';
+      document.getElementById('cardSelect').style.display = 'none';
+      document.getElementById('handover').style.display = 'none';
+      document.getElementById('readyToShowResult').style.display = 'none';
+      document.getElementById('lastRoundAnnounce').style.display = 'none';
+      document.getElementById('chanceConfirm').style.display = 'none';
+      document.getElementById('diceRolling').style.display = 'none';
+      document.getElementById('chanceResult').style.display = 'none';
+      document.getElementById('roundResults').style.display = 'none';
+      document.getElementById('finalResults').style.display = 'none';
+      
+      updatePlayerInputs();
+      
+      savedPlayerNames.forEach((name, index) => {
+        const input = document.getElementById(`player${index}`);
+        if (input) {
+          input.value = name;
+        }
+      });
+    }
+
+    function newSet() {
+      showAbortButton();
+      gameState.players.forEach(p => {
+        p.losses = 0;
+        p.hasUsedDoubleDown = false;
+        gameState.usedCards[p.name] = [];
+      });
+      gameState.currentRound = 1;
+      gameState.currentPlayerIndex = 0;
+      gameState.roundData = [];
+      
+      startLottery();
+    }
+
+    updatePlayerInputs();
+  </script>
+</body>
+</html>
