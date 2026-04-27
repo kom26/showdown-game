@@ -146,9 +146,24 @@
       transform: scale(0.95);
     }
     .container { 
-      padding: 1.5rem 1rem 1rem; 
+      padding: 0;
       max-width: 480px; 
-      margin: 0 auto; 
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container > .logo,
+    .container > .tagline {
+      flex-shrink: 0;
+      padding: 1rem 1rem 0;
+    }
+    .container > div:not(.logo):not(.tagline) {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 1rem;
     }
     .logo { 
       font-family: 'M PLUS Rounded 1c', sans-serif;
@@ -637,8 +652,24 @@
     </div>
   </div>
   
+  <div class="back-warning" id="abortMenu">
+    <div class="back-warning-content">
+      <div class="back-warning-icon">⚙️</div>
+      <div class="back-warning-title" onclick="checkAdminAccess()" style="cursor: pointer; user-select: none;">admin</div>
+      <div class="back-warning-text">
+        ゲームを中止してTOPに戻りますか？
+      </div>
+      <button class="primary" onclick="closeAbortMenu()" style="width: 100%; font-size: 16px; margin-bottom: 0.75rem;">
+        ゲームに戻る ➜
+      </button>
+      <button onclick="confirmAbortFromMenu()" style="width: 100%; font-size: 14px; background: rgba(255, 0, 102, 0.2); color: var(--color-danger); border: 2px solid var(--color-border);">
+        ゲームを中止してTOPに戻る
+      </button>
+    </div>
+  </div>
+  
   <div class="container" id="app">
-    <div class="logo" onclick="checkAdminAccess()">SHOWDOWN</div>
+    <div class="logo" onclick="checkTitleTap()">SHOWDOWN</div>
     <div class="tagline">✧ card battle ✧</div>
     
     <div id="setup">
@@ -720,7 +751,7 @@
     <div id="lastRoundAnnounce" style="display: none;">
       <div style="text-align: center; padding: 4rem 1rem;">
         <div style="font-size: 80px; margin-bottom: 2rem; animation: bounceIn 0.8s ease-out;">⚡</div>
-        <h2 style="font-size: 42px; margin-bottom: 1rem; color: var(--color-neon-pink); text-shadow: 0 0 30px var(--color-neon-pink), 0 0 60px var(--color-neon-pink); font-weight: 800; letter-spacing: 4px; animation: neonFlash 0.5s ease-in-out 3;">
+        <h2 style="font-size: 32px; margin-bottom: 1rem; color: var(--color-neon-pink); text-shadow: 0 0 30px var(--color-neon-pink), 0 0 60px var(--color-neon-pink); font-weight: 800; letter-spacing: 3px; animation: neonFlash 0.5s ease-in-out 3; white-space: nowrap;">
           LAST ROUND!
         </h2>
         <div style="font-size: 18px; color: var(--color-neon-cyan); margin-bottom: 1rem; text-shadow: 0 0 15px var(--color-neon-cyan); font-weight: 700;">
@@ -864,6 +895,9 @@
     let adminTimeout = null;
     let isGameActive = false;
     
+    let abortClicks = 0;
+    let abortTimeout = null;
+    
     let chancePlayer = null;
     let chanceOriginalCups = 0;
     let roundFinalCups = {};
@@ -900,6 +934,8 @@
     
     function abortGame() {
       isGameActive = false;
+      abortClicks = 0;
+      adminClicks = 0;
       resetGame();
     }
     
@@ -909,14 +945,48 @@
     
     function hideAbortButton() {
       isGameActive = false;
+      abortClicks = 0;
+      adminClicks = 0;
     }
 
+    function checkTitleTap() {
+      if (isGameActive) {
+        abortClicks++;
+        clearTimeout(abortTimeout);
+        
+        if (abortClicks === 5) {
+          showAbortMenu();
+          abortClicks = 0;
+        } else {
+          abortTimeout = setTimeout(() => { abortClicks = 0; }, 2000);
+        }
+      }
+    }
+    
+    function showAbortMenu() {
+      document.getElementById('abortMenu').classList.add('show');
+      adminClicks = 0;
+    }
+    
+    function closeAbortMenu() {
+      document.getElementById('abortMenu').classList.remove('show');
+      adminClicks = 0;
+    }
+    
+    function confirmAbortFromMenu() {
+      if (confirm('本当にゲームを中止してTOPに戻りますか？')) {
+        document.getElementById('abortMenu').classList.remove('show');
+        abortGame();
+      }
+    }
+    
     function checkAdminAccess() {
       adminClicks++;
       clearTimeout(adminTimeout);
       
       if (adminClicks === 5) {
-        if (gameState.players.length > 0 && document.getElementById('cardSelect').style.display === 'block') {
+        if (gameState.players.length > 0) {
+          document.getElementById('abortMenu').classList.remove('show');
           showAdminPanel();
         }
         adminClicks = 0;
@@ -1482,43 +1552,11 @@
       
       const options = ['×0', '×2', '×3'];
       const faces = document.querySelectorAll('.dice-face');
-      let count = 0;
-      const maxCount = 20 + Math.floor(Math.random() * 10);
       
       diceInterval = setInterval(() => {
         faces.forEach(face => {
           face.textContent = options[Math.floor(Math.random() * 3)];
         });
-        count++;
-        
-        if (count >= maxCount) {
-          clearInterval(diceInterval);
-          
-          const rand = Math.random() * 100;
-          let multiplier;
-          let finalResult;
-          
-          if (rand < 50) {
-            multiplier = 0;
-            finalResult = '×0';
-          } else if (rand < 90) {
-            multiplier = 2;
-            finalResult = '×2';
-          } else {
-            multiplier = 3;
-            finalResult = '×3';
-          }
-          
-          setTimeout(() => {
-            diceBox.style.animation = 'none';
-            
-            faces[0].textContent = finalResult;
-            
-            setTimeout(() => {
-              applyChanceResult(multiplier);
-            }, 1000);
-          }, 300);
-        }
       }, 100);
     }
     
@@ -1741,14 +1779,15 @@
       container.innerHTML = '';
       
       sorted.forEach(player => {
-        const beerIcons = '🍺'.repeat(player.losses);
+        const totalCups = Math.floor(player.losses);
+        const beerIcons = '🍺'.repeat(totalCups);
         const card = document.createElement('div');
         card.className = 'final-card';
         card.innerHTML = `
           <div>
             <div class="player-name">${player.name}</div>
             <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">
-              累計杯数: ${player.losses}杯
+              累計杯数: ${totalCups}杯
             </div>
           </div>
           <div class="score">${beerIcons}</div>
