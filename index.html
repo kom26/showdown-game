@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0a0014">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -32,6 +32,9 @@
     }
     
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html {
+      touch-action: manipulation;
+    }
     body { 
       font-family: 'M PLUS Rounded 1c', -apple-system, BlinkMacSystemFont, sans-serif;
       background: radial-gradient(circle at 50% 0%, #1a0a28 0%, #0a0014 50%, #000000 100%);
@@ -41,6 +44,7 @@
       min-height: 100vh;
       position: relative;
       overflow-x: hidden;
+      touch-action: manipulation;
     }
     body::before {
       content: '';
@@ -164,6 +168,10 @@
       flex-direction: column;
       justify-content: center;
       padding: 1rem;
+    }
+    .container > #setup {
+      justify-content: flex-start;
+      padding-top: 0.5rem;
     }
     .logo { 
       font-family: 'M PLUS Rounded 1c', sans-serif;
