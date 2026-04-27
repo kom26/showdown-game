@@ -1133,6 +1133,7 @@
     }
 
     function startLottery() {
+      window.scrollTo(0, 0);
       showAbortButton();
       document.getElementById('setup').style.display = 'none';
       document.getElementById('lottery').style.display = 'block';
@@ -1177,6 +1178,7 @@
     }
 
     function showCardSelect() {
+      window.scrollTo(0, 0);
       document.getElementById('setup').style.display = 'none';
       document.getElementById('lottery').style.display = 'none';
       document.getElementById('cardSelect').style.display = 'block';
@@ -1359,6 +1361,7 @@
     }
     
     function showHandover() {
+      window.scrollTo(0, 0);
       const nextPlayerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
       const nextPlayer = gameState.players[nextPlayerIndex];
       
@@ -1368,12 +1371,14 @@
     }
     
     function showNextPlayerCard() {
+      window.scrollTo(0, 0);
       document.getElementById('handover').style.display = 'none';
       document.getElementById('cardSelect').style.display = 'block';
       updateCardSelect();
     }
 
     function showRoundResults() {
+      window.scrollTo(0, 0);
       document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('handover').style.display = 'none';
       document.getElementById('readyToShowResult').style.display = 'none';
@@ -1534,6 +1539,7 @@
     }
 
     function showChanceConfirm(playerName, cups) {
+      window.scrollTo(0, 0);
       chancePlayer = playerName;
       chanceOriginalCups = cups;
       
@@ -1543,6 +1549,7 @@
     }
     
     function cancelChance() {
+      window.scrollTo(0, 0);
       document.getElementById('chanceConfirm').style.display = 'none';
       document.getElementById('roundResults').style.display = 'block';
       chancePlayer = null;
@@ -1550,6 +1557,7 @@
     }
     
     function startDiceRoll() {
+      window.scrollTo(0, 0);
       document.getElementById('chanceConfirm').style.display = 'none';
       document.getElementById('diceRolling').style.display = 'block';
       
@@ -1601,6 +1609,7 @@
     }
     
     function applyChanceResult(multiplier) {
+      window.scrollTo(0, 0);
       const player = gameState.players.find(p => p.name === chancePlayer);
       const newCups = chanceOriginalCups * multiplier;
       const diff = newCups - chanceOriginalCups;
@@ -1631,6 +1640,7 @@
     }
     
     function closeChanceResult() {
+      window.scrollTo(0, 0);
       document.getElementById('chanceResult').style.display = 'none';
       document.getElementById('roundResults').style.display = 'block';
       
@@ -1765,16 +1775,19 @@
     }
     
     function showLastRoundAnnounce() {
+      window.scrollTo(0, 0);
       document.getElementById('roundResults').style.display = 'none';
       document.getElementById('lastRoundAnnounce').style.display = 'block';
     }
     
     function startFinalRound() {
+      window.scrollTo(0, 0);
       document.getElementById('lastRoundAnnounce').style.display = 'none';
       startLottery();
     }
 
     function showFinalResults() {
+      window.scrollTo(0, 0);
       hideAbortButton();
       document.getElementById('setup').style.display = 'none';
       document.getElementById('cardSelect').style.display = 'none';
@@ -1805,6 +1818,7 @@
     }
 
     function resetGame() {
+      window.scrollTo(0, 0);
       hideAbortButton();
       
       const savedPlayerNames = gameState.players.map(p => p.name);
