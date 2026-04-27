@@ -705,7 +705,60 @@
       
       <div id="playerInputs" class="player-inputs"></div>
       
-      <button class="primary" onclick="startGame()" style="width: 100%;">ゲーム開始</button>
+      <button class="primary" onclick="startGame()" style="width: 100%; margin-bottom: 0.75rem;">ゲーム開始</button>
+      <button onclick="showRules()" style="width: 100%; background: rgba(168, 85, 247, 0.2); border: 2px solid var(--color-neon-purple);">📖 ルールを見る</button>
+    </div>
+    
+    <div id="rulesScreen" style="display: none;">
+      <h2 style="margin-bottom: 1rem;">📖 ゲームルール</h2>
+      
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-border);">
+        <h3 style="font-size: 16px; color: var(--color-neon-pink); margin-bottom: 0.75rem;">🎯 基本ルール</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          各ラウンドで全員が1〜N（N=ラウンド数）のカードを1枚ずつ選択。<br>
+          最も<strong style="color: var(--color-text-primary);">小さいカード</strong>を出した人が負け。<br>
+          同じ最小値が複数いる場合は<strong style="color: var(--color-text-primary);">全員負け</strong>。<br>
+          各カードは<strong style="color: var(--color-text-primary);">ゲーム中に1回ずつ</strong>しか使えない。
+        </div>
+      </div>
+      
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-accent);">
+        <h3 style="font-size: 16px; color: var(--color-accent); margin-bottom: 0.75rem;">⚡ DOUBLE DOWN</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          <strong style="color: var(--color-text-primary);">ゲーム中に必ず1回使用</strong><br>
+          勝った場合：相手の罰が<strong style="color: var(--color-success);">2杯</strong>になる<br>
+          負けた場合：自分の罰が<strong style="color: var(--color-danger);">2杯</strong>になる
+        </div>
+      </div>
+      
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-neon-cyan);">
+        <h3 style="font-size: 16px; color: var(--color-neon-cyan); margin-bottom: 0.75rem;">🔄 天地逆転</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          同じラウンドで<strong style="color: var(--color-text-primary);">①と最大カード</strong>が出た場合、<br>
+          <strong style="color: var(--color-danger);">最大カードが最弱</strong>となり負ける。
+        </div>
+      </div>
+      
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-neon-purple);">
+        <h3 style="font-size: 16px; color: var(--color-neon-purple); margin-bottom: 0.75rem;">🎲 神のさいころ</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          負けた人は<strong style="color: var(--color-text-primary);">各ラウンドで1回だけ</strong>さいころを振れる<br>
+          <strong style="color: var(--color-success);">× 0（帳消し）: 50%</strong><br>
+          <strong style="color: var(--color-neon-cyan);">× 2（倍増）: 40%</strong><br>
+          <strong style="color: var(--color-danger);">× 3（3倍）: 10%</strong><br>
+          タップして止めた瞬間に結果が確定。
+        </div>
+      </div>
+      
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-danger);">
+        <h3 style="font-size: 16px; color: var(--color-danger); margin-bottom: 0.75rem;">⚡ 最終回戦</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          全ての罰が<strong style="color: var(--color-danger);">自動的に2倍</strong>になる。<br>
+          DOUBLE DOWNを未使用の場合、自動発動。
+        </div>
+      </div>
+      
+      <button class="primary" onclick="closeRules()" style="width: 100%;">閉じる</button>
     </div>
     
     <div id="lottery" style="display: none;">
@@ -1104,6 +1157,18 @@
         `;
         container.appendChild(div);
       }
+    }
+    
+    function showRules() {
+      window.scrollTo(0, 0);
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('rulesScreen').style.display = 'block';
+    }
+    
+    function closeRules() {
+      window.scrollTo(0, 0);
+      document.getElementById('rulesScreen').style.display = 'none';
+      document.getElementById('setup').style.display = 'block';
     }
 
     function startGame() {
