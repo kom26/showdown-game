@@ -1349,6 +1349,8 @@
       const joinerName = document.getElementById('joinerName').value.trim();
       const roomCode = document.getElementById('roomCodeInput').value.trim();
       
+      console.log('joinRoom called:', { joinerName, roomCode });
+      
       if (!joinerName) {
         alert('名前を入力してください');
         return;
@@ -1363,15 +1365,21 @@
       isRoomHost = false;
       myPlayerId = generatePlayerId();
       
+      console.log('Connecting to room:', currentRoomCode);
+      
       roomRef = database.ref(`rooms/${currentRoomCode}`);
       
       roomRef.once('value').then((snapshot) => {
+        console.log('Room snapshot received:', snapshot.exists());
+        
         if (!snapshot.exists()) {
           alert('ルームが見つかりません');
           return;
         }
         
         const roomData = snapshot.val();
+        console.log('Room data:', roomData);
+        
         if (roomData.status !== 'waiting') {
           alert('このルームはすでにゲーム中です');
           return;
@@ -1383,6 +1391,8 @@
           return;
         }
         
+        console.log('Adding player to room...');
+        
         roomRef.child('players').child(myPlayerId).set({
           name: joinerName,
           order: playerCount,
@@ -1392,11 +1402,16 @@
         
         roomRef.child('playerOrder').set([...roomData.playerOrder, myPlayerId]);
         
+        console.log('Player added, showing waiting room');
+        
         document.getElementById('joinRoom').style.display = 'none';
         document.getElementById('waitingRoom').style.display = 'block';
         document.getElementById('displayRoomCode').textContent = currentRoomCode;
         
         listenToRoom();
+      }).catch((error) => {
+        console.error('Error joining room:', error);
+        alert('エラーが発生しました: ' + error.message);
       });
     }
     
