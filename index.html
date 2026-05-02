@@ -1456,6 +1456,11 @@
         
         if (data.status === 'playing') {
           syncGameState(data);
+          
+          // カード選択画面が表示されている場合は更新
+          if (document.getElementById('cardSelect').style.display === 'block') {
+            updateCardSelect();
+          }
         }
       });
     }
@@ -1669,6 +1674,26 @@
       document.getElementById('currentPlayer').textContent = player.name;
       document.getElementById('roundInfo').textContent = `第${gameState.currentRound}回戦`;
       
+      // オンラインモード：自分のターンかチェック
+      const isMyTurn = !isOnlineMode || (player.playerId === myPlayerId);
+      
+      if (isOnlineMode && !isMyTurn) {
+        // 自分のターンじゃない場合、カードを選択不可にする
+        document.getElementById('cardGrid').innerHTML = `
+          <div style="text-align: center; padding: 3rem 1rem; color: var(--color-text-secondary);">
+            <div style="font-size: 48px; margin-bottom: 1rem;">⏳</div>
+            <div style="font-size: 18px; font-weight: 700; margin-bottom: 0.5rem;">${player.name}さんのターン</div>
+            <div style="font-size: 14px;">カード選択中...</div>
+          </div>
+        `;
+        document.getElementById('confirmBtn').disabled = true;
+        document.getElementById('confirmBtn').style.display = 'none';
+        document.getElementById('doubleDownToggle').style.display = 'none';
+        return;
+      }
+      
+      document.getElementById('confirmBtn').style.display = 'block';
+      
       isDoubleDownActive = false;
       
       const isFinalRound = gameState.currentRound === gameState.totalRounds;
@@ -1799,10 +1824,38 @@
       
       gameState.currentPlayerIndex++;
       
+      // オンラインモード：Firebaseに同期
+      if (isOnlineMode && roomRef) {
+        const updates = {
+          currentPlayerIndex: gameState.currentPlayerIndex,
+          roundData: gameState.roundData.reduce((obj, item, index) => {
+            obj[index] = item;
+            return obj;
+          }, {})
+        };
+        
+        // プレイヤーのusedCardsを更新
+        updates[`players/${player.playerId}/usedCards`] = gameState.usedCards[player.name];
+        
+        if (isDoubleDownActive || (gameState.currentRound === gameState.totalRounds && !player.hasUsedDoubleDown)) {
+          updates[`players/${player.playerId}/hasUsedDoubleDown`] = true;
+        }
+        
+        roomRef.update(updates);
+      }
+      
       if (gameState.currentPlayerIndex >= gameState.players.length) {
+        if (isOnlineMode && roomRef) {
+          roomRef.update({ showingResults: true });
+        }
         showReadyToShowResult();
       } else {
-        showHandover();
+        if (isOnlineMode) {
+          // オンラインモードでは自動的に次のプレイヤーの画面に
+          updateCardSelect();
+        } else {
+          showHandover();
+        }
       }
     }
     
