@@ -9,6 +9,11 @@
   <meta name="apple-mobile-web-app-title" content="SHOWDOWN">
   <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiU0hPV0RPV04iLCJzaG9ydF9uYW1lIjoiU0hPV0RPV04iLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwYTAwMTQiLCJ0aGVtZV9jb2xvciI6IiMwYTAwMTQiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCM2FXUjBhRDBpTVRJNElpQm9aV2xuYUhROUlqRXlPQ0lnZG1sbGQwSnZlRDBpTUNBd0lERXlPQ0F4TWpnaUlIaHRiRzV6UFNKb2RIUndPaTh2ZDNkM0xuY3pMbTl5Wnk4eU1EQXdMM04yWnlJK1BISmxZM1FnZUQwaU1DSWdlVDBpTUNJZ2QybGtkR2c5SWpFeU9DSWdhR1ZwWjJoMFBTSXhNamdpSUdacGJHdzlJaU13WVRBd01UUWlMejQ4ZEdWNGRDQjRQU0kyTkNJZ2VUMGlOalFpSUdacGJHdzlJaU5tWmpFME9UTWlJR1p2Ym5RdGMybDZaVDBpTmpRaUlHWnZiblF0ZDJWcFoyaDBQU0k0TURBaUlIUmxlSFF0WVc1amFHOXlQU0p0YVdSa2JHVWlQbE5JVDFkRVQxZE9QQzkwWlhoMFBqd3ZjM1puUGc9PSIsInNpemVzIjoiMTI4eDEyOCIsInR5cGUiOiJpbWFnZS9zdmcreG1sIn0seyJzcmMiOiJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUIzYVdSMGFEMGlOVEV5SWlCb1pXbG5hSFE5SWpVeE1pSWdkbWxsZDBKdmVEMGlNQ0F3SURVeE1pQTFNVElpSUhodGJHNXpQU0pvZEhSd09pOHZkM2QzTG5jekxtOXlaeTh5TURBd0wzTjJaeUkrUEhKbFkzUWdlRDBpTUNJZ2VUMGlNQ0lnZDJsa2RHZzlJalV4TWlJZ2FHVnBaMmgwUFNJMU1USWlJR1pwYkd3OUlpTXdZVEF3TVRRaUx6NDhkR1Y0ZENCNFBTSTFOVFlpSUhrOUlqSTFOaUlnWm1sc2JEMGlJMlptTVRRNU15SWdabTl1ZEMxemFYcGxQU0l4TWpnaUlHWnZiblF0ZDJWcFoyaDBQU0k0TURBaUlIUmxlSFF0WVc1amFHOXlQU0p0YVdSa2JHVWlQbE5JVDFkRVQxZE9QQzkwWlhoMFBqd3ZjM1puUGc9PSIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9zdmcreG1sIn1dfQ==">
   <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSIxODAiIGZpbGw9IiMwYTAwMTQiLz48dGV4dCB4PSI5MCIgeT0iMTEwIiBmaWxsPSIjZmYxNDkzIiBmb250LXNpemU9IjQ4IiBmb250LXdlaWdodD0iODAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5TPC90ZXh0Pjwvc3ZnPg==">
+  
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  
   <title>SHOWDOWN</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap');
@@ -680,7 +685,83 @@
     <div class="logo" onclick="checkTitleTap()">SHOWDOWN</div>
     <div class="tagline">✧ card battle ✧</div>
     
-    <div id="setup">
+    <div id="modeSelect">
+      <h2 style="margin-bottom: 1.5rem;">プレイモード選択</h2>
+      <button class="primary" onclick="selectOfflineMode()" style="width: 100%; margin-bottom: 1rem; font-size: 18px;">
+        📱 オフライン対戦<br>
+        <span style="font-size: 13px; opacity: 0.8;">同じ端末で交代プレイ</span>
+      </button>
+      <button class="primary" onclick="selectOnlineMode()" style="width: 100%; background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-purple) 100%); font-size: 18px;">
+        🌐 オンライン対戦<br>
+        <span style="font-size: 13px; opacity: 0.8;">ルームコードで友達と対戦</span>
+      </button>
+    </div>
+    
+    <div id="onlineMenu" style="display: none;">
+      <h2 style="margin-bottom: 1.5rem;">🌐 オンライン対戦</h2>
+      <button class="primary" onclick="showCreateRoom()" style="width: 100%; margin-bottom: 1rem;">
+        ✨ ルームを作成
+      </button>
+      <button onclick="showJoinRoom()" style="width: 100%;">
+        🔗 ルームに参加
+      </button>
+      <button onclick="backToModeSelect()" style="width: 100%; margin-top: 1.5rem; background: rgba(255, 255, 255, 0.1);">
+        ← 戻る
+      </button>
+    </div>
+    
+    <div id="createRoom" style="display: none;">
+      <h2 style="margin-bottom: 1rem;">✨ ルーム作成</h2>
+      <div style="margin-bottom: 1rem;">
+        <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前</label>
+        <input type="text" id="hostName" placeholder="名前を入力" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label class="info-label" style="display: block; margin-bottom: 8px;">ラウンド数</label>
+        <select id="onlineRoundCount" style="width: 100%;">
+          <option value="5">5回戦</option>
+          <option value="6">6回戦</option>
+          <option value="7">7回戦</option>
+          <option value="8">8回戦</option>
+          <option value="9">9回戦</option>
+          <option value="10" selected>10回戦</option>
+        </select>
+      </div>
+      <button class="primary" onclick="createRoom()" style="width: 100%; margin-bottom: 0.75rem;">ルームを作成</button>
+      <button onclick="backToOnlineMenu()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← 戻る</button>
+    </div>
+    
+    <div id="joinRoom" style="display: none;">
+      <h2 style="margin-bottom: 1rem;">🔗 ルームに参加</h2>
+      <div style="margin-bottom: 1rem;">
+        <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前</label>
+        <input type="text" id="joinerName" placeholder="名前を入力" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label class="info-label" style="display: block; margin-bottom: 8px;">ルームコード（4桁）</label>
+        <input type="text" id="roomCodeInput" placeholder="1234" maxlength="4" style="width: 100%; font-size: 24px; text-align: center; letter-spacing: 8px;">
+      </div>
+      <button class="primary" onclick="joinRoom()" style="width: 100%; margin-bottom: 0.75rem;">参加する</button>
+      <button onclick="backToOnlineMenu()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← 戻る</button>
+    </div>
+    
+    <div id="waitingRoom" style="display: none;">
+      <h2 style="margin-bottom: 1rem;">待機中...</h2>
+      <div style="background: rgba(168, 85, 247, 0.2); border: 3px solid var(--color-neon-purple); border-radius: 16px; padding: 2rem 1rem; margin-bottom: 1.5rem; text-align: center;">
+        <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 0.5rem;">ルームコード</div>
+        <div id="displayRoomCode" style="font-size: 48px; font-weight: 800; letter-spacing: 12px; color: var(--color-neon-pink); text-shadow: 0 0 20px var(--color-neon-pink);">----</div>
+        <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 0.5rem;">このコードを友達に共有</div>
+      </div>
+      <div style="margin-bottom: 1.5rem;">
+        <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 0.75rem;">参加プレイヤー</div>
+        <div id="playerList" style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; border: 2px solid var(--color-border);">
+        </div>
+      </div>
+      <button id="startOnlineGameBtn" class="primary" onclick="startOnlineGame()" style="width: 100%; display: none; margin-bottom: 0.75rem;">ゲーム開始</button>
+      <button onclick="leaveRoom()" style="width: 100%; background: rgba(255, 0, 102, 0.2); border: 2px solid var(--color-danger);">ルームを退出</button>
+    </div>
+    
+    <div id="setup" style="display: none;">
       <h2>プレイヤー設定</h2>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ラウンド数</label>
@@ -941,6 +1022,28 @@
   </div>
 
   <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCwoaNb7LXHCLwmCLmWWyPxSw9COr0kOX4",
+      authDomain: "showdown-bbcfc.firebaseapp.com",
+      databaseURL: "https://showdown-bbcfc-default-rtdb.asia-northeast1.firebasedatabase.app",
+      projectId: "showdown-bbcfc",
+      storageBucket: "showdown-bbcfc.firebasestorage.app",
+      messagingSenderId: "645685341059",
+      appId: "1:645685341059:web:48c7e57aedb1c4b5b94e02"
+    };
+    
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    
+    // Online Mode Variables
+    let isOnlineMode = false;
+    let currentRoomCode = null;
+    let isRoomHost = false;
+    let myPlayerId = null;
+    let roomRef = null;
+    
     let gameState = {
       players: [],
       currentRound: 1,
@@ -1157,6 +1260,264 @@
         `;
         container.appendChild(div);
       }
+    }
+    
+    // ===== Online Mode Functions =====
+    
+    function selectOfflineMode() {
+      window.scrollTo(0, 0);
+      isOnlineMode = false;
+      document.getElementById('modeSelect').style.display = 'none';
+      document.getElementById('setup').style.display = 'block';
+    }
+    
+    function selectOnlineMode() {
+      window.scrollTo(0, 0);
+      isOnlineMode = true;
+      document.getElementById('modeSelect').style.display = 'none';
+      document.getElementById('onlineMenu').style.display = 'block';
+    }
+    
+    function backToModeSelect() {
+      window.scrollTo(0, 0);
+      document.getElementById('onlineMenu').style.display = 'none';
+      document.getElementById('createRoom').style.display = 'none';
+      document.getElementById('joinRoom').style.display = 'none';
+      document.getElementById('modeSelect').style.display = 'block';
+    }
+    
+    function backToOnlineMenu() {
+      window.scrollTo(0, 0);
+      document.getElementById('createRoom').style.display = 'none';
+      document.getElementById('joinRoom').style.display = 'none';
+      document.getElementById('onlineMenu').style.display = 'block';
+    }
+    
+    function showCreateRoom() {
+      window.scrollTo(0, 0);
+      document.getElementById('onlineMenu').style.display = 'none';
+      document.getElementById('createRoom').style.display = 'block';
+    }
+    
+    function showJoinRoom() {
+      window.scrollTo(0, 0);
+      document.getElementById('onlineMenu').style.display = 'none';
+      document.getElementById('joinRoom').style.display = 'block';
+    }
+    
+    function createRoom() {
+      const hostName = document.getElementById('hostName').value.trim();
+      if (!hostName) {
+        alert('名前を入力してください');
+        return;
+      }
+      
+      const rounds = parseInt(document.getElementById('onlineRoundCount').value);
+      currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
+      isRoomHost = true;
+      myPlayerId = generatePlayerId();
+      
+      roomRef = database.ref(`rooms/${currentRoomCode}`);
+      roomRef.set({
+        host: myPlayerId,
+        totalRounds: rounds,
+        players: {
+          [myPlayerId]: {
+            name: hostName,
+            order: 0,
+            losses: 0,
+            hasUsedDoubleDown: false
+          }
+        },
+        status: 'waiting',
+        currentRound: 1,
+        currentPlayerIndex: 0,
+        roundData: {},
+        playerOrder: [myPlayerId],
+        usedCards: {},
+        diceUsedThisRound: []
+      });
+      
+      document.getElementById('createRoom').style.display = 'none';
+      document.getElementById('waitingRoom').style.display = 'block';
+      document.getElementById('displayRoomCode').textContent = currentRoomCode;
+      
+      listenToRoom();
+    }
+    
+    function joinRoom() {
+      const joinerName = document.getElementById('joinerName').value.trim();
+      const roomCode = document.getElementById('roomCodeInput').value.trim();
+      
+      if (!joinerName) {
+        alert('名前を入力してください');
+        return;
+      }
+      
+      if (roomCode.length !== 4) {
+        alert('4桁のルームコードを入力してください');
+        return;
+      }
+      
+      currentRoomCode = roomCode;
+      isRoomHost = false;
+      myPlayerId = generatePlayerId();
+      
+      roomRef = database.ref(`rooms/${currentRoomCode}`);
+      
+      roomRef.once('value').then((snapshot) => {
+        if (!snapshot.exists()) {
+          alert('ルームが見つかりません');
+          return;
+        }
+        
+        const roomData = snapshot.val();
+        if (roomData.status !== 'waiting') {
+          alert('このルームはすでにゲーム中です');
+          return;
+        }
+        
+        const playerCount = Object.keys(roomData.players).length;
+        if (playerCount >= 6) {
+          alert('ルームが満員です');
+          return;
+        }
+        
+        roomRef.child('players').child(myPlayerId).set({
+          name: joinerName,
+          order: playerCount,
+          losses: 0,
+          hasUsedDoubleDown: false
+        });
+        
+        roomRef.child('playerOrder').set([...roomData.playerOrder, myPlayerId]);
+        
+        document.getElementById('joinRoom').style.display = 'none';
+        document.getElementById('waitingRoom').style.display = 'block';
+        document.getElementById('displayRoomCode').textContent = currentRoomCode;
+        
+        listenToRoom();
+      });
+    }
+    
+    function generatePlayerId() {
+      return 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    function listenToRoom() {
+      roomRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) {
+          alert('ルームが削除されました');
+          leaveRoom();
+          return;
+        }
+        
+        updatePlayerList(data.players);
+        
+        if (isRoomHost) {
+          const playerCount = Object.keys(data.players).length;
+          if (playerCount >= 2) {
+            document.getElementById('startOnlineGameBtn').style.display = 'block';
+          } else {
+            document.getElementById('startOnlineGameBtn').style.display = 'none';
+          }
+        }
+        
+        if (data.status === 'playing' && document.getElementById('waitingRoom').style.display === 'block') {
+          syncGameState(data);
+          startOnlineGameplay();
+        }
+        
+        if (data.status === 'playing') {
+          syncGameState(data);
+        }
+      });
+    }
+    
+    function updatePlayerList(players) {
+      const container = document.getElementById('playerList');
+      container.innerHTML = '';
+      
+      Object.keys(players).forEach((playerId, index) => {
+        const player = players[playerId];
+        const div = document.createElement('div');
+        div.style.cssText = 'padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(168, 85, 247, 0.2); border-radius: 8px; border: 2px solid var(--color-neon-purple);';
+        div.innerHTML = `
+          <span style="font-weight: 700;">${index + 1}. ${player.name}</span>
+          ${playerId === myPlayerId ? '<span style="color: var(--color-success); margin-left: 0.5rem;">（あなた）</span>' : ''}
+        `;
+        container.appendChild(div);
+      });
+    }
+    
+    function leaveRoom() {
+      if (roomRef) {
+        if (isRoomHost) {
+          roomRef.remove();
+        } else {
+          roomRef.child('players').child(myPlayerId).remove();
+          roomRef.child('playerOrder').once('value').then((snapshot) => {
+            const order = snapshot.val();
+            const newOrder = order.filter(id => id !== myPlayerId);
+            roomRef.child('playerOrder').set(newOrder);
+          });
+        }
+        roomRef.off();
+      }
+      
+      window.scrollTo(0, 0);
+      isOnlineMode = false;
+      currentRoomCode = null;
+      isRoomHost = false;
+      myPlayerId = null;
+      roomRef = null;
+      
+      document.getElementById('waitingRoom').style.display = 'none';
+      document.getElementById('hostName').value = '';
+      document.getElementById('joinerName').value = '';
+      document.getElementById('roomCodeInput').value = '';
+      document.getElementById('modeSelect').style.display = 'block';
+    }
+    
+    function startOnlineGame() {
+      if (!isRoomHost) return;
+      
+      roomRef.child('status').set('playing');
+    }
+    
+    function startOnlineGameplay() {
+      window.scrollTo(0, 0);
+      document.getElementById('waitingRoom').style.display = 'none';
+      showAbortButton();
+      startLottery();
+    }
+    
+    function syncGameState(data) {
+      gameState.totalRounds = data.totalRounds;
+      gameState.currentRound = data.currentRound;
+      gameState.currentPlayerIndex = data.currentPlayerIndex;
+      gameState.playerOrder = data.playerOrder;
+      gameState.diceUsedThisRound = data.diceUsedThisRound || [];
+      
+      gameState.players = data.playerOrder.map(playerId => {
+        const p = data.players[playerId];
+        return {
+          name: p.name,
+          losses: p.losses,
+          hasUsedDoubleDown: p.hasUsedDoubleDown,
+          playerId: playerId
+        };
+      });
+      
+      gameState.roundData = Object.values(data.roundData || {});
+      
+      gameState.usedCards = {};
+      gameState.players.forEach((player, index) => {
+        if (data.players[player.playerId].usedCards) {
+          gameState.usedCards[index] = data.players[player.playerId].usedCards;
+        }
+      });
     }
     
     function showRules() {
@@ -1886,6 +2247,11 @@
       window.scrollTo(0, 0);
       hideAbortButton();
       
+      if (isOnlineMode && roomRef) {
+        leaveRoom();
+        return;
+      }
+      
       const savedPlayerNames = gameState.players.map(p => p.name);
       
       gameState = {
@@ -1899,7 +2265,8 @@
         diceUsedThisRound: []
       };
       
-      document.getElementById('setup').style.display = 'block';
+      document.getElementById('modeSelect').style.display = 'block';
+      document.getElementById('setup').style.display = 'none';
       document.getElementById('lottery').style.display = 'none';
       document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('handover').style.display = 'none';
