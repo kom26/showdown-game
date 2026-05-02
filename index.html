@@ -878,15 +878,17 @@
     </div>
     
     <div id="readyToShowResult" style="display: none;">
-      <div style="text-align: center; padding: 3rem 1rem;">
-        <div style="font-size: 64px; margin-bottom: 1.5rem;">🎲</div>
-        <h2 style="font-size: 24px; margin-bottom: 1rem;">全員カード選択完了</h2>
-        <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 2rem;">
-          準備ができたら結果を表示してください
+      <div style="text-align: center; padding: 2rem 1rem;">
+        <h2 style="font-size: 22px; margin-bottom: 1.5rem;">カード選択状況</h2>
+        <div id="selectionStatusList" style="margin-bottom: 2rem;">
+          <!-- プレイヤーの選択状況がここに表示される -->
         </div>
-        <button class="primary" onclick="showRoundResults()" style="width: 100%; font-size: 18px;">
-          ♡ 結果を表示 ♡
+        <button id="showResultBtn" class="primary" onclick="showRoundResults()" style="width: 100%; font-size: 18px; display: none;">
+          結果を表示 ♡
         </button>
+        <div id="waitingMessage" style="font-size: 14px; color: var(--color-text-secondary);">
+          他のプレイヤーの選択を待っています...
+        </div>
       </div>
     </div>
     
@@ -1461,6 +1463,16 @@
           if (document.getElementById('cardSelect').style.display === 'block') {
             updateCardSelect();
           }
+          
+          // 待機画面が表示されている場合は選択状況を更新
+          if (document.getElementById('readyToShowResult').style.display === 'block') {
+            updateSelectionStatus();
+          }
+          
+          // 結果表示フラグがtrueで、まだ結果画面じゃない場合は結果画面へ
+          if (data.showingResults && document.getElementById('roundResults').style.display !== 'block') {
+            showRoundResults();
+          }
         }
       });
     }
@@ -1520,7 +1532,8 @@
       window.scrollTo(0, 0);
       document.getElementById('waitingRoom').style.display = 'none';
       showAbortButton();
-      startLottery();
+      // オンラインモードは抽選なしで直接カード選択へ
+      showCardSelect();
     }
     
     function syncGameState(data) {
@@ -1669,28 +1682,99 @@
     let isDoubleDownActive = false;
 
     function updateCardSelect() {
+      // オンラインモードの場合
+      if (isOnlineMode) {
+        // 自分の情報を取得
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        if (!myPlayer) return;
+        
+        document.getElementById('currentPlayer').textContent = myPlayer.name;
+        document.getElementById('roundInfo').textContent = `第${gameState.currentRound}回戦`;
+        
+        // 自分が既に選択済みかチェック
+        const alreadySelected = gameState.roundData.some(d => d.player === myPlayer.name);
+        
+        if (alreadySelected) {
+          // 既に選択済みの場合は待機画面へ
+          showOnlineWaitingScreen();
+          return;
+        }
+        
+        document.getElementById('confirmBtn').style.display = 'block';
+        
+        isDoubleDownActive = false;
+        
+        const isFinalRound = gameState.currentRound === gameState.totalRounds;
+        const mustUseDD = isFinalRound && !myPlayer.hasUsedDoubleDown;
+        
+        if (mustUseDD) {
+          isDoubleDownActive = true;
+          document.getElementById('doubleDownStatus').style.display = 'flex';
+          document.getElementById('doubleDownToggle').style.display = 'block';
+          document.getElementById('doubleDownValue').textContent = '強制発動 ⚡⚡';
+          document.getElementById('doubleDownValue').style.color = 'var(--color-danger)';
+          const toggleBtn = document.getElementById('toggleDoubleDown');
+          toggleBtn.style.background = 'var(--color-accent)';
+          toggleBtn.style.border = '3px solid var(--color-accent)';
+          toggleBtn.style.color = 'white';
+          toggleBtn.style.boxShadow = '0 8px 24px rgba(255, 105, 180, 0.5)';
+          toggleBtn.disabled = true;
+          toggleBtn.style.opacity = '1';
+          toggleBtn.innerHTML = `
+            <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">⚡⚡ DOUBLE DOWN 強制発動 ⚡⚡</div>
+            <div style="font-size: 11px; color: white; line-height: 1.4;">最終回戦のため自動的に使用されます</div>
+          `;
+        } else if (myPlayer.hasUsedDoubleDown) {
+          document.getElementById('doubleDownStatus').style.display = 'none';
+          document.getElementById('doubleDownToggle').style.display = 'none';
+        } else {
+          document.getElementById('doubleDownStatus').style.display = 'flex';
+          document.getElementById('doubleDownToggle').style.display = 'block';
+          document.getElementById('doubleDownValue').textContent = '使用可能 ⚡';
+          document.getElementById('doubleDownValue').style.color = 'var(--color-accent)';
+          const toggleBtn = document.getElementById('toggleDoubleDown');
+          toggleBtn.disabled = false;
+          toggleBtn.style.background = 'var(--color-surface)';
+          toggleBtn.style.border = '2px dashed var(--color-border)';
+          toggleBtn.style.color = 'var(--color-text-primary)';
+          toggleBtn.style.boxShadow = 'none';
+          toggleBtn.innerHTML = `
+            <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">⚡ DOUBLE DOWN ⚡</div>
+            <div style="font-size: 11px; color: var(--color-text-secondary); line-height: 1.4;">勝ったら負けが2杯、負けたら自分が2杯<br>どこかで必ず1回使う必要あり</div>
+          `;
+        }
+        
+        const grid = document.getElementById('cardGrid');
+        grid.innerHTML = '';
+        
+        const usedCardsByPlayer = gameState.usedCards[myPlayer.name] || [];
+        const maxCard = gameState.totalRounds;
+        
+        for (let i = 1; i <= maxCard; i++) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.textContent = i;
+          
+          if (usedCardsByPlayer.includes(i)) {
+            card.classList.add('used');
+            card.style.opacity = '0.3';
+            card.style.cursor = 'not-allowed';
+            card.style.pointerEvents = 'none';
+          } else {
+            card.onclick = () => selectCard(i, card);
+          }
+          
+          grid.appendChild(card);
+        }
+        
+        return;
+      }
+      
+      // オフラインモードの場合（元のコード）
       const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
       const player = gameState.players[playerIndex];
       document.getElementById('currentPlayer').textContent = player.name;
       document.getElementById('roundInfo').textContent = `第${gameState.currentRound}回戦`;
-      
-      // オンラインモード：自分のターンかチェック
-      const isMyTurn = !isOnlineMode || (player.playerId === myPlayerId);
-      
-      if (isOnlineMode && !isMyTurn) {
-        // 自分のターンじゃない場合、カードを選択不可にする
-        document.getElementById('cardGrid').innerHTML = `
-          <div style="text-align: center; padding: 3rem 1rem; color: var(--color-text-secondary);">
-            <div style="font-size: 48px; margin-bottom: 1rem;">⏳</div>
-            <div style="font-size: 18px; font-weight: 700; margin-bottom: 0.5rem;">${player.name}さんのターン</div>
-            <div style="font-size: 14px;">カード選択中...</div>
-          </div>
-        `;
-        document.getElementById('confirmBtn').disabled = true;
-        document.getElementById('confirmBtn').style.display = 'none';
-        document.getElementById('doubleDownToggle').style.display = 'none';
-        return;
-      }
       
       document.getElementById('confirmBtn').style.display = 'block';
       
@@ -1762,6 +1846,53 @@
       document.getElementById('confirmBtn').disabled = true;
     }
     
+    function showOnlineWaitingScreen() {
+      window.scrollTo(0, 0);
+      document.getElementById('cardSelect').style.display = 'none';
+      document.getElementById('readyToShowResult').style.display = 'block';
+      updateSelectionStatus();
+    }
+    
+    function updateSelectionStatus() {
+      const container = document.getElementById('selectionStatusList');
+      container.innerHTML = '';
+      
+      const selectedCount = gameState.roundData.length;
+      const totalCount = gameState.players.length;
+      
+      gameState.players.forEach(player => {
+        const hasSelected = gameState.roundData.some(d => d.player === player.name);
+        
+        const div = document.createElement('div');
+        div.style.cssText = `
+          padding: 1rem;
+          margin-bottom: 0.75rem;
+          background: ${hasSelected ? 'rgba(0, 255, 159, 0.2)' : 'rgba(168, 85, 247, 0.2)'};
+          border-radius: 12px;
+          border: 2px solid ${hasSelected ? 'var(--color-success)' : 'var(--color-neon-purple)'};
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        `;
+        
+        div.innerHTML = `
+          <span style="font-weight: 700; font-size: 16px;">${player.name}</span>
+          <span style="font-size: 24px;">${hasSelected ? '✅' : '⏳'}</span>
+        `;
+        
+        container.appendChild(div);
+      });
+      
+      // 全員選択完了したらボタンを表示
+      if (selectedCount === totalCount) {
+        document.getElementById('showResultBtn').style.display = 'block';
+        document.getElementById('waitingMessage').style.display = 'none';
+      } else {
+        document.getElementById('showResultBtn').style.display = 'none';
+        document.getElementById('waitingMessage').style.display = 'block';
+      }
+    }
+    
     function toggleDoubleDown() {
       const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
       const player = gameState.players[playerIndex];
@@ -1804,6 +1935,48 @@
     function confirmCard() {
       if (!selectedCard) return;
       
+      // オンラインモードの場合
+      if (isOnlineMode) {
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        if (!myPlayer) return;
+        
+        gameState.roundData.push({
+          player: myPlayer.name,
+          card: selectedCard,
+          isDoubleDown: isDoubleDownActive
+        });
+        
+        if (!gameState.usedCards[myPlayer.name]) {
+          gameState.usedCards[myPlayer.name] = [];
+        }
+        gameState.usedCards[myPlayer.name].push(selectedCard);
+        
+        // Firebaseに同期
+        const updates = {
+          roundData: gameState.roundData.reduce((obj, item, index) => {
+            obj[index] = item;
+            return obj;
+          }, {}),
+          [`players/${myPlayer.playerId}/usedCards`]: gameState.usedCards[myPlayer.name]
+        };
+        
+        if (isDoubleDownActive || (gameState.currentRound === gameState.totalRounds && !myPlayer.hasUsedDoubleDown)) {
+          updates[`players/${myPlayer.playerId}/hasUsedDoubleDown`] = true;
+          myPlayer.hasUsedDoubleDown = true;
+        }
+        
+        roomRef.update(updates);
+        
+        selectedCard = null;
+        selectedElement = null;
+        isDoubleDownActive = false;
+        
+        // 待機画面へ
+        showOnlineWaitingScreen();
+        return;
+      }
+      
+      // オフラインモードの場合（元のコード）
       const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
       const player = gameState.players[playerIndex];
       
@@ -1824,38 +1997,10 @@
       
       gameState.currentPlayerIndex++;
       
-      // オンラインモード：Firebaseに同期
-      if (isOnlineMode && roomRef) {
-        const updates = {
-          currentPlayerIndex: gameState.currentPlayerIndex,
-          roundData: gameState.roundData.reduce((obj, item, index) => {
-            obj[index] = item;
-            return obj;
-          }, {})
-        };
-        
-        // プレイヤーのusedCardsを更新
-        updates[`players/${player.playerId}/usedCards`] = gameState.usedCards[player.name];
-        
-        if (isDoubleDownActive || (gameState.currentRound === gameState.totalRounds && !player.hasUsedDoubleDown)) {
-          updates[`players/${player.playerId}/hasUsedDoubleDown`] = true;
-        }
-        
-        roomRef.update(updates);
-      }
-      
       if (gameState.currentPlayerIndex >= gameState.players.length) {
-        if (isOnlineMode && roomRef) {
-          roomRef.update({ showingResults: true });
-        }
         showReadyToShowResult();
       } else {
-        if (isOnlineMode) {
-          // オンラインモードでは自動的に次のプレイヤーの画面に
-          updateCardSelect();
-        } else {
-          showHandover();
-        }
+        showHandover();
       }
     }
     
@@ -2040,6 +2185,19 @@
           });
         });
       }, 100);
+      
+      // オンラインモード：プレイヤーのlossesをFirebaseに同期
+      if (isOnlineMode && roomRef) {
+        const updates = {};
+        gameState.players.forEach(player => {
+          updates[`players/${player.playerId}/losses`] = player.losses;
+          if (player.hasUsedDoubleDown) {
+            updates[`players/${player.playerId}/hasUsedDoubleDown`] = true;
+          }
+        });
+        updates.showingResults = true;
+        roomRef.update(updates);
+      }
     }
 
     function showChanceConfirm(playerName, cups) {
@@ -2270,6 +2428,17 @@
       gameState.currentPlayerIndex = 0;
       gameState.roundData = [];
       gameState.diceUsedThisRound = [];
+      
+      // オンラインモード：Firebaseを更新
+      if (isOnlineMode && roomRef) {
+        roomRef.update({
+          currentRound: gameState.currentRound,
+          currentPlayerIndex: 0,
+          roundData: {},
+          diceUsedThisRound: [],
+          showingResults: false
+        });
+      }
       
       if (gameState.currentRound === gameState.totalRounds) {
         showLastRoundAnnounce();
