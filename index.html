@@ -924,7 +924,7 @@
       </div>
     </div>
     
-    <div id="chanceConfirm" style="display: none;">
+    <div id="chanceConfirm" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: var(--color-bg); overflow-y: auto;">
       <div style="text-align: center; padding: 1.5rem 1rem;">
         <div style="font-size: 64px; margin-bottom: 1rem;">🎲</div>
         <h2 style="font-size: 24px; margin-bottom: 0.75rem; color: var(--color-neon-pink);" id="chancePlayerName"></h2>
@@ -946,7 +946,7 @@
       </div>
     </div>
     
-    <div id="diceRolling" style="display: none; position: relative; z-index: 1000; background: var(--color-bg);">
+    <div id="diceRolling" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: var(--color-bg); overflow-y: auto;">
       <div style="text-align: center; padding: 1.5rem 1rem;">
         <h2 style="font-size: 18px; margin-bottom: 1.5rem; color: var(--color-neon-pink);">タップで停止</h2>
         <div id="diceDisplay" style="margin: 1rem 0; min-height: 150px; display: flex; align-items: center; justify-content: center;" onclick="stopDiceRoll()">
@@ -962,7 +962,7 @@
       </div>
     </div>
     
-    <div id="chanceResult" style="display: none; position: relative; z-index: 1000; background: var(--color-bg);">
+    <div id="chanceResult" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: var(--color-bg); overflow-y: auto;">
       <div style="text-align: center; padding: 3rem 1rem;">
         <div id="chanceResultIcon" style="font-size: 80px; margin-bottom: 1.5rem;"></div>
         <h2 style="font-size: 28px; margin-bottom: 1rem; color: var(--color-neon-pink);" id="chanceResultText"></h2>
@@ -2232,7 +2232,7 @@
             <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
               <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <div class="card-value" style="margin: 0;">${data.card}</div>
-                <div style="font-size: 28px;">${beerIcons}</div>
+                <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
               </div>
               <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
                 style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
@@ -2700,6 +2700,13 @@
               // roundFinalCupsを更新（さいころ結果を反映）
               if (action.action === 'rolled' || action.action === 'confirmed') {
                 roundFinalCups[playerName] = action.newCups;
+                
+                // 杯数表示を更新
+                const beerDisplay = document.getElementById('beer-display-' + playerName.replace(/\s/g, '-'));
+                if (beerDisplay) {
+                  const beerIcons = '🍺'.repeat(action.newCups);
+                  beerDisplay.textContent = beerIcons || 'セーフ！';
+                }
               }
             } else if (index === order.currentIndex) {
               // 現在選択中
