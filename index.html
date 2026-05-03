@@ -940,7 +940,7 @@
           </div>
         </div>
         <div style="display: flex; gap: 1rem;">
-          <button onclick="cancelChance()" style="flex: 1;">キャンセル</button>
+          <button onclick="confirmCups()" style="flex: 1; background: rgba(0, 255, 159, 0.2); border: 2px solid var(--color-success);">杯数を確定する</button>
           <button class="primary" onclick="startDiceRoll()" style="flex: 1;">さいころを振る 🎲</button>
         </div>
       </div>
@@ -2194,14 +2194,15 @@
         
         // オンラインモード：アクション選択状態を表示
         if (isOnlineMode && isLoser) {
+          const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+          
           if (currentDicePlayer === data.player) {
-            const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
             if (myPlayer && myPlayer.name === data.player) {
               // 自分のターン
-              actionStatus = '<span style="font-size: 12px; color: var(--color-neon-cyan); margin-left: 8px;">アクション選択中...</span>';
+              actionStatus = '<span style="font-size: 12px; color: var(--color-neon-cyan); margin-left: 8px; font-weight: 700;">🎲 アクションしてください</span>';
             } else {
               // 他の人のターン
-              actionStatus = '<span style="font-size: 12px; color: var(--color-warning); margin-left: 8px;">🎲 神のさいころ抽選中...</span>';
+              actionStatus = '<span id="action-status-' + data.player.replace(/\s/g, '-') + '" style="font-size: 12px; color: var(--color-text-secondary); margin-left: 8px;">アクション選択中...</span>';
             }
           } else {
             const playerObj = gameState.players.find(p => p.name === data.player);
@@ -2352,10 +2353,45 @@
       chanceOriginalCups = 0;
     }
     
+    function confirmCups() {
+      window.scrollTo(0, 0);
+      document.getElementById('chanceConfirm').style.display = 'none';
+      
+      if (isOnlineMode) {
+        // オンラインモード：さいころを振らずに杯数を確定
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        if (myPlayer && roomRef) {
+          roomRef.child('diceActions').child(myPlayer.playerId).set({
+            action: 'confirmed',
+            playerName: myPlayer.name,
+            newCups: chanceOriginalCups
+          });
+        }
+        // 次のプレイヤーへ
+        moveToNextDicePlayer();
+      } else {
+        document.getElementById('roundResults').style.display = 'block';
+      }
+      
+      chancePlayer = null;
+      chanceOriginalCups = 0;
+    }
+    
     function startDiceRoll() {
       window.scrollTo(0, 0);
       document.getElementById('chanceConfirm').style.display = 'none';
       document.getElementById('diceRolling').style.display = 'block';
+      
+      // オンラインモード：全員に「神のさいころ抽選中...」を表示
+      if (isOnlineMode && roomRef) {
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        if (myPlayer) {
+          roomRef.child('diceActions').child(myPlayer.playerId).set({
+            action: 'rolling',
+            playerName: myPlayer.name
+          });
+        }
+      }
       
       diceStopped = false;
       
@@ -2650,7 +2686,7 @@
               }
               
               // roundFinalCupsを更新（さいころ結果を反映）
-              if (action.action === 'rolled') {
+              if (action.action === 'rolled' || action.action === 'confirmed') {
                 roundFinalCups[playerName] = action.newCups;
               }
             } else if (index === order.currentIndex) {
@@ -2658,12 +2694,22 @@
               const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
               if (myPlayer && myPlayer.name === playerName) {
                 // 自分のターン
-                statusElement.textContent = 'アクション選択中...';
+                statusElement.textContent = '🎲 アクションしてください';
                 statusElement.style.color = 'var(--color-neon-cyan)';
+                statusElement.style.fontWeight = '700';
               } else {
-                // 他の人のターン
-                statusElement.textContent = '🎲 神のさいころ抽選中...';
-                statusElement.style.color = 'var(--color-warning)';
+                // 他の人のターン - rolling状態をチェック
+                const rollingAction = Object.values(actions).find(a => 
+                  a.playerName === playerName && a.action === 'rolling'
+                );
+                
+                if (rollingAction) {
+                  statusElement.textContent = '🎲 神のさいころ抽選中...';
+                  statusElement.style.color = 'var(--color-warning)';
+                } else {
+                  statusElement.textContent = 'アクション選択中...';
+                  statusElement.style.color = 'var(--color-text-secondary)';
+                }
               }
             } else {
               // 待機中
