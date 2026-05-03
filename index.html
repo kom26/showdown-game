@@ -1509,13 +1509,8 @@
             showRoundResults();
           }
           
-          // 結果画面が表示されている場合、diceOrderを監視してアクション状態を更新
+          // 結果画面が表示されている場合のみ、diceOrderとdiceActionsを監視
           if (document.getElementById('roundResults').style.display === 'block') {
-            updateDiceActionStatus();
-          }
-          
-          // diceActionsの変更を監視
-          if (data.diceActions) {
             updateDiceActionStatus();
           }
         }
@@ -2632,10 +2627,20 @@
     function initializeDiceOrder() {
       if (!isOnlineMode || !roomRef) return;
       
-      // 負けたプレイヤーのリストを作成
+      // 負けたプレイヤーのリストを作成（天地逆転を考慮）
       const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
-      const minCard = sorted[0].card;
-      const losers = gameState.roundData.filter(d => d.card === minCard).map(d => d.player);
+      const maxCardNumber = gameState.totalRounds;
+      const hasCard1 = gameState.roundData.some(d => d.card === 1);
+      const hasCardMax = gameState.roundData.some(d => d.card === maxCardNumber);
+      const reverseRule = hasCard1 && hasCardMax;
+      
+      let losers;
+      if (reverseRule) {
+        losers = gameState.roundData.filter(d => d.card === maxCardNumber).map(d => d.player);
+      } else {
+        const minCard = sorted[0].card;
+        losers = gameState.roundData.filter(d => d.card === minCard).map(d => d.player);
+      }
       
       if (losers.length === 0) {
         // 負けた人がいない場合は次のラウンドへ
