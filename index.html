@@ -1513,6 +1513,11 @@
           if (document.getElementById('roundResults').style.display === 'block') {
             updateDiceActionStatus();
           }
+          
+          // diceActionsの変更を監視
+          if (data.diceActions) {
+            updateDiceActionStatus();
+          }
         }
       });
     }
@@ -2299,8 +2304,8 @@
           });
         });
         
-        // オンラインモード：最初の負けたプレイヤーを設定
-        if (isOnlineMode && !currentDicePlayer) {
+        // オンラインモード：さいころ順番を初期化
+        if (isOnlineMode) {
           initializeDiceOrder();
         }
       }, 100);
