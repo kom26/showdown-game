@@ -2268,29 +2268,32 @@
       
       const anyWinnerUsedDD = winners.some(w => w.isDoubleDown);
       
-      losers.forEach(loser => {
-        const player = gameState.players.find(p => p.name === loser.player);
-        let penalty = 1;
-        
-        // DOUBLE DOWNのペナルティ計算
-        if (loser.isDoubleDown && anyWinnerUsedDD) {
-          // 両方発動: 2杯 (どちらか一方だけカウント)
-          penalty = 2;
-        } else if (loser.isDoubleDown) {
-          // 自分のみ: 2杯
-          penalty = 2;
-        } else if (anyWinnerUsedDD) {
-          // 相手のみ: 2杯
-          penalty = 2;
-        }
-        
-        const isFinalRound = gameState.currentRound === gameState.totalRounds;
-        if (isFinalRound) {
-          penalty = penalty * 2;
-        }
-        
-        player.losses += penalty;
-      });
+      // オフラインモードのみペナルティを加算
+      if (!isOnlineMode) {
+        losers.forEach(loser => {
+          const player = gameState.players.find(p => p.name === loser.player);
+          let penalty = 1;
+          
+          // DOUBLE DOWNのペナルティ計算
+          if (loser.isDoubleDown && anyWinnerUsedDD) {
+            // 両方発動: 2杯 (どちらか一方だけカウント)
+            penalty = 2;
+          } else if (loser.isDoubleDown) {
+            // 自分のみ: 2杯
+            penalty = 2;
+          } else if (anyWinnerUsedDD) {
+            // 相手のみ: 2杯
+            penalty = 2;
+          }
+          
+          const isFinalRound = gameState.currentRound === gameState.totalRounds;
+          if (isFinalRound) {
+            penalty = penalty * 2;
+          }
+          
+          player.losses += penalty;
+        });
+      }
       
       const container = document.getElementById('resultsContainer');
       container.innerHTML = '';
@@ -2575,6 +2578,7 @@
         if (statusElement) {
           statusElement.textContent = '✅';
           statusElement.style.color = 'var(--color-success)';
+          statusElement.setAttribute('data-action-done', 'true'); // マーク
         }
       }
       
@@ -2739,6 +2743,7 @@
           if (statusElement) {
             statusElement.textContent = '✅';
             statusElement.style.color = 'var(--color-success)';
+            statusElement.setAttribute('data-action-done', 'true'); // マーク
           }
         }
         
@@ -2976,8 +2981,8 @@
               // 現在選択中(かつまだアクションしていない)
               const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
               
-              // 既にアクション完了マーク(✅)がある場合はスキップ
-              if (statusElement.textContent === '✅') {
+              // 既にアクション完了マークがある場合はスキップ
+              if (statusElement.getAttribute('data-action-done') === 'true') {
                 return;
               }
               
