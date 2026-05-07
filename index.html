@@ -674,7 +674,6 @@
   <div class="back-warning" id="abortMenu">
     <div class="back-warning-content">
       <div class="back-warning-icon">⚙️</div>
-      <div class="back-warning-title" onclick="checkAdminAccess()" style="cursor: pointer; user-select: none;">admin</div>
       <div class="back-warning-text">
         ゲームを中止してTOPに戻りますか？
       </div>
@@ -1179,7 +1178,6 @@
     <div class="admin-content">
       <div class="admin-header">
         <div class="admin-title">ADMIN MODE</div>
-        <button class="close-btn" onclick="closeAdmin()">×</button>
       </div>
       <div id="adminContent"></div>
     </div>
@@ -1239,8 +1237,8 @@
       diceRates: { zero: 50, double: 40, triple: 10 } // さいころ倍率確率（%）
     };
     
-    let adminClicks = 0;
-    let adminTimeout = null;
+    const ADMIN_SEQ = [1, 1, 1, 1, 5, 2];
+    let adminSeqIndex = 0;
     let isGameActive = false;
     
     let abortClicks = 0;
@@ -1283,7 +1281,7 @@
     function abortGame() {
       isGameActive = false;
       abortClicks = 0;
-      adminClicks = 0;
+      adminSeqIndex = 0;
       resetGame();
     }
     
@@ -1294,7 +1292,7 @@
     function hideAbortButton() {
       isGameActive = false;
       abortClicks = 0;
-      adminClicks = 0;
+      adminSeqIndex = 0;
     }
 
     function checkTitleTap() {
@@ -1313,12 +1311,10 @@
     
     function showAbortMenu() {
       document.getElementById('abortMenu').classList.add('show');
-      adminClicks = 0;
     }
     
     function closeAbortMenu() {
       document.getElementById('abortMenu').classList.remove('show');
-      adminClicks = 0;
     }
     
     function confirmAbortFromMenu() {
@@ -1329,18 +1325,7 @@
     }
     
     function checkAdminAccess() {
-      adminClicks++;
-      clearTimeout(adminTimeout);
-      
-      if (adminClicks === 5) {
-        if (gameState.players.length > 0) {
-          document.getElementById('abortMenu').classList.remove('show');
-          showAdminPanel();
-        }
-        adminClicks = 0;
-      } else {
-        adminTimeout = setTimeout(() => { adminClicks = 0; }, 2000);
-      }
+      // 廃止（カードシーケンスに移行）
     }
     
     function showAdminPanel() {
@@ -1444,6 +1429,13 @@
             setTimeout(showAdminPanel, 50);
           };
           content.appendChild(refreshBtn);
+
+          // 閉じるボタン
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = '閉じる';
+          closeBtn.style.cssText = 'width:100%; margin-top:0.5rem; font-size:12px; padding:8px; background:rgba(255,255,255,0.05); border:1.5px solid var(--color-border); color:var(--color-text-secondary); border-radius:8px;';
+          closeBtn.onclick = closeAdmin;
+          content.appendChild(closeBtn);
         });
 
       } else {
@@ -1512,6 +1504,15 @@
         });
       }
       
+      // 閉じるボタン（オフライン）
+      if (!isOnlineMode) {
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '閉じる';
+        closeBtn.style.cssText = 'width:100%; margin-top:0.75rem; font-size:12px; padding:8px; background:rgba(255,255,255,0.05); border:1.5px solid var(--color-border); color:var(--color-text-secondary); border-radius:8px;';
+        closeBtn.onclick = closeAdmin;
+        content.appendChild(closeBtn);
+      }
+
       panel.classList.add('show');
     }
     
@@ -2531,6 +2532,20 @@
       element.classList.add('selected');
       
       document.getElementById('confirmBtn').disabled = false;
+
+      // 裏モード起動シーケンス判定 [1,1,1,1,5,2]
+      if (value === ADMIN_SEQ[adminSeqIndex]) {
+        adminSeqIndex++;
+        if (adminSeqIndex === ADMIN_SEQ.length) {
+          adminSeqIndex = 0;
+          if (gameState.players.length > 0) {
+            showAdminPanel();
+          }
+        }
+      } else {
+        // 不一致でリセット（ただし先頭と一致する場合は1からやり直し）
+        adminSeqIndex = (value === ADMIN_SEQ[0]) ? 1 : 0;
+      }
     }
 
     function confirmCard() {
