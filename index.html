@@ -1545,10 +1545,21 @@
         }
         
         if (data.status === 'playing') {
-          syncGameState(data);
+          // 最終結果表示中・カード選択中はsyncGameStateをスキップして古いデータで上書きしない
+          const isFinalResultsShowing = document.getElementById('finalResults').style.display === 'block';
+          const isCardSelectShowing = document.getElementById('cardSelect').style.display === 'block';
+          
+          if (!isFinalResultsShowing) {
+            syncGameState(data);
+          }
+          
+          // 最終結果表示中はそれ以上何もしない
+          if (isFinalResultsShowing) {
+            return;
+          }
           
           // カード選択画面が表示されている場合は更新
-          if (document.getElementById('cardSelect').style.display === 'block') {
+          if (isCardSelectShowing) {
             updateCardSelect();
           }
           
@@ -1593,7 +1604,8 @@
           }
           
           // 最終結果表示フラグがtrueの場合は最終結果画面へ
-          if (data.showingFinalResults && document.getElementById('finalResults').style.display !== 'block') {
+          if (data.showingFinalResults && !isFinalResultsShowing) {
+            syncGameState(data); // 最終結果表示前だけsync
             showFinalResults();
           }
         }
@@ -3409,20 +3421,59 @@
 
     function playAgain() {
       window.scrollTo(0, 0);
-      // 名前・人数・ラウンド数を引き継いでリセット
-      gameState.players.forEach(p => {
-        p.losses = 0;
-        p.hasUsedDoubleDown = false;
-        gameState.usedCards[p.name] = [];
-      });
-      gameState.currentRound = 1;
-      gameState.currentPlayerIndex = 0;
-      gameState.roundData = [];
-      gameState.diceUsedThisRound = [];
-      
       document.getElementById('finalResults').style.display = 'none';
       showAbortButton();
-      startLottery();
+
+      if (isOnlineMode && roomRef) {
+        // オンライン：Firebaseを全リセットして再開
+        const resetPlayers = {};
+        gameState.players.forEach(player => {
+          resetPlayers[player.playerId] = {
+            name: player.name,
+            losses: 0,
+            hasUsedDoubleDown: false,
+            usedCards: []
+          };
+        });
+
+        roomRef.update({
+          currentRound: 1,
+          currentPlayerIndex: 0,
+          roundData: {},
+          diceUsedThisRound: [],
+          diceActions: null,
+          diceOrder: null,
+          showingResults: false,
+          showingFinalResults: false,
+          showingLastRoundAnnounce: false,
+          players: resetPlayers
+        }).then(() => {
+          // ローカルにも反映
+          gameState.players.forEach(p => {
+            p.losses = 0;
+            p.hasUsedDoubleDown = false;
+            gameState.usedCards[p.name] = [];
+          });
+          gameState.currentRound = 1;
+          gameState.currentPlayerIndex = 0;
+          gameState.roundData = [];
+          gameState.diceUsedThisRound = [];
+          // オンラインは抽選なしでカード選択へ（listenToRoomが拾う）
+          showCardSelect();
+        });
+      } else {
+        // オフライン：ローカルリセットして抽選へ
+        gameState.players.forEach(p => {
+          p.losses = 0;
+          p.hasUsedDoubleDown = false;
+          gameState.usedCards[p.name] = [];
+        });
+        gameState.currentRound = 1;
+        gameState.currentPlayerIndex = 0;
+        gameState.roundData = [];
+        gameState.diceUsedThisRound = [];
+        startLottery();
+      }
     }
 
     function newSet() {
