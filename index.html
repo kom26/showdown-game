@@ -2088,32 +2088,25 @@
         const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
         if (!myPlayer) return;
         
-        gameState.roundData.push({
-          player: myPlayer.name,
-          card: selectedCard,
-          isDoubleDown: isDoubleDownActive
-        });
-        
-        if (!gameState.usedCards[myPlayer.name]) {
-          gameState.usedCards[myPlayer.name] = [];
-        }
-        gameState.usedCards[myPlayer.name].push(selectedCard);
-        
-        // Firebaseに同期
+        // Firebaseに直接保存(競合を避けるため、自分のデータのみ保存)
         const updates = {
-          roundData: gameState.roundData.reduce((obj, item, index) => {
-            obj[index] = item;
-            return obj;
-          }, {}),
-          [`players/${myPlayer.playerId}/usedCards`]: gameState.usedCards[myPlayer.name]
+          [`roundData/${myPlayer.playerId}`]: {
+            player: myPlayer.name,
+            card: selectedCard,
+            isDoubleDown: isDoubleDownActive
+          },
+          [`players/${myPlayer.playerId}/usedCards`]: [...(gameState.usedCards[myPlayer.name] || []), selectedCard]
         };
         
         if (isDoubleDownActive || (gameState.currentRound === gameState.totalRounds && !myPlayer.hasUsedDoubleDown)) {
           updates[`players/${myPlayer.playerId}/hasUsedDoubleDown`] = true;
-          myPlayer.hasUsedDoubleDown = true;
         }
         
-        roomRef.update(updates);
+        roomRef.update(updates).then(() => {
+          console.log('Card selection saved successfully');
+        }).catch((error) => {
+          console.error('Error saving card selection:', error);
+        });
         
         selectedCard = null;
         selectedElement = null;
