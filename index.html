@@ -797,7 +797,6 @@
       <div id="playerInputs" class="player-inputs"></div>
       
       <button class="primary" onclick="startGame()" style="width: 100%; margin-bottom: 0.75rem;">ゲーム開始</button>
-      <button onclick="showRules()" style="width: 100%; margin-bottom: 0.75rem; background: rgba(168, 85, 247, 0.2); border: 2px solid var(--color-neon-purple);">📖 ルールを見る</button>
       <button onclick="backToModeSelect()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← TOPに戻る</button>
     </div>
     
@@ -1057,7 +1056,8 @@
       <div class="final-results" id="finalContainer"></div>
       
       <div style="margin-top: 1.5rem;">
-        <button class="primary" onclick="resetGame()" style="width: 100%;">TOPに戻る</button>
+        <button class="primary" onclick="playAgain()" style="width: 100%; margin-bottom: 0.75rem;">🔄 もう一度遊ぶ</button>
+        <button onclick="resetGame()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← TOPに戻る</button>
       </div>
     </div>
   </div>
@@ -3405,6 +3405,24 @@
           input.value = name;
         }
       });
+    }
+
+    function playAgain() {
+      window.scrollTo(0, 0);
+      // 名前・人数・ラウンド数を引き継いでリセット
+      gameState.players.forEach(p => {
+        p.losses = 0;
+        p.hasUsedDoubleDown = false;
+        gameState.usedCards[p.name] = [];
+      });
+      gameState.currentRound = 1;
+      gameState.currentPlayerIndex = 0;
+      gameState.roundData = [];
+      gameState.diceUsedThisRound = [];
+      
+      document.getElementById('finalResults').style.display = 'none';
+      showAbortButton();
+      startLottery();
     }
 
     function newSet() {
