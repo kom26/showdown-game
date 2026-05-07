@@ -1092,6 +1092,7 @@
     let isOnlineMode = false;
     let currentRoomCode = null;
     let isRoomHost = false;
+    let isPlayingAgain = false; // playAgain処理中はリスナーを抑制
     let myPlayerId = null;
     let roomRef = null;
     let currentDicePlayer = null; // 現在さいころを選択中のプレイヤー
@@ -1545,6 +1546,9 @@
         }
         
         if (data.status === 'playing') {
+          // playAgain処理中はリスナーを完全抑制（Firebase更新タイミングのズレ防止）
+          if (isPlayingAgain) return;
+          
           // 最終結果表示中・カード選択中はsyncGameStateをスキップして古いデータで上書きしない
           const isFinalResultsShowing = document.getElementById('finalResults').style.display === 'block';
           const isCardSelectShowing = document.getElementById('cardSelect').style.display === 'block';
@@ -1553,8 +1557,14 @@
             syncGameState(data);
           }
           
-          // 最終結果表示中はそれ以上何もしない
+          // 最終結果表示中の場合
           if (isFinalResultsShowing) {
+            // showingFinalResultsがfalseになったら再開（非ホストのplayAgain対応）
+            if (!data.showingFinalResults) {
+              syncGameState(data);
+              document.getElementById('finalResults').style.display = 'none';
+              showCardSelect();
+            }
             return;
           }
           
@@ -3421,10 +3431,12 @@
 
     function playAgain() {
       window.scrollTo(0, 0);
-      document.getElementById('finalResults').style.display = 'none';
       showAbortButton();
 
       if (isOnlineMode && roomRef) {
+        // リスナー抑制開始
+        isPlayingAgain = true;
+
         // オンライン：Firebaseを全リセットして再開
         const resetPlayers = {};
         gameState.players.forEach(player => {
@@ -3458,10 +3470,14 @@
           gameState.currentPlayerIndex = 0;
           gameState.roundData = [];
           gameState.diceUsedThisRound = [];
-          // オンラインは抽選なしでカード選択へ（listenToRoomが拾う）
+
+          // 画面を切り替えてからリスナー抑制を解除
+          document.getElementById('finalResults').style.display = 'none';
           showCardSelect();
+          isPlayingAgain = false;
         });
       } else {
+        document.getElementById('finalResults').style.display = 'none';
         // オフライン：ローカルリセットして抽選へ
         gameState.players.forEach(p => {
           p.losses = 0;
