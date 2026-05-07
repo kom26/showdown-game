@@ -2340,38 +2340,27 @@
             const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
             const isMyTurn = myPlayer && myPlayer.name === data.player && currentDicePlayer === data.player;
             
-            if (isMyTurn) {
-              beerDisplay = `
-                <div style="margin-top: 8px;">
-                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 8px;">
-                    <div class="card-value" style="margin: 0;">${data.card}</div>
-                    <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
-                  </div>
-                  <div style="display: flex; gap: 0.5rem;">
-                    <button id="confirm-btn-${data.player.replace(/\s/g, '-')}" onclick="confirmCupsFromResult('${data.player}', ${cups})" 
-                      style="flex: 1; background: rgba(0, 255, 159, 0.2); border: 2px solid var(--color-success); border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-weight: 700;">
-                      杯数を確定してアクションを終わる
-                    </button>
-                    <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
-                      style="flex: 0 0 auto; background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 12px; font-size: 18px; cursor: pointer;">
-                      🎲
-                    </button>
-                  </div>
-                </div>`;
-            } else {
-              beerDisplay = `
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
-                  <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="card-value" style="margin: 0;">${data.card}</div>
-                    <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
-                  </div>
+            // 確定ボタンは全員分生成し、自分のターンの時だけ表示
+            const confirmBtnDisplay = isMyTurn ? 'flex: 1;' : 'display: none;';
+            
+            beerDisplay = `
+              <div style="margin-top: 8px;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 8px;">
+                  <div class="card-value" style="margin: 0;">${data.card}</div>
+                  <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button id="confirm-btn-${data.player.replace(/\s/g, '-')}" onclick="confirmCupsFromResult('${data.player}', ${cups})" 
+                    style="${confirmBtnDisplay} background: rgba(0, 255, 159, 0.2); border: 2px solid var(--color-success); border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-weight: 700;">
+                    杯数を確定してアクションを終わる
+                  </button>
                   <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
-                    style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
+                    style="flex: 0 0 auto; background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: ${isMyTurn ? '18px' : '22px'}; ${diceButtonStyle}"
                     ${diceUsed ? 'disabled' : ''}>
                     🎲
                   </button>
-                </div>`;
-            }
+                </div>
+              </div>`;
           } else {
             // オフラインモード：さいころボタンのみ
             beerDisplay = `
@@ -2936,6 +2925,13 @@
                 statusElement.textContent = '🎲 アクションしてください';
                 statusElement.style.color = 'var(--color-neon-cyan)';
                 statusElement.style.fontWeight = '700';
+                
+                // 確定ボタンを表示
+                const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
+                if (confirmBtn) {
+                  confirmBtn.style.display = 'flex';
+                  confirmBtn.style.flex = '1';
+                }
               } else {
                 // 他の人のターン
                 statusElement.textContent = 'アクション選択中...';
@@ -2947,10 +2943,13 @@
             }
           });
           
-          // 全員完了チェック
+          // 全員完了チェック (rolling と rolling_done は未完了扱い)
           const allCompleted = order.losers.every(playerName => {
             const playerObj = gameState.players.find(p => p.name === playerName);
-            return playerObj && actions[playerObj.playerId];
+            if (!playerObj) return false;
+            const action = actions[playerObj.playerId];
+            // actionが存在し、かつrollingでもrolling_doneでもない場合のみ完了
+            return action && action.action !== 'rolling' && action.action !== 'rolling_done';
           });
           
           if (allCompleted) {
