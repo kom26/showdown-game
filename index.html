@@ -1379,9 +1379,9 @@
             // DD バッジ
             const isUsingDDNow = roundInfo && roundInfo.isDoubleDown;
             let doubleDownBadge = '';
-            if (isUsingDDNow && !player.hasUsedDoubleDown) {
-              doubleDownBadge = '<span class="status-badge" style="background: var(--color-accent); border-color: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); color: white;">⚡DD発動中</span>';
-            } else if (player.hasUsedDoubleDown || isUsingDDNow) {
+            if (isUsingDDNow) {
+              doubleDownBadge = '<span class="status-badge" style="background: var(--color-accent); border-color: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); color: white;">⚡DD使用中</span>';
+            } else if (player.hasUsedDoubleDown) {
               doubleDownBadge = '<span class="status-badge" style="background: #666; color: #aaa;">DD使用済み</span>';
             } else {
               doubleDownBadge = '<span class="status-badge" style="background: rgba(168,85,247,0.3); border-color:var(--color-neon-purple); box-shadow:0 0 6px var(--color-neon-purple); color:var(--color-neon-purple);">DD未使用</span>';
@@ -1459,12 +1459,12 @@
           const roundInfo = gameState.roundData.find(r => r.player === player.name);
           const isUsingDDNow = roundInfo && roundInfo.isDoubleDown;
           
-          if (isUsingDDNow && !player.hasUsedDoubleDown) {
-            doubleDownBadge = '<span class="status-badge" style="background: var(--color-accent); border-color: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); color: white;">⚡DOUBLE DOWN発動中</span>';
-          } else if (player.hasUsedDoubleDown || isUsingDDNow) {
-            doubleDownBadge = '<span class="status-badge" style="background: #666; color: #aaa;">DOUBLE DOWN発動済み</span>';
+          if (isUsingDDNow) {
+            doubleDownBadge = '<span class="status-badge" style="background: var(--color-accent); border-color: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); color: white;">⚡DD使用中</span>';
+          } else if (player.hasUsedDoubleDown) {
+            doubleDownBadge = '<span class="status-badge" style="background: #666; color: #aaa;">DD使用済み</span>';
           } else {
-            doubleDownBadge = '<span class="status-badge" style="background: rgba(168, 85, 247, 0.3); border-color: var(--color-neon-purple); box-shadow: 0 0 6px var(--color-neon-purple); color: var(--color-neon-purple);">DOUBLE DOWN未発動</span>';
+            doubleDownBadge = '<span class="status-badge" style="background: rgba(168, 85, 247, 0.3); border-color: var(--color-neon-purple); box-shadow: 0 0 6px var(--color-neon-purple); color: var(--color-neon-purple);">DD未使用</span>';
           }
           
           const usedCardsByPlayer = gameState.usedCards[player.name] || [];
