@@ -1349,70 +1349,168 @@
       content.innerHTML = '';
       
       const maxCard = gameState.totalRounds;
-      
-      gameState.playerOrder.forEach((playerIndex, turnIndex) => {
-        const player = gameState.players[playerIndex];
-        const isCompleted = turnIndex < gameState.currentPlayerIndex;
-        const isCurrent = turnIndex === gameState.currentPlayerIndex;
-        const isPending = turnIndex > gameState.currentPlayerIndex;
-        
-        const playerDiv = document.createElement('div');
-        playerDiv.className = 'player-status';
-        if (isCurrent) playerDiv.classList.add('current');
-        if (isCompleted) playerDiv.classList.add('completed');
-        
-        let statusBadge = '';
-        if (isCompleted) statusBadge = '<span class="status-badge completed">選択済み</span>';
-        else if (isCurrent) statusBadge = '<span class="status-badge current">選択中</span>';
-        else statusBadge = '<span class="status-badge pending">待機中</span>';
-        
-        let doubleDownBadge = '';
-        const roundInfo = gameState.roundData.find(r => r.player === player.name);
-        const isUsingDDNow = roundInfo && roundInfo.isDoubleDown;
-        
-        if (isUsingDDNow && !player.hasUsedDoubleDown) {
-          doubleDownBadge = '<span class="status-badge" style="background: var(--color-accent); border-color: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); color: white;">⚡DOUBLE DOWN発動中</span>';
-        } else if (player.hasUsedDoubleDown || isUsingDDNow) {
-          doubleDownBadge = '<span class="status-badge" style="background: #666; color: #aaa;">DOUBLE DOWN発動済み</span>';
-        } else {
-          doubleDownBadge = '<span class="status-badge" style="background: rgba(168, 85, 247, 0.3); border-color: var(--color-neon-purple); box-shadow: 0 0 6px var(--color-neon-purple); color: var(--color-neon-purple);">DOUBLE DOWN未発動</span>';
-        }
-        
-        const usedCardsByPlayer = gameState.usedCards[player.name] || [];
-        const selectedCardThisRound = isCompleted ? gameState.roundData.find(r => r.player === player.name)?.card : null;
-        
-        let cardsHTML = '<div class="cards-display">';
-        for (let i = 1; i <= maxCard; i++) {
-          const isUsedBefore = usedCardsByPlayer.includes(i) && i !== selectedCardThisRound;
-          const isSelected = selectedCardThisRound === i;
-          const isAvailable = !usedCardsByPlayer.includes(i);
+
+      if (isOnlineMode) {
+        // ===== オンラインモード =====
+        // Firebaseから最新データを取得してリアルタイム表示
+        if (!roomRef) { panel.classList.add('show'); return; }
+
+        // ローディング表示
+        content.innerHTML = '<div style="text-align:center; color: var(--color-text-secondary); padding: 1rem;">読み込み中...</div>';
+        panel.classList.add('show');
+
+        roomRef.once('value').then((snapshot) => {
+          const data = snapshot.val();
+          if (!data) return;
+          content.innerHTML = '';
+
+          // ラウンド情報ヘッダー
+          const header = document.createElement('div');
+          header.style.cssText = 'text-align:center; font-size:12px; color:var(--color-neon-cyan); margin-bottom:0.75rem; letter-spacing:1px;';
+          header.textContent = `第${data.currentRound}回戦 / 全${data.totalRounds}回戦`;
+          content.appendChild(header);
+
+          const playerOrder = data.playerOrder || [];
+          const players = data.players || {};
+          const roundData = Object.values(data.roundData || {});
+
+          playerOrder.forEach((playerId) => {
+            const player = players[playerId];
+            if (!player) return;
+
+            const roundInfo = roundData.find(r => r.player === player.name);
+            const hasSelected = !!roundInfo;
+            const isMe = playerId === myPlayerId;
+
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'player-status';
+            if (hasSelected) playerDiv.classList.add('completed');
+
+            // ステータスバッジ
+            let statusBadge = hasSelected
+              ? '<span class="status-badge completed">選択済み</span>'
+              : '<span class="status-badge pending">未選択</span>';
+
+            // DD バッジ
+            const isUsingDDNow = roundInfo && roundInfo.isDoubleDown;
+            let doubleDownBadge = '';
+            if (isUsingDDNow && !player.hasUsedDoubleDown) {
+              doubleDownBadge = '<span class="status-badge" style="background: var(--color-accent); border-color: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); color: white;">⚡DD発動中</span>';
+            } else if (player.hasUsedDoubleDown || isUsingDDNow) {
+              doubleDownBadge = '<span class="status-badge" style="background: #666; color: #aaa;">DD使用済み</span>';
+            } else {
+              doubleDownBadge = '<span class="status-badge" style="background: rgba(168,85,247,0.3); border-color:var(--color-neon-purple); box-shadow:0 0 6px var(--color-neon-purple); color:var(--color-neon-purple);">DD未使用</span>';
+            }
+
+            // カード一覧（選択済みのカードを含む全カード表示）
+            const usedCards = player.usedCards || [];
+            const selectedCardThisRound = roundInfo ? roundInfo.card : null;
+
+            let cardsHTML = '<div class="cards-display">';
+            for (let i = 1; i <= maxCard; i++) {
+              const isSelected = selectedCardThisRound === i;
+              const isUsedBefore = usedCards.includes(i) && !isSelected;
+              const isAvailable = !usedCards.includes(i) && !isSelected;
+
+              let cardClass = 'mini-card';
+              if (isSelected) cardClass += ' selected-card';
+              else if (isUsedBefore) cardClass += ' used';
+              else if (isAvailable) cardClass += ' available';
+
+              cardsHTML += `<div class="${cardClass}">${i}</div>`;
+            }
+            cardsHTML += '</div>';
+
+            playerDiv.innerHTML = `
+              <div class="player-status-header">
+                <div class="player-name" style="font-size: 11px;">${escapeHtml(player.name)}${isMe ? ' 👤' : ''}</div>
+                <div style="display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end;">
+                  ${statusBadge}
+                  ${doubleDownBadge}
+                </div>
+              </div>
+              ${cardsHTML}
+            `;
+
+            content.appendChild(playerDiv);
+          });
+
+          // 更新ボタン
+          const refreshBtn = document.createElement('button');
+          refreshBtn.textContent = '🔄 更新';
+          refreshBtn.style.cssText = 'width:100%; margin-top:0.75rem; font-size:12px; padding:8px; background:rgba(0,255,255,0.1); border:1.5px solid var(--color-neon-cyan); color:var(--color-neon-cyan); border-radius:8px;';
+          refreshBtn.onclick = () => {
+            closeAdmin();
+            setTimeout(showAdminPanel, 50);
+          };
+          content.appendChild(refreshBtn);
+        });
+
+      } else {
+        // ===== オフラインモード（既存処理） =====
+        gameState.playerOrder.forEach((playerIndex, turnIndex) => {
+          const player = gameState.players[playerIndex];
+          const isCompleted = turnIndex < gameState.currentPlayerIndex;
+          const isCurrent = turnIndex === gameState.currentPlayerIndex;
           
-          let cardClass = 'mini-card';
-          if (isSelected) {
-            cardClass += ' selected-card';
-          } else if (isUsedBefore) {
-            cardClass += ' used';
-          } else if (isAvailable) {
-            cardClass += ' available';
+          const playerDiv = document.createElement('div');
+          playerDiv.className = 'player-status';
+          if (isCurrent) playerDiv.classList.add('current');
+          if (isCompleted) playerDiv.classList.add('completed');
+          
+          let statusBadge = '';
+          if (isCompleted) statusBadge = '<span class="status-badge completed">選択済み</span>';
+          else if (isCurrent) statusBadge = '<span class="status-badge current">選択中</span>';
+          else statusBadge = '<span class="status-badge pending">待機中</span>';
+          
+          let doubleDownBadge = '';
+          const roundInfo = gameState.roundData.find(r => r.player === player.name);
+          const isUsingDDNow = roundInfo && roundInfo.isDoubleDown;
+          
+          if (isUsingDDNow && !player.hasUsedDoubleDown) {
+            doubleDownBadge = '<span class="status-badge" style="background: var(--color-accent); border-color: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); color: white;">⚡DOUBLE DOWN発動中</span>';
+          } else if (player.hasUsedDoubleDown || isUsingDDNow) {
+            doubleDownBadge = '<span class="status-badge" style="background: #666; color: #aaa;">DOUBLE DOWN発動済み</span>';
+          } else {
+            doubleDownBadge = '<span class="status-badge" style="background: rgba(168, 85, 247, 0.3); border-color: var(--color-neon-purple); box-shadow: 0 0 6px var(--color-neon-purple); color: var(--color-neon-purple);">DOUBLE DOWN未発動</span>';
           }
           
-          cardsHTML += `<div class="${cardClass}">${i}</div>`;
-        }
-        cardsHTML += '</div>';
-        
-        playerDiv.innerHTML = `
-          <div class="player-status-header">
-            <div class="player-name" style="font-size: 11px;">${player.name}${turnIndex === 0 ? '★' : ''}</div>
-            <div style="display: flex; gap: 2px;">
-              ${statusBadge}
-              ${doubleDownBadge}
+          const usedCardsByPlayer = gameState.usedCards[player.name] || [];
+          const selectedCardThisRound = isCompleted ? gameState.roundData.find(r => r.player === player.name)?.card : null;
+          
+          let cardsHTML = '<div class="cards-display">';
+          for (let i = 1; i <= maxCard; i++) {
+            const isUsedBefore = usedCardsByPlayer.includes(i) && i !== selectedCardThisRound;
+            const isSelected = selectedCardThisRound === i;
+            const isAvailable = !usedCardsByPlayer.includes(i);
+            
+            let cardClass = 'mini-card';
+            if (isSelected) {
+              cardClass += ' selected-card';
+            } else if (isUsedBefore) {
+              cardClass += ' used';
+            } else if (isAvailable) {
+              cardClass += ' available';
+            }
+            
+            cardsHTML += `<div class="${cardClass}">${i}</div>`;
+          }
+          cardsHTML += '</div>';
+          
+          playerDiv.innerHTML = `
+            <div class="player-status-header">
+              <div class="player-name" style="font-size: 11px;">${player.name}${turnIndex === 0 ? '★' : ''}</div>
+              <div style="display: flex; gap: 2px;">
+                ${statusBadge}
+                ${doubleDownBadge}
+              </div>
             </div>
-          </div>
-          ${cardsHTML}
-        `;
-        
-        content.appendChild(playerDiv);
-      });
+            ${cardsHTML}
+          `;
+          
+          content.appendChild(playerDiv);
+        });
+      }
       
       panel.classList.add('show');
     }
@@ -1949,8 +2047,10 @@
           roomRef.child('players').child(myPlayerId).remove();
           roomRef.child('playerOrder').once('value').then((snapshot) => {
             const order = snapshot.val();
-            const newOrder = order.filter(id => id !== myPlayerId);
-            roomRef.child('playerOrder').set(newOrder);
+            if (order && Array.isArray(order)) {
+              const newOrder = order.filter(id => id !== myPlayerId);
+              roomRef.child('playerOrder').set(newOrder);
+            }
           });
         }
         roomRef.off();
@@ -2724,7 +2824,7 @@
         card.innerHTML = `
           <div class="result-header">
             <div style="display: flex; align-items: center;">
-              <span class="player-name">${data.player.substring(0, 7)}</span>
+              <span class="player-name">${escapeHtml(data.player.substring(0, 7))}</span>
               ${actionStatus}
               ${data.isDoubleDown && !isLoser ? '<span style="font-size: 10px; color: var(--color-neon-purple); margin-left: 6px;">⚡DOUBLE DOWN発動中</span>' : ''}
             </div>
