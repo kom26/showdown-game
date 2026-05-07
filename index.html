@@ -2454,20 +2454,8 @@
         container.appendChild(card);
       });
       
-      const actionsContainer = document.getElementById('roundResultActions');
-      const isFinalRound = gameState.currentRound >= gameState.totalRounds;
-      
-      if (isFinalRound) {
-        actionsContainer.innerHTML = '<button class="primary" onclick="showFinalResults()" style="width: 100%;">最終結果を見る</button>';
-      } else {
-        if (isOnlineMode) {
-          // オンラインモードでは次へボタンを非表示（全員アクション完了後に表示）
-          actionsContainer.innerHTML = '';
-        } else {
-          const nextRoundNumber = gameState.currentRound + 1;
-          actionsContainer.innerHTML = `<button class="primary" onclick="nextRound()" style="width: 100%;">第${nextRoundNumber}回戦へ</button>`;
-        }
-      }
+      // ボタン表示はshowNextRoundButtonに統一（オーナー判定はそちらで行う）
+      showNextRoundButton();
       
       setTimeout(() => {
         const diceBtns = document.querySelectorAll('.dice-btn');
