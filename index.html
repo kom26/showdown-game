@@ -2328,25 +2328,9 @@
         let beerDisplay = '';
         let actionStatus = '';
         
-        // オンラインモード：アクション選択状態を表示
+        // オンラインモード：全員にidを付けたspanを生成（updateRoundResultDiceStatusが後から更新できるよう）
         if (isOnlineMode && isLoser) {
-          const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
-          
-          if (currentDicePlayer === data.player) {
-            if (myPlayer && myPlayer.name === data.player) {
-              // 自分のターン
-              actionStatus = '<span style="font-size: 12px; color: var(--color-neon-cyan); margin-left: 8px; font-weight: 700;">🎲 アクションしてください</span>';
-            } else {
-              // 他の人のターン
-              actionStatus = '<span id="action-status-' + data.player.replace(/\s/g, '-') + '" style="font-size: 12px; color: var(--color-text-secondary); margin-left: 8px;">アクション選択中...</span>';
-            }
-          } else {
-            const playerObj = gameState.players.find(p => p.name === data.player);
-            if (playerObj && roomRef) {
-              // Firebaseからアクション状態を取得（後で更新される）
-              actionStatus = '<span id="action-status-' + data.player.replace(/\s/g, '-') + '" style="font-size: 12px; color: var(--color-text-secondary); margin-left: 8px;"></span>';
-            }
-          }
+          actionStatus = '<span id="action-status-' + data.player.replace(/\s/g, '-') + '" style="font-size: 12px; margin-left: 8px; font-weight: 700;"></span>';
         }
         
         if (isLoser) {
@@ -2963,46 +2947,37 @@
             const diceBtn = document.getElementById('dice-btn-' + playerName.replace(/\s/g, '-'));
             
             if (action && action.action !== 'rolling' && action.action !== 'rolling_done') {
-              // アクション完了（rollingとrolling_doneは除外）
+              // ① アクション完了（confirmed / rolled）
               statusElement.textContent = '✅';
               statusElement.style.color = 'var(--color-success)';
+              statusElement.style.fontWeight = '700';
               
-              // さいころボタンをグレーアウト
+              // さいころ・確定ボタンをグレーアウト
               if (diceBtn) {
                 diceBtn.style.opacity = '0.3';
                 diceBtn.style.cursor = 'not-allowed';
                 diceBtn.style.pointerEvents = 'none';
                 diceBtn.disabled = true;
               }
-              
-              // 注意: 確定ボタンはconfirmCupsFromResultやcloseChanceResultで既に消されているので、
-              // ここでは何もしない
+              const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
+              if (confirmBtn) confirmBtn.style.display = 'none';
               
               // roundFinalCupsを更新（さいころ結果を反映）
               if (action.action === 'rolled' || action.action === 'confirmed') {
                 roundFinalCups[playerName] = action.newCups;
-                
-                // 杯数表示を更新
                 const beerDisplay = document.getElementById('beer-display-' + playerName.replace(/\s/g, '-'));
                 if (beerDisplay) {
-                  const beerIcons = '🍺'.repeat(action.newCups);
-                  beerDisplay.textContent = beerIcons || 'セーフ！';
+                  beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'セーフ！';
                 }
               }
             } else if (action && (action.action === 'rolling' || action.action === 'rolling_done')) {
-              // さいころ抽選中または結果確認中は全員に表示
+              // ② さいころ抽選中または結果確認中
               statusElement.textContent = '神のさいころを振っています...';
               statusElement.style.color = 'var(--color-neon-cyan)';
               statusElement.style.fontWeight = '700';
-            } else if (index === order.currentIndex && !action) {
-              // 現在選択中(かつまだアクションしていない)
+            } else if (index === order.currentIndex) {
+              // ③ 現在のアクションターン（アクションまだなし）
               const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
-              
-              // 既にアクション完了マークがある場合はスキップ
-              if (statusElement.getAttribute('data-action-done') === 'true') {
-                return;
-              }
-              
               if (myPlayer && myPlayer.name === playerName) {
                 // 自分のターン
                 statusElement.textContent = '🎲 アクションしてください';
@@ -3015,19 +2990,30 @@
                   confirmBtn.style.display = 'flex';
                   confirmBtn.style.flex = '1';
                 }
-                
-                const diceBtn = document.getElementById('dice-btn-' + playerName.replace(/\s/g, '-'));
                 if (diceBtn) {
                   diceBtn.style.display = 'block';
+                  diceBtn.style.opacity = '1';
+                  diceBtn.style.cursor = 'pointer';
+                  diceBtn.style.pointerEvents = 'auto';
+                  diceBtn.disabled = false;
                 }
               } else {
                 // 他の人のターン
                 statusElement.textContent = 'アクション選択中...';
                 statusElement.style.color = 'var(--color-text-secondary)';
+                statusElement.style.fontWeight = '400';
+                // 自分のボタンは非表示のまま
+                const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
+                if (confirmBtn) confirmBtn.style.display = 'none';
+                if (diceBtn) diceBtn.style.display = 'none';
               }
             } else {
-              // 待機中
+              // ④ まだ順番が来ていない（待機中）
               statusElement.textContent = '';
+              statusElement.style.fontWeight = '400';
+              const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
+              if (confirmBtn) confirmBtn.style.display = 'none';
+              if (diceBtn) diceBtn.style.display = 'none';
             }
           });
           
