@@ -764,6 +764,9 @@
         </div>
       </div>
       <button id="startOnlineGameBtn" class="primary" onclick="startOnlineGame()" style="width: 100%; display: none; margin-bottom: 0.75rem;">ゲーム開始</button>
+      <div id="waitingForGameStart" style="font-size: 14px; color: var(--color-neon-cyan); text-align: center; margin-bottom: 0.75rem; display: none;">
+        ルーム作成者がゲームを開始します...
+      </div>
       <button onclick="leaveRoom()" style="width: 100%; background: rgba(255, 0, 102, 0.2); border: 2px solid var(--color-danger);">ルームを退出</button>
     </div>
     
@@ -1505,7 +1508,8 @@
         
         // 開始ボタンの表示制御
         const startBtn = document.getElementById('startOnlineGameBtn');
-        if (startBtn) {
+        const waitingMsg = document.getElementById('waitingForGameStart');
+        if (startBtn && waitingMsg) {
           if (isRoomHost) {
             const playerCount = Object.keys(data.players).length;
             if (playerCount >= 2) {
@@ -1513,11 +1517,21 @@
               startBtn.disabled = false;
               startBtn.style.pointerEvents = 'auto';
               startBtn.style.opacity = '1';
+              waitingMsg.style.display = 'none';
             } else {
               startBtn.style.display = 'none';
+              waitingMsg.style.display = 'none';
             }
           } else {
-            startBtn.style.display = 'none';
+            // 非オーナー
+            const playerCount = Object.keys(data.players).length;
+            if (playerCount >= 2) {
+              startBtn.style.display = 'none';
+              waitingMsg.style.display = 'block';
+            } else {
+              startBtn.style.display = 'none';
+              waitingMsg.style.display = 'none';
+            }
           }
         }
         
@@ -2973,11 +2987,16 @@
                 statusElement.style.color = 'var(--color-neon-cyan)';
                 statusElement.style.fontWeight = '700';
                 
-                // 確定ボタンを表示
+                // 確定ボタンとさいころボタンを表示
                 const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
                 if (confirmBtn) {
                   confirmBtn.style.display = 'flex';
                   confirmBtn.style.flex = '1';
+                }
+                
+                const diceBtn = document.getElementById('dice-btn-' + playerName.replace(/\s/g, '-'));
+                if (diceBtn) {
+                  diceBtn.style.display = 'block';
                 }
               } else {
                 // 他の人のターン
@@ -3212,6 +3231,7 @@
     function showLastRoundAnnounce() {
       window.scrollTo(0, 0);
       document.getElementById('roundResults').style.display = 'none';
+      document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('lastRoundAnnounce').style.display = 'block';
       
       // オンラインモード：オーナーのみボタン表示
