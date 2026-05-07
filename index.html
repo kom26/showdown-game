@@ -719,18 +719,18 @@
     <div id="createRoom" style="display: none;">
       <h2 style="margin-bottom: 1rem;">✨ ルーム作成</h2>
       <div style="margin-bottom: 1rem;">
-        <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前（6文字まで）</label>
+        <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前（7文字まで）</label>
         <input type="text" id="hostName" placeholder="名前を入力" maxlength="7" style="width: 100%;">
       </div>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ラウンド数</label>
         <select id="onlineRoundCount" style="width: 100%;">
-          <option value="5">5回戦</option>
+          <option value="5" selected>5回戦</option>
           <option value="6">6回戦</option>
           <option value="7">7回戦</option>
           <option value="8">8回戦</option>
           <option value="9">9回戦</option>
-          <option value="10" selected>10回戦</option>
+          <option value="10">10回戦</option>
         </select>
       </div>
       <button class="primary" onclick="createRoom()" style="width: 100%; margin-bottom: 0.75rem;">ルームを作成</button>
@@ -740,7 +740,7 @@
     <div id="joinRoom" style="display: none;">
       <h2 style="margin-bottom: 1rem;">🔗 ルームに参加</h2>
       <div style="margin-bottom: 1rem;">
-        <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前（6文字まで）</label>
+        <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前（7文字まで）</label>
         <input type="text" id="joinerName" placeholder="名前を入力" maxlength="7" style="width: 100%;">
       </div>
       <div style="margin-bottom: 1rem;">
@@ -772,12 +772,12 @@
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ラウンド数</label>
         <select id="roundCount" style="margin-bottom: 1rem;">
-          <option value="5">5回戦</option>
+          <option value="5" selected>5回戦</option>
           <option value="6">6回戦</option>
           <option value="7">7回戦</option>
           <option value="8">8回戦</option>
           <option value="9">9回戦</option>
-          <option value="10" selected>10回戦</option>
+          <option value="10">10回戦</option>
         </select>
         
         <label class="info-label" style="display: block; margin-bottom: 8px;">人数選択</label>
@@ -908,6 +908,9 @@
         <div id="waitingMessage" style="font-size: 14px; color: var(--color-text-secondary);">
           他のプレイヤーの選択を待っています...
         </div>
+        <div id="waitingForHostMessage" style="font-size: 14px; color: var(--color-neon-cyan); display: none;">
+          ルーム作成者が結果を表示するのをお待ちください...
+        </div>
       </div>
     </div>
     
@@ -923,9 +926,12 @@
         <div style="font-size: 28px; color: var(--color-danger); margin-bottom: 3rem; font-weight: 800; text-shadow: 0 0 20px var(--color-danger);">
           杯数 ×2
         </div>
-        <button class="primary" onclick="startFinalRound()" style="width: 100%; font-size: 18px;">
+        <button id="startFinalRoundBtn" class="primary" onclick="startFinalRound()" style="width: 100%; font-size: 18px; display: none;">
           最終決戦 開始 ⚡
         </button>
+        <div id="waitingForFinalRoundStart" style="font-size: 14px; color: var(--color-neon-cyan); display: none;">
+          ルーム作成者が開始するのをお待ちください...
+        </div>
       </div>
     </div>
     
@@ -1557,6 +1563,16 @@
             updateRoundResultDiceStatus();
           }
           
+          // 最終ラウンドアナウンス表示フラグがtrueの場合
+          if (data.showingLastRoundAnnounce && document.getElementById('lastRoundAnnounce').style.display !== 'block') {
+            showLastRoundAnnounce();
+          }
+          
+          // 最終ラウンドアナウンスフラグがfalseで、アナウンス画面が表示されている場合
+          if (!data.showingLastRoundAnnounce && document.getElementById('lastRoundAnnounce').style.display === 'block') {
+            showCardSelect();
+          }
+          
           // 最終結果表示フラグがtrueの場合は最終結果画面へ
           if (data.showingFinalResults && document.getElementById('finalResults').style.display !== 'block') {
             showFinalResults();
@@ -1791,6 +1807,7 @@
       window.scrollTo(0, 0);
       document.getElementById('setup').style.display = 'none';
       document.getElementById('lottery').style.display = 'none';
+      document.getElementById('lastRoundAnnounce').style.display = 'none';
       document.getElementById('cardSelect').style.display = 'block';
       document.getElementById('roundResults').style.display = 'none';
       document.getElementById('finalResults').style.display = 'none';
@@ -2044,12 +2061,17 @@
         console.log('All players selected!');
         if (isRoomHost) {
           document.getElementById('showResultBtn').style.display = 'block';
+          document.getElementById('waitingForHostMessage').style.display = 'none';
+        } else {
+          document.getElementById('showResultBtn').style.display = 'none';
+          document.getElementById('waitingForHostMessage').style.display = 'block';
         }
         document.getElementById('waitingMessage').style.display = 'none';
       } else {
         console.log('Still waiting...');
         document.getElementById('showResultBtn').style.display = 'none';
         document.getElementById('waitingMessage').style.display = 'block';
+        document.getElementById('waitingForHostMessage').style.display = 'none';
       }
     }
     
@@ -2530,10 +2552,8 @@
         }
         
         if (diceBtn) {
-          diceBtn.style.opacity = '0.3';
-          diceBtn.style.cursor = 'not-allowed';
-          diceBtn.style.pointerEvents = 'none';
-          diceBtn.disabled = true;
+          // さいころボタンを完全に非表示
+          diceBtn.style.display = 'none';
         }
         
         // ステータステキストを更新
@@ -2685,10 +2705,8 @@
           const confirmBtn = document.getElementById('confirm-btn-' + chancePlayer.replace(/\s/g, '-'));
           
           if (diceBtn) {
-            diceBtn.style.opacity = '0.3';
-            diceBtn.style.cursor = 'not-allowed';
-            diceBtn.style.pointerEvents = 'none';
-            diceBtn.disabled = true;
+            // さいころボタンを完全に非表示
+            diceBtn.style.display = 'none';
           }
           
           if (confirmBtn) {
@@ -2899,7 +2917,7 @@
                 cardElement.classList.remove('action-turn');
                 
                 // アクション中のプレイヤーにaction-turnクラスを追加
-                if (index === order.currentIndex && (!action || action.action === 'rolling')) {
+                if (index === order.currentIndex && (!action || action.action === 'rolling' || action.action === 'rolling_done')) {
                   cardElement.classList.add('action-turn');
                 }
               }
@@ -2940,8 +2958,8 @@
               statusElement.textContent = '神のさいころを振っています...';
               statusElement.style.color = 'var(--color-neon-cyan)';
               statusElement.style.fontWeight = '700';
-            } else if (index === order.currentIndex) {
-              // 現在選択中
+            } else if (index === order.currentIndex && !action) {
+              // 現在選択中(かつまだアクションしていない)
               const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
               
               if (myPlayer && myPlayer.name === playerName) {
@@ -3169,6 +3187,12 @@
         }
       } else if (gameState.currentRound === gameState.totalRounds) {
         // 最終ラウンド開始前 → 最終ラウンドアナウンス
+        if (isOnlineMode && roomRef) {
+          // オンラインモード：Firebaseフラグを設定
+          roomRef.update({
+            showingLastRoundAnnounce: true
+          });
+        }
         showLastRoundAnnounce();
       } else {
         // 通常ラウンド
@@ -3184,11 +3208,33 @@
       window.scrollTo(0, 0);
       document.getElementById('roundResults').style.display = 'none';
       document.getElementById('lastRoundAnnounce').style.display = 'block';
+      
+      // オンラインモード：オーナーのみボタン表示
+      if (isOnlineMode) {
+        if (isRoomHost) {
+          document.getElementById('startFinalRoundBtn').style.display = 'block';
+          document.getElementById('waitingForFinalRoundStart').style.display = 'none';
+        } else {
+          document.getElementById('startFinalRoundBtn').style.display = 'none';
+          document.getElementById('waitingForFinalRoundStart').style.display = 'block';
+        }
+      } else {
+        // オフラインモード：ボタン表示
+        document.getElementById('startFinalRoundBtn').style.display = 'block';
+        document.getElementById('waitingForFinalRoundStart').style.display = 'none';
+      }
     }
     
     function startFinalRound() {
       window.scrollTo(0, 0);
       document.getElementById('lastRoundAnnounce').style.display = 'none';
+      
+      if (isOnlineMode && roomRef) {
+        // フラグをクリア
+        roomRef.update({
+          showingLastRoundAnnounce: false
+        });
+      }
       
       if (isOnlineMode) {
         // オンラインモード: 抽選なしで直接カード選択へ
