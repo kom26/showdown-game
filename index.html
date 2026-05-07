@@ -744,7 +744,10 @@
           </button>
         </div>
         <div id="onlineDiceSettingsPanel" style="display: none; background: rgba(26,10,40,0.8); border: 2px solid var(--color-neon-purple); border-radius: 12px; padding: 1rem;">
-          <div style="font-size: 11px; color: var(--color-text-secondary); margin-bottom: 0.75rem; text-align: center;">×0 と ×2 を設定すると ×3 が自動で決まります</div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+            <div style="font-size: 11px; color: var(--color-text-secondary);">×0 と ×2 を設定 → ×3 自動計算</div>
+            <div id="onlineDiceRateTotal" style="font-size: 13px; font-weight: 700; color: var(--color-text-secondary);">合計: <span style="color: var(--color-success);">100%</span></div>
+          </div>
           <div style="display: flex; flex-direction: column; gap: 0.6rem;">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
               <span style="font-size: 13px; color: var(--color-success); font-weight: 700; min-width: 90px;">× 0（帳消し）</span>
@@ -768,14 +771,16 @@
               </div>
             </div>
           </div>
-          <div id="onlineDiceRateTotal" style="text-align: center; margin-top: 0.75rem; font-size: 12px; color: var(--color-text-secondary);">合計: <span style="color: var(--color-success); font-weight: 700;">100%</span></div>
-          <button onclick="resetOnlineDiceRates()" style="width: 100%; margin-top: 0.75rem; font-size: 12px; padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--color-border);">デフォルトに戻す</button>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+            <button onclick="resetOnlineDiceRates()" style="flex: 1; font-size: 12px; padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--color-border);">デフォルトに戻す</button>
+            <button onclick="confirmOnlineDiceSettings()" style="flex: 1; font-size: 12px; padding: 8px; background: rgba(0,255,159,0.2); border: 2px solid var(--color-success); color: var(--color-success); font-weight: 700;">✓ 確定</button>
+          </div>
         </div>
         <div id="onlineDiceSettingsPreview" style="font-size: 12px; color: var(--color-text-secondary); margin-top: 6px; text-align: center;">
           デフォルト: ×0(50%) / ×2(40%) / ×3(10%)
         </div>
       </div>
-      <button class="primary" onclick="createRoom()" style="width: 100%; margin-bottom: 0.75rem;">ルームを作成</button>
+      <button id="createRoomBtn" class="primary" onclick="createRoom()" style="width: 100%; margin-bottom: 0.75rem;">ルームを作成</button>
       <button onclick="backToOnlineMenu()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← 戻る</button>
     </div>
     
@@ -867,7 +872,10 @@
           </button>
         </div>
         <div id="diceSettingsPanel" style="display: none; background: rgba(26,10,40,0.8); border: 2px solid var(--color-neon-purple); border-radius: 12px; padding: 1rem;">
-          <div style="font-size: 11px; color: var(--color-text-secondary); margin-bottom: 0.75rem; text-align: center;">×0 と ×2 を設定すると ×3 が自動で決まります</div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+            <div style="font-size: 11px; color: var(--color-text-secondary);">×0 と ×2 を設定 → ×3 自動計算</div>
+            <div id="diceRateTotal" style="font-size: 13px; font-weight: 700; color: var(--color-text-secondary);">合計: <span style="color: var(--color-success);">100%</span></div>
+          </div>
           <div style="display: flex; flex-direction: column; gap: 0.6rem;">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
               <span style="font-size: 13px; color: var(--color-success); font-weight: 700; min-width: 90px;">× 0（帳消し）</span>
@@ -891,15 +899,17 @@
               </div>
             </div>
           </div>
-          <div id="diceRateTotal" style="text-align: center; margin-top: 0.75rem; font-size: 12px; color: var(--color-text-secondary);">合計: <span style="color: var(--color-success); font-weight: 700;">100%</span></div>
-          <button onclick="resetDiceRates()" style="width: 100%; margin-top: 0.75rem; font-size: 12px; padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--color-border);">デフォルトに戻す</button>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+            <button onclick="resetDiceRates()" style="flex: 1; font-size: 12px; padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--color-border);">デフォルトに戻す</button>
+            <button onclick="confirmDiceSettings()" style="flex: 1; font-size: 12px; padding: 8px; background: rgba(0,255,159,0.2); border: 2px solid var(--color-success); color: var(--color-success); font-weight: 700;">✓ 確定</button>
+          </div>
         </div>
         <div id="diceSettingsPreview" style="font-size: 12px; color: var(--color-text-secondary); margin-top: 6px; text-align: center;">
           デフォルト: ×0(50%) / ×2(40%) / ×3(10%)
         </div>
       </div>
       
-      <button class="primary" onclick="startGame()" style="width: 100%; margin-bottom: 0.75rem;">ゲーム開始</button>
+      <button id="startGameBtn" class="primary" onclick="startGame()" style="width: 100%; margin-bottom: 0.75rem;">ゲーム開始</button>
       <button onclick="backToModeSelect()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← TOPに戻る</button>
     </div>
     
@@ -1416,9 +1426,27 @@
     function toggleDiceSettings() {
       const panel = document.getElementById('diceSettingsPanel');
       const btn = document.getElementById('diceSettingsToggleBtn');
+      const startBtn = document.getElementById('startGameBtn');
       const isOpen = panel.style.display !== 'none';
       panel.style.display = isOpen ? 'none' : 'block';
-      btn.textContent = isOpen ? 'カスタム設定' : '閉じる';
+      btn.textContent = isOpen ? 'カスタム設定' : '設定中...';
+      // パネルが開いている間はゲーム開始を無効化
+      if (startBtn) {
+        startBtn.disabled = !isOpen;
+        startBtn.style.opacity = isOpen ? '1' : '0.4';
+      }
+    }
+
+    function confirmDiceSettings() {
+      const panel = document.getElementById('diceSettingsPanel');
+      const btn = document.getElementById('diceSettingsToggleBtn');
+      const startBtn = document.getElementById('startGameBtn');
+      panel.style.display = 'none';
+      btn.textContent = 'カスタム設定';
+      if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.style.opacity = '1';
+      }
     }
 
     function onDiceRateChange() {
@@ -1476,9 +1504,26 @@
     function toggleOnlineDiceSettings() {
       const panel = document.getElementById('onlineDiceSettingsPanel');
       const btn = document.getElementById('onlineDiceSettingsToggleBtn');
+      const createBtn = document.getElementById('createRoomBtn');
       const isOpen = panel.style.display !== 'none';
       panel.style.display = isOpen ? 'none' : 'block';
-      btn.textContent = isOpen ? 'カスタム設定' : '閉じる';
+      btn.textContent = isOpen ? 'カスタム設定' : '設定中...';
+      if (createBtn) {
+        createBtn.disabled = !isOpen;
+        createBtn.style.opacity = isOpen ? '1' : '0.4';
+      }
+    }
+
+    function confirmOnlineDiceSettings() {
+      const panel = document.getElementById('onlineDiceSettingsPanel');
+      const btn = document.getElementById('onlineDiceSettingsToggleBtn');
+      const createBtn = document.getElementById('createRoomBtn');
+      panel.style.display = 'none';
+      btn.textContent = 'カスタム設定';
+      if (createBtn) {
+        createBtn.disabled = false;
+        createBtn.style.opacity = '1';
+      }
     }
 
     function onOnlineDiceRateChange() {
