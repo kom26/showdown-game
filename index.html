@@ -734,6 +734,47 @@
           <option value="10">10回戦</option>
         </select>
       </div>
+      <!-- さいころ倍率設定（オンライン） -->
+      <div style="margin-bottom: 1.25rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <label class="info-label">🎲 神のさいころ 倍率設定</label>
+          <button onclick="toggleOnlineDiceSettings()" id="onlineDiceSettingsToggleBtn"
+            style="font-size: 11px; padding: 4px 10px; background: rgba(168,85,247,0.2); border: 1px solid var(--color-neon-purple); color: var(--color-neon-purple); border-radius: 6px;">
+            カスタム設定
+          </button>
+        </div>
+        <div id="onlineDiceSettingsPanel" style="display: none; background: rgba(26,10,40,0.8); border: 2px solid var(--color-neon-purple); border-radius: 12px; padding: 1rem;">
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-bottom: 0.75rem; text-align: center;">合計が100%になるよう自動調整されます</div>
+          <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+              <span style="font-size: 13px; color: var(--color-success); font-weight: 700; min-width: 90px;">× 0（帳消し）</span>
+              <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+                <input type="range" id="onlineDiceRate0" min="0" max="100" value="50" oninput="onOnlineDiceRateChange()" style="flex: 1; accent-color: var(--color-success);">
+                <span id="onlineDiceRate0Val" style="font-size: 13px; font-weight: 700; color: var(--color-success); min-width: 36px; text-align: right;">50%</span>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+              <span style="font-size: 13px; color: var(--color-neon-cyan); font-weight: 700; min-width: 90px;">× 2（倍増）</span>
+              <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+                <input type="range" id="onlineDiceRate2" min="0" max="100" value="40" oninput="onOnlineDiceRateChange()" style="flex: 1; accent-color: var(--color-neon-cyan);">
+                <span id="onlineDiceRate2Val" style="font-size: 13px; font-weight: 700; color: var(--color-neon-cyan); min-width: 36px; text-align: right;">40%</span>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+              <span style="font-size: 13px; color: var(--color-danger); font-weight: 700; min-width: 90px;">× 3（3倍）</span>
+              <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+                <input type="range" id="onlineDiceRate3" min="0" max="100" value="10" oninput="onOnlineDiceRateChange()" style="flex: 1; accent-color: var(--color-danger);">
+                <span id="onlineDiceRate3Val" style="font-size: 13px; font-weight: 700; color: var(--color-danger); min-width: 36px; text-align: right;">10%</span>
+              </div>
+            </div>
+          </div>
+          <div id="onlineDiceRateTotal" style="text-align: center; margin-top: 0.75rem; font-size: 12px; color: var(--color-text-secondary);">合計: <span style="color: var(--color-success); font-weight: 700;">100%</span></div>
+          <button onclick="resetOnlineDiceRates()" style="width: 100%; margin-top: 0.75rem; font-size: 12px; padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--color-border);">デフォルトに戻す</button>
+        </div>
+        <div id="onlineDiceSettingsPreview" style="font-size: 12px; color: var(--color-text-secondary); margin-top: 6px; text-align: center;">
+          デフォルト: ×0(50%) / ×2(40%) / ×3(10%)
+        </div>
+      </div>
       <button class="primary" onclick="createRoom()" style="width: 100%; margin-bottom: 0.75rem;">ルームを作成</button>
       <button onclick="backToOnlineMenu()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← 戻る</button>
     </div>
@@ -758,6 +799,26 @@
         <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 0.5rem;">ルームコード</div>
         <div id="displayRoomCode" style="font-size: 48px; font-weight: 800; letter-spacing: 12px; color: var(--color-neon-pink); text-shadow: 0 0 20px var(--color-neon-pink);">----</div>
         <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 0.5rem;">このコードを友達に共有</div>
+      </div>
+      <!-- さいころ倍率表示（待機室・変更不可） -->
+      <div id="waitingDiceRatesBox" style="background: rgba(26,10,40,0.7); border: 2px solid var(--color-neon-purple); border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 1.5rem;">
+        <div style="font-size: 11px; color: var(--color-neon-purple); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.5rem; text-shadow: 0 0 8px var(--color-neon-purple);">🎲 神のさいころ 倍率</div>
+        <div style="display: flex; justify-content: space-around; text-align: center;">
+          <div>
+            <div style="font-size: 18px; font-weight: 800; color: var(--color-success);" id="waitingRate0">50%</div>
+            <div style="font-size: 11px; color: var(--color-text-secondary);">× 0</div>
+          </div>
+          <div style="font-size: 20px; color: var(--color-border); align-self: center;">/</div>
+          <div>
+            <div style="font-size: 18px; font-weight: 800; color: var(--color-neon-cyan);" id="waitingRate2">40%</div>
+            <div style="font-size: 11px; color: var(--color-text-secondary);">× 2</div>
+          </div>
+          <div style="font-size: 20px; color: var(--color-border); align-self: center;">/</div>
+          <div>
+            <div style="font-size: 18px; font-weight: 800; color: var(--color-danger);" id="waitingRate3">10%</div>
+            <div style="font-size: 11px; color: var(--color-text-secondary);">× 3</div>
+          </div>
+        </div>
       </div>
       <div style="margin-bottom: 1.5rem;">
         <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 0.75rem;">参加プレイヤー</div>
@@ -795,6 +856,48 @@
       </div>
       
       <div id="playerInputs" class="player-inputs"></div>
+      
+      <!-- さいころ倍率設定 -->
+      <div style="margin-bottom: 1.25rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <label class="info-label">🎲 神のさいころ 倍率設定</label>
+          <button onclick="toggleDiceSettings()" id="diceSettingsToggleBtn"
+            style="font-size: 11px; padding: 4px 10px; background: rgba(168,85,247,0.2); border: 1px solid var(--color-neon-purple); color: var(--color-neon-purple); border-radius: 6px;">
+            カスタム設定
+          </button>
+        </div>
+        <div id="diceSettingsPanel" style="display: none; background: rgba(26,10,40,0.8); border: 2px solid var(--color-neon-purple); border-radius: 12px; padding: 1rem;">
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-bottom: 0.75rem; text-align: center;">合計が100%になるよう自動調整されます</div>
+          <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+              <span style="font-size: 13px; color: var(--color-success); font-weight: 700; min-width: 90px;">× 0（帳消し）</span>
+              <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+                <input type="range" id="diceRate0" min="0" max="100" value="50" oninput="onDiceRateChange()" style="flex: 1; accent-color: var(--color-success);">
+                <span id="diceRate0Val" style="font-size: 13px; font-weight: 700; color: var(--color-success); min-width: 36px; text-align: right;">50%</span>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+              <span style="font-size: 13px; color: var(--color-neon-cyan); font-weight: 700; min-width: 90px;">× 2（倍増）</span>
+              <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+                <input type="range" id="diceRate2" min="0" max="100" value="40" oninput="onDiceRateChange()" style="flex: 1; accent-color: var(--color-neon-cyan);">
+                <span id="diceRate2Val" style="font-size: 13px; font-weight: 700; color: var(--color-neon-cyan); min-width: 36px; text-align: right;">40%</span>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+              <span style="font-size: 13px; color: var(--color-danger); font-weight: 700; min-width: 90px;">× 3（3倍）</span>
+              <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+                <input type="range" id="diceRate3" min="0" max="100" value="10" oninput="onDiceRateChange()" style="flex: 1; accent-color: var(--color-danger);">
+                <span id="diceRate3Val" style="font-size: 13px; font-weight: 700; color: var(--color-danger); min-width: 36px; text-align: right;">10%</span>
+              </div>
+            </div>
+          </div>
+          <div id="diceRateTotal" style="text-align: center; margin-top: 0.75rem; font-size: 12px; color: var(--color-text-secondary);">合計: <span style="color: var(--color-success); font-weight: 700;">100%</span></div>
+          <button onclick="resetDiceRates()" style="width: 100%; margin-top: 0.75rem; font-size: 12px; padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--color-border);">デフォルトに戻す</button>
+        </div>
+        <div id="diceSettingsPreview" style="font-size: 12px; color: var(--color-text-secondary); margin-top: 6px; text-align: center;">
+          デフォルト: ×0(50%) / ×2(40%) / ×3(10%)
+        </div>
+      </div>
       
       <button class="primary" onclick="startGame()" style="width: 100%; margin-bottom: 0.75rem;">ゲーム開始</button>
       <button onclick="backToModeSelect()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← TOPに戻る</button>
@@ -949,9 +1052,9 @@
         <div style="background: rgba(26, 10, 40, 0.8); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; border: 2px solid var(--color-border);">
           <div style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 0.5rem;">確率</div>
           <div style="font-size: 14px; line-height: 1.8;">
-            <div>🍺 × 0（帳消し）: <span style="color: var(--color-success); font-weight: 700;">50%</span></div>
-            <div>🍺 × 2（倍増）: <span style="color: var(--color-neon-cyan); font-weight: 700;">40%</span></div>
-            <div>🍺 × 3（3倍）: <span style="color: var(--color-danger); font-weight: 700;">10%</span></div>
+            <div>🍺 × 0（帳消し）: <span id="chanceRate0" style="color: var(--color-success); font-weight: 700;">50%</span></div>
+            <div>🍺 × 2（倍増）: <span id="chanceRate2" style="color: var(--color-neon-cyan); font-weight: 700;">40%</span></div>
+            <div>🍺 × 3（3倍）: <span id="chanceRate3" style="color: var(--color-danger); font-weight: 700;">10%</span></div>
           </div>
         </div>
         <div style="display: flex; gap: 1rem;">
@@ -1099,6 +1202,11 @@
     let roomRef = null;
     let currentDicePlayer = null; // 現在さいころを選択中のプレイヤー
     
+    // DOM ID用の安全な文字列生成（全角スペース・特殊文字も無害化）
+    function safeDomId(text) {
+      return String(text || '').replace(/[\s<>"'&\/\\]/g, '_');
+    }
+    
     // HTMLエスケープ関数
     function escapeHtml(text) {
       return String(text || '')
@@ -1117,7 +1225,8 @@
       playerOrder: [],
       usedCards: {},
       totalRounds: 10,
-      diceUsedThisRound: []
+      diceUsedThisRound: [],
+      diceRates: { zero: 50, double: 40, triple: 10 } // さいころ倍率確率（%）
     };
     
     let adminClicks = 0;
@@ -1302,6 +1411,127 @@
       document.getElementById('adminPanel').classList.remove('show');
     }
 
+    // ===== さいころ倍率設定 (オフライン) =====
+
+    function toggleDiceSettings() {
+      const panel = document.getElementById('diceSettingsPanel');
+      const btn = document.getElementById('diceSettingsToggleBtn');
+      const isOpen = panel.style.display !== 'none';
+      panel.style.display = isOpen ? 'none' : 'block';
+      btn.textContent = isOpen ? 'カスタム設定' : '閉じる';
+    }
+
+    function onDiceRateChange() {
+      const v0 = parseInt(document.getElementById('diceRate0').value);
+      const v2 = parseInt(document.getElementById('diceRate2').value);
+      const v3 = parseInt(document.getElementById('diceRate3').value);
+      const total = v0 + v2 + v3;
+      document.getElementById('diceRate0Val').textContent = v0 + '%';
+      document.getElementById('diceRate2Val').textContent = v2 + '%';
+      document.getElementById('diceRate3Val').textContent = v3 + '%';
+      const totalEl = document.getElementById('diceRateTotal');
+      const ok = total === 100;
+      totalEl.innerHTML = `合計: <span style="color: ${ok ? 'var(--color-success)' : 'var(--color-danger)'}; font-weight: 700;">${total}%</span>`;
+      updateDiceSettingsPreview('diceSettingsPreview', v0, v2, v3, total);
+    }
+
+    function resetDiceRates() {
+      document.getElementById('diceRate0').value = 50;
+      document.getElementById('diceRate2').value = 40;
+      document.getElementById('diceRate3').value = 10;
+      onDiceRateChange();
+    }
+
+    function getDiceRatesFromUI() {
+      // スライダーが存在する場合はその値を、なければデフォルトを返す
+      const r0 = document.getElementById('diceRate0');
+      const r2 = document.getElementById('diceRate2');
+      const r3 = document.getElementById('diceRate3');
+      if (!r0) return { zero: 50, double: 40, triple: 10 };
+      const v0 = parseInt(r0.value);
+      const v2 = parseInt(r2.value);
+      const v3 = parseInt(r3.value);
+      const total = v0 + v2 + v3;
+      if (total !== 100) {
+        alert('さいころ倍率の合計が100%になっていません（現在' + total + '%）\nデフォルト値を使用します。');
+        return { zero: 50, double: 40, triple: 10 };
+      }
+      return { zero: v0, double: v2, triple: v3 };
+    }
+
+    function updateDiceSettingsPreview(previewId, v0, v2, v3, total) {
+      const el = document.getElementById(previewId);
+      if (!el) return;
+      if (v0 === 50 && v2 === 40 && v3 === 10) {
+        el.textContent = 'デフォルト: ×0(50%) / ×2(40%) / ×3(10%)';
+        el.style.color = 'var(--color-text-secondary)';
+      } else if (total === 100) {
+        el.textContent = `カスタム: ×0(${v0}%) / ×2(${v2}%) / ×3(${v3}%)`;
+        el.style.color = 'var(--color-neon-purple)';
+      } else {
+        el.textContent = `合計 ${total}% — 100%になるよう調整してください`;
+        el.style.color = 'var(--color-danger)';
+      }
+    }
+
+    // ===== さいころ倍率設定 (オンライン) =====
+
+    function toggleOnlineDiceSettings() {
+      const panel = document.getElementById('onlineDiceSettingsPanel');
+      const btn = document.getElementById('onlineDiceSettingsToggleBtn');
+      const isOpen = panel.style.display !== 'none';
+      panel.style.display = isOpen ? 'none' : 'block';
+      btn.textContent = isOpen ? 'カスタム設定' : '閉じる';
+    }
+
+    function onOnlineDiceRateChange() {
+      const v0 = parseInt(document.getElementById('onlineDiceRate0').value);
+      const v2 = parseInt(document.getElementById('onlineDiceRate2').value);
+      const v3 = parseInt(document.getElementById('onlineDiceRate3').value);
+      const total = v0 + v2 + v3;
+      document.getElementById('onlineDiceRate0Val').textContent = v0 + '%';
+      document.getElementById('onlineDiceRate2Val').textContent = v2 + '%';
+      document.getElementById('onlineDiceRate3Val').textContent = v3 + '%';
+      const totalEl = document.getElementById('onlineDiceRateTotal');
+      const ok = total === 100;
+      totalEl.innerHTML = `合計: <span style="color: ${ok ? 'var(--color-success)' : 'var(--color-danger)'}; font-weight: 700;">${total}%</span>`;
+      updateDiceSettingsPreview('onlineDiceSettingsPreview', v0, v2, v3, total);
+    }
+
+    function resetOnlineDiceRates() {
+      document.getElementById('onlineDiceRate0').value = 50;
+      document.getElementById('onlineDiceRate2').value = 40;
+      document.getElementById('onlineDiceRate3').value = 10;
+      onOnlineDiceRateChange();
+    }
+
+    function getOnlineDiceRatesFromUI() {
+      const r0 = document.getElementById('onlineDiceRate0');
+      const r2 = document.getElementById('onlineDiceRate2');
+      const r3 = document.getElementById('onlineDiceRate3');
+      if (!r0) return { zero: 50, double: 40, triple: 10 };
+      const v0 = parseInt(r0.value);
+      const v2 = parseInt(r2.value);
+      const v3 = parseInt(r3.value);
+      const total = v0 + v2 + v3;
+      if (total !== 100) {
+        alert('さいころ倍率の合計が100%になっていません（現在' + total + '%）\nデフォルト値を使用します。');
+        return { zero: 50, double: 40, triple: 10 };
+      }
+      return { zero: v0, double: v2, triple: v3 };
+    }
+
+    // 待機室のさいころ倍率表示を更新
+    function updateWaitingRoomDiceDisplay(rates) {
+      const r = rates || gameState.diceRates;
+      const e0 = document.getElementById('waitingRate0');
+      const e2 = document.getElementById('waitingRate2');
+      const e3 = document.getElementById('waitingRate3');
+      if (e0) e0.textContent = r.zero + '%';
+      if (e2) e2.textContent = r.double + '%';
+      if (e3) e3.textContent = r.triple + '%';
+    }
+
     function updatePlayerInputs() {
       const count = parseInt(document.getElementById('playerCount').value);
       const container = document.getElementById('playerInputs');
@@ -1380,6 +1610,7 @@
       }
       
       const rounds = parseInt(document.getElementById('onlineRoundCount').value);
+      const diceRates = getOnlineDiceRatesFromUI(); // さいころ倍率をUIから取得
       currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
       isRoomHost = true;
       myPlayerId = generatePlayerId();
@@ -1391,6 +1622,7 @@
       const roomData = {
         host: myPlayerId,
         totalRounds: rounds,
+        diceRates: diceRates, // さいころ倍率をFirebaseに保存
         players: {
           [myPlayerId]: {
             name: hostName,
@@ -1415,6 +1647,7 @@
         document.getElementById('createRoom').style.display = 'none';
         document.getElementById('waitingRoom').style.display = 'block';
         document.getElementById('displayRoomCode').textContent = currentRoomCode;
+        updateWaitingRoomDiceDisplay(diceRates); // 待機室の倍率表示を即反映
         listenToRoom();
       }).catch((error) => {
         console.error('Error creating room:', error);
@@ -1501,7 +1734,7 @@
         const data = snapshot.val();
         if (!data) {
           alert('ルームが削除されました');
-          leaveRoom();
+          leaveRoom(true);
           return;
         }
         
@@ -1512,6 +1745,11 @@
         }
         
         updatePlayerList(data.players);
+        
+        // さいころ倍率を待機室に反映（参加者がルームデータを受信したタイミングで更新）
+        if (data.diceRates) {
+          updateWaitingRoomDiceDisplay(data.diceRates);
+        }
         
         // 開始ボタンの表示制御
         const startBtn = document.getElementById('startOnlineGameBtn');
@@ -1661,9 +1899,9 @@
       }
     }
     
-    function leaveRoom() {
-      // 確認ダイアログを表示
-      if (!confirm('本当にルームを退出しますか?')) {
+    function leaveRoom(forced = false) {
+      // 強制退出（ホストがルームを削除した場合）以外は確認ダイアログを表示
+      if (!forced && !confirm('本当にルームを退出しますか?')) {
         return;
       }
       
@@ -1736,6 +1974,8 @@
       gameState.currentPlayerIndex = data.currentPlayerIndex;
       gameState.playerOrder = data.playerOrder;
       gameState.diceUsedThisRound = data.diceUsedThisRound || [];
+      // さいころ倍率を同期（Firebaseにあればそれを使い、なければデフォルト）
+      gameState.diceRates = data.diceRates || { zero: 50, double: 40, triple: 10 };
       
       gameState.players = data.playerOrder.map(playerId => {
         const p = data.players[playerId];
@@ -1792,6 +2032,7 @@
       gameState.totalRounds = rounds;
       gameState.players = [];
       gameState.usedCards = {};
+      gameState.diceRates = getDiceRatesFromUI(); // さいころ倍率をUIから取得
       
       for (let i = 0; i < count; i++) {
         const input = document.getElementById(`player${i}`);
@@ -2196,6 +2437,11 @@
       const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
       const player = gameState.players[playerIndex];
       
+      // Bug2修正: DOUBLE DOWN使用時は即座にフラグを立てる（次プレイヤーの画面に反映するため）
+      if (isDoubleDownActive) {
+        player.hasUsedDoubleDown = true;
+      }
+      
       gameState.roundData.push({
         player: player.name,
         card: selectedCard,
@@ -2368,7 +2614,7 @@
         
         // オンラインモード：全員にidを付けたspanを生成（updateRoundResultDiceStatusが後から更新できるよう）
         if (isOnlineMode && isLoser) {
-          actionStatus = '<span id="action-status-' + data.player.replace(/\s/g, '-') + '" style="font-size: 12px; margin-left: 8px; font-weight: 700;"></span>';
+          actionStatus = '<span id="action-status-' + safeDomId(data.player) + '" style="font-size: 12px; margin-left: 8px; font-weight: 700;"></span>';
         }
         
         if (isLoser) {
@@ -2401,14 +2647,14 @@
               <div style="margin-top: 8px;">
                 <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 8px;">
                   <div class="card-value" style="margin: 0;">${data.card}</div>
-                  <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons || 'セーフ！'}</div>
+                  <div id="beer-display-${safeDomId(data.player)}" style="font-size: 28px;">${beerIcons || 'セーフ！'}</div>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                  <button id="confirm-btn-${data.player.replace(/\s/g, '-')}" onclick="confirmCupsFromResult('${data.player}', ${cups})" 
+                  <button id="confirm-btn-${safeDomId(data.player)}" onclick="confirmCupsFromResult('${data.player}', ${cups})" 
                     style="${confirmBtnDisplay} align-items: center; justify-content: center; background: rgba(0, 255, 159, 0.2); border: 2px solid var(--color-success); border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-weight: 700; white-space: nowrap;">
                     杯数を確定してアクションを終わる
                   </button>
-                  <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
+                  <button class="dice-btn" id="dice-btn-${safeDomId(data.player)}" data-player="${data.player}" data-cups="${cups}" 
                     style="${diceBtnDisplay} flex: 0 0 auto; background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 18px; ${diceButtonStyle}"
                     ${diceUsed ? 'disabled' : ''}>
                     🎲
@@ -2421,9 +2667,9 @@
               <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                   <div class="card-value" style="margin: 0;">${data.card}</div>
-                  <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons || 'セーフ！'}</div>
+                  <div id="beer-display-${safeDomId(data.player)}" style="font-size: 28px;">${beerIcons || 'セーフ！'}</div>
                 </div>
-                <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
+                <button class="dice-btn" id="dice-btn-${safeDomId(data.player)}" data-player="${data.player}" data-cups="${cups}" 
                   style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
                   ${diceUsed ? 'disabled' : ''}>
                   🎲
@@ -2508,6 +2754,13 @@
       chanceOriginalCups = cups;
       
       document.getElementById('chancePlayerName').textContent = `${playerName}さん`;
+      
+      // さいころ確率表示をgameState.diceRatesに合わせて動的更新
+      const rates = gameState.diceRates || { zero: 50, double: 40, triple: 10 };
+      document.getElementById('chanceRate0').textContent = rates.zero + '%';
+      document.getElementById('chanceRate2').textContent = rates.double + '%';
+      document.getElementById('chanceRate3').textContent = rates.triple + '%';
+      
       document.getElementById('roundResults').style.display = 'none';
       document.getElementById('chanceConfirm').style.display = 'block';
     }
@@ -2535,7 +2788,7 @@
             newCups: chanceOriginalCups
           }).then(() => {
             // 保存完了後にステータス更新
-            const statusElement = document.getElementById('action-status-' + chancePlayer.replace(/\s/g, '-'));
+            const statusElement = document.getElementById('action-status-' + safeDomId(chancePlayer));
             if (statusElement) {
               statusElement.textContent = '✅';
               statusElement.style.color = 'var(--color-success)';
@@ -2543,8 +2796,8 @@
             }
             
             // ボタンを無効化
-            const confirmBtn = document.getElementById('confirm-btn-' + chancePlayer.replace(/\s/g, '-'));
-            const diceBtn = document.getElementById('dice-btn-' + chancePlayer.replace(/\s/g, '-'));
+            const confirmBtn = document.getElementById('confirm-btn-' + safeDomId(chancePlayer));
+            const diceBtn = document.getElementById('dice-btn-' + safeDomId(chancePlayer));
             
             if (confirmBtn) {
               confirmBtn.style.display = 'none';
@@ -2572,20 +2825,23 @@
       
       const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
       if (myPlayer && roomRef) {
-        // lossesを加算してFirebaseに保存
-        const newLosses = Math.max(0, (myPlayer.losses || 0) + cups);
+        // Bug1修正: Firebaseのlossesを正確な値（現在値 + cups）で上書き
+        // syncGameStateによる上書きを防ぐため、先にローカルに反映してからFirebaseへ
+        const baseLosses = myPlayer.losses || 0;
+        const newLosses = Math.max(0, baseLosses + cups);
+        myPlayer.losses = newLosses; // 先にローカル反映（syncGameStateが古い値で上書きしないよう）
+        
         roomRef.child('diceActions').child(myPlayer.playerId).set({
           action: 'confirmed',
           playerName: myPlayer.name,
-          newCups: cups
+          newCups: cups,
+          baseLosses: baseLosses // デバッグ用
         }).then(() => {
           // lossesをFirebaseに反映
           return roomRef.child('players').child(myPlayer.playerId).child('losses').set(newLosses);
         }).then(() => {
-          myPlayer.losses = newLosses;
-          
           // 保存完了後にステータス更新
-          const statusElement = document.getElementById('action-status-' + playerName.replace(/\s/g, '-'));
+          const statusElement = document.getElementById('action-status-' + safeDomId(playerName));
           if (statusElement) {
             statusElement.textContent = '✅';
             statusElement.style.color = 'var(--color-success)';
@@ -2593,8 +2849,8 @@
           }
           
           // 自分の確定ボタンとさいころボタンを即座に無効化
-          const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
-          const diceBtn = document.getElementById('dice-btn-' + playerName.replace(/\s/g, '-'));
+          const confirmBtn = document.getElementById('confirm-btn-' + safeDomId(playerName));
+          const diceBtn = document.getElementById('dice-btn-' + safeDomId(playerName));
           
           if (confirmBtn) {
             confirmBtn.style.display = 'none';
@@ -2661,10 +2917,12 @@
       let multiplier;
       let finalResult;
       
-      if (rand < 50) {
+      // gameState.diceRates に従って確率を計算
+      const rates = gameState.diceRates || { zero: 50, double: 40, triple: 10 };
+      if (rand < rates.zero) {
         multiplier = 0;
         finalResult = '×0';
-      } else if (rand < 90) {
+      } else if (rand < rates.zero + rates.double) {
         multiplier = 2;
         finalResult = '×2';
       } else {
@@ -2689,8 +2947,9 @@
       const newCups = chanceOriginalCups * multiplier;
       
       if (isOnlineMode) {
-        // オンラインモードでは showRoundResults で losses を加算していないので newCups を加算
-        player.losses = Math.max(0, (player.losses || 0) + newCups);
+        // Bug1修正: オンラインモードでは先にローカル反映してからFirebaseへ（syncGameStateによる上書き防止）
+        const baseLosses = player.losses || 0;
+        player.losses = Math.max(0, baseLosses + newCups);
       } else {
         // オフラインモードでは showRoundResults で chanceOriginalCups 分加算済みなので差分のみ
         const diff = newCups - chanceOriginalCups;
@@ -2748,7 +3007,7 @@
             action: 'rolled' // OKボタンを押したので全員に表示
           }).then(() => {
             // 保存完了後に更新
-            const statusElement = document.getElementById('action-status-' + chancePlayer.replace(/\s/g, '-'));
+            const statusElement = document.getElementById('action-status-' + safeDomId(chancePlayer));
             if (statusElement) {
               statusElement.textContent = '✅';
               statusElement.style.color = 'var(--color-success)';
@@ -2756,8 +3015,8 @@
             }
             
             // 自分のさいころボタンと確定ボタンを無効化
-            const diceBtn = document.getElementById('dice-btn-' + chancePlayer.replace(/\s/g, '-'));
-            const confirmBtn = document.getElementById('confirm-btn-' + chancePlayer.replace(/\s/g, '-'));
+            const diceBtn = document.getElementById('dice-btn-' + safeDomId(chancePlayer));
+            const confirmBtn = document.getElementById('confirm-btn-' + safeDomId(chancePlayer));
             
             if (diceBtn) {
               diceBtn.style.display = 'none';
@@ -2768,7 +3027,7 @@
             }
             
             // 杯数表示を更新
-            const beerDisplay = document.getElementById('beer-display-' + chancePlayer.replace(/\s/g, '-'));
+            const beerDisplay = document.getElementById('beer-display-' + safeDomId(chancePlayer));
             if (beerDisplay && newCups !== undefined) {
               const beerIcons = '🍺'.repeat(newCups);
               beerDisplay.textContent = beerIcons || 'セーフ！';
@@ -2783,121 +3042,8 @@
         return;
       }
       
+      // オフラインモード：結果画面に戻るだけ（勝ち負け判定は showRoundResults 済み）
       document.getElementById('roundResults').style.display = 'block';
-      
-      const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
-      
-      const maxCardNumber = gameState.totalRounds;
-      const hasCard1 = gameState.roundData.some(d => d.card === 1);
-      const hasCardMax = gameState.roundData.some(d => d.card === maxCardNumber);
-      const reverseRule = hasCard1 && hasCardMax;
-      
-      let minCard;
-      let losers;
-      let winners;
-      
-      if (reverseRule) {
-        minCard = maxCardNumber;
-        losers = gameState.roundData.filter(p => p.card === maxCardNumber);
-        winners = gameState.roundData.filter(p => p.card !== maxCardNumber);
-      } else {
-        minCard = sorted[0].card;
-        losers = sorted.filter(p => p.card === minCard);
-        winners = sorted.filter(p => p.card !== minCard);
-      }
-      
-      const anyWinnerUsedDD = winners.some(w => w.isDoubleDown);
-      
-      const container = document.getElementById('resultsContainer');
-      container.innerHTML = '';
-      
-      sorted.forEach(data => {
-        // reverseRule時はmaxCardNumberが負け、通常はminCard
-        const isLoser = reverseRule ? (data.card === maxCardNumber) : (data.card === minCard);
-        let cups = 0;
-        let reasonText = '';
-        
-        if (isLoser) {
-          if (data.isDoubleDown) {
-            cups = 2;
-            reasonText = '自分のDOUBLE DOWN';
-          } else if (anyWinnerUsedDD) {
-            cups = 2;
-            reasonText = '相手が発動したDOUBLE DOWN';
-          } else {
-            cups = 1;
-            reasonText = '';
-          }
-          
-          if (reverseRule) {
-            reasonText = reasonText ? `天地逆転 + ${reasonText}` : '天地逆転';
-          }
-          
-          const isFinalRound = gameState.currentRound === gameState.totalRounds;
-          if (isFinalRound) {
-            cups = cups * 2;
-            reasonText = reasonText ? `${reasonText} + 最終ラウンド` : '最終ラウンド';
-          }
-        }
-        
-        const card = document.createElement('div');
-        card.className = 'result-card' + (isLoser ? ' loser' : '');
-        
-        let badgeHTML = '';
-        let beerDisplay = '';
-        
-        if (isLoser) {
-          const displayCups = Math.max(0, roundFinalCups[data.player] !== undefined ? roundFinalCups[data.player] : cups);
-          const beerIcons = '🍺'.repeat(displayCups);
-          const diceUsed = gameState.diceUsedThisRound.includes(data.player);
-          const diceButtonStyle = diceUsed 
-            ? 'opacity: 0.3; cursor: not-allowed; pointer-events: none;' 
-            : 'cursor: pointer;';
-          
-          badgeHTML = `<span class="loser-badge">LOSE 💔</span>`;
-          beerDisplay = `
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div class="card-value" style="margin: 0;">${data.card}</div>
-                <div style="font-size: 28px;">${beerIcons || 'セーフ！'}</div>
-              </div>
-              <button class="dice-btn" data-player="${data.player}" data-cups="${displayCups}" 
-                style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
-                ${diceUsed ? 'disabled' : ''}>
-                🎲
-              </button>
-            </div>`;
-          if (reasonText) {
-            beerDisplay += `<div style="font-size: 10px; color: var(--color-text-secondary); margin-top: 4px;">(${reasonText})</div>`;
-          }
-        } else {
-          badgeHTML = `<span class="loser-badge" style="background: rgba(0, 255, 159, 0.4); border-color: var(--color-success); box-shadow: 0 0 12px var(--color-success);">WIN ✨</span>`;
-          beerDisplay = `<div class="card-value" style="margin-top: 8px;">${data.card}</div>`;
-        }
-        
-        card.innerHTML = `
-          <div class="result-header">
-            <div>
-              <span class="player-name">${data.player}</span>
-              ${data.isDoubleDown && !isLoser ? '<span style="font-size: 10px; color: var(--color-neon-purple); margin-left: 6px;">⚡DOUBLE DOWN発動中</span>' : ''}
-            </div>
-            ${badgeHTML}
-          </div>
-          ${beerDisplay}
-        `;
-        container.appendChild(card);
-      });
-      
-      setTimeout(() => {
-        const diceBtns = document.querySelectorAll('.dice-btn');
-        diceBtns.forEach(btn => {
-          btn.addEventListener('click', function() {
-            const playerName = this.getAttribute('data-player');
-            const cups = parseInt(this.getAttribute('data-cups'));
-            showChanceConfirm(playerName, cups);
-          });
-        });
-      }, 100);
       
       chancePlayer = null;
       chanceOriginalCups = 0;
@@ -2987,7 +3133,7 @@
           
           // アクション状態を更新
           order.losers.forEach((playerName, index) => {
-            const statusId = 'action-status-' + playerName.replace(/\s/g, '-');
+            const statusId = 'action-status-' + safeDomId(playerName);
             const statusElement = document.getElementById(statusId);
             if (!statusElement) return;
             
@@ -3009,7 +3155,7 @@
             });
             
             // さいころボタンのグレーアウト
-            const diceBtn = document.getElementById('dice-btn-' + playerName.replace(/\s/g, '-'));
+            const diceBtn = document.getElementById('dice-btn-' + safeDomId(playerName));
             
             if (action && action.action !== 'rolling' && action.action !== 'rolling_done') {
               // ① アクション完了（confirmed / rolled）
@@ -3024,13 +3170,13 @@
                 diceBtn.style.pointerEvents = 'none';
                 diceBtn.disabled = true;
               }
-              const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
+              const confirmBtn = document.getElementById('confirm-btn-' + safeDomId(playerName));
               if (confirmBtn) confirmBtn.style.display = 'none';
               
               // roundFinalCupsを更新（さいころ結果を反映）
               if (action.action === 'rolled' || action.action === 'confirmed') {
                 roundFinalCups[playerName] = action.newCups;
-                const beerDisplay = document.getElementById('beer-display-' + playerName.replace(/\s/g, '-'));
+                const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
                 if (beerDisplay) {
                   beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'セーフ！';
                 }
@@ -3050,7 +3196,7 @@
                 statusElement.style.fontWeight = '700';
                 
                 // 確定ボタンとさいころボタンを表示
-                const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
+                const confirmBtn = document.getElementById('confirm-btn-' + safeDomId(playerName));
                 if (confirmBtn) {
                   confirmBtn.style.display = 'flex';
                   confirmBtn.style.flex = '1';
@@ -3068,7 +3214,7 @@
                 statusElement.style.color = 'var(--color-text-secondary)';
                 statusElement.style.fontWeight = '400';
                 // 自分のボタンは非表示のまま
-                const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
+                const confirmBtn = document.getElementById('confirm-btn-' + safeDomId(playerName));
                 if (confirmBtn) confirmBtn.style.display = 'none';
                 if (diceBtn) diceBtn.style.display = 'none';
               }
@@ -3076,7 +3222,7 @@
               // ④ まだ順番が来ていない（待機中）
               statusElement.textContent = '';
               statusElement.style.fontWeight = '400';
-              const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
+              const confirmBtn = document.getElementById('confirm-btn-' + safeDomId(playerName));
               if (confirmBtn) confirmBtn.style.display = 'none';
               if (diceBtn) diceBtn.style.display = 'none';
             }
@@ -3518,6 +3664,11 @@
     }
 
     function newSet() {
+      // Bug5修正: オンラインモードの場合は playAgain に委譲（Firebase リセット処理が必要）
+      if (isOnlineMode && roomRef) {
+        playAgain();
+        return;
+      }
       showAbortButton();
       gameState.players.forEach(p => {
         p.losses = 0;
@@ -3527,6 +3678,7 @@
       gameState.currentRound = 1;
       gameState.currentPlayerIndex = 0;
       gameState.roundData = [];
+      gameState.diceUsedThisRound = [];
       
       startLottery();
     }
