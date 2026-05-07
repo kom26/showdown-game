@@ -2535,10 +2535,31 @@
             action: 'confirmed',
             playerName: myPlayer.name,
             newCups: chanceOriginalCups
+          }).then(() => {
+            // 保存完了後にステータス更新
+            const statusElement = document.getElementById('action-status-' + chancePlayer.replace(/\s/g, '-'));
+            if (statusElement) {
+              statusElement.textContent = '✅';
+              statusElement.style.color = 'var(--color-success)';
+              statusElement.setAttribute('data-action-done', 'true');
+            }
+            
+            // ボタンを無効化
+            const confirmBtn = document.getElementById('confirm-btn-' + chancePlayer.replace(/\s/g, '-'));
+            const diceBtn = document.getElementById('dice-btn-' + chancePlayer.replace(/\s/g, '-'));
+            
+            if (confirmBtn) {
+              confirmBtn.style.display = 'none';
+            }
+            
+            if (diceBtn) {
+              diceBtn.style.display = 'none';
+            }
+            
+            // 次のプレイヤーへ
+            moveToNextDicePlayer();
           });
         }
-        // 次のプレイヤーへ
-        moveToNextDicePlayer();
       } else {
         document.getElementById('roundResults').style.display = 'block';
       }
@@ -2553,37 +2574,36 @@
       
       const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
       if (myPlayer && roomRef) {
-        // Firebaseに保存
+        // Firebaseに保存（完了を待つ）
         roomRef.child('diceActions').child(myPlayer.playerId).set({
           action: 'confirmed',
           playerName: myPlayer.name,
           newCups: cups
+        }).then(() => {
+          // 保存完了後にステータス更新
+          const statusElement = document.getElementById('action-status-' + playerName.replace(/\s/g, '-'));
+          if (statusElement) {
+            statusElement.textContent = '✅';
+            statusElement.style.color = 'var(--color-success)';
+            statusElement.setAttribute('data-action-done', 'true');
+          }
+          
+          // 自分の確定ボタンとさいころボタンを即座に無効化
+          const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
+          const diceBtn = document.getElementById('dice-btn-' + playerName.replace(/\s/g, '-'));
+          
+          if (confirmBtn) {
+            confirmBtn.style.display = 'none';
+          }
+          
+          if (diceBtn) {
+            diceBtn.style.display = 'none';
+          }
+          
+          // 次のプレイヤーへ
+          moveToNextDicePlayer();
         });
-        
-        // 自分の確定ボタンとさいころボタンを即座に無効化
-        const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
-        const diceBtn = document.getElementById('dice-btn-' + playerName.replace(/\s/g, '-'));
-        
-        if (confirmBtn) {
-          confirmBtn.style.display = 'none';
-        }
-        
-        if (diceBtn) {
-          // さいころボタンを完全に非表示
-          diceBtn.style.display = 'none';
-        }
-        
-        // ステータステキストを更新
-        const statusElement = document.getElementById('action-status-' + playerName.replace(/\s/g, '-'));
-        if (statusElement) {
-          statusElement.textContent = '✅';
-          statusElement.style.color = 'var(--color-success)';
-          statusElement.setAttribute('data-action-done', 'true'); // マーク
-        }
       }
-      
-      // 次のプレイヤーへ
-      moveToNextDicePlayer();
     }
     
     function startDiceRoll() {
@@ -2716,38 +2736,40 @@
           const newCups = roundFinalCups[chancePlayer];
           roomRef.child('diceActions').child(myPlayer.playerId).update({
             action: 'rolled' // OKボタンを押したので全員に表示
+          }).then(() => {
+            // 保存完了後に更新
+            const statusElement = document.getElementById('action-status-' + chancePlayer.replace(/\s/g, '-'));
+            if (statusElement) {
+              statusElement.textContent = '✅';
+              statusElement.style.color = 'var(--color-success)';
+              statusElement.setAttribute('data-action-done', 'true');
+            }
+            
+            // 自分のさいころボタンと確定ボタンを無効化
+            const diceBtn = document.getElementById('dice-btn-' + chancePlayer.replace(/\s/g, '-'));
+            const confirmBtn = document.getElementById('confirm-btn-' + chancePlayer.replace(/\s/g, '-'));
+            
+            if (diceBtn) {
+              diceBtn.style.display = 'none';
+            }
+            
+            if (confirmBtn) {
+              confirmBtn.style.display = 'none';
+            }
+            
+            // 杯数表示を更新
+            const beerDisplay = document.getElementById('beer-display-' + chancePlayer.replace(/\s/g, '-'));
+            if (beerDisplay && newCups !== undefined) {
+              const beerIcons = '🍺'.repeat(newCups);
+              beerDisplay.textContent = beerIcons || 'セーフ！';
+            }
+            
+            moveToNextDicePlayer();
           });
-          
-          // 自分のさいころボタンと確定ボタンを無効化
-          const diceBtn = document.getElementById('dice-btn-' + chancePlayer.replace(/\s/g, '-'));
-          const confirmBtn = document.getElementById('confirm-btn-' + chancePlayer.replace(/\s/g, '-'));
-          
-          if (diceBtn) {
-            // さいころボタンを完全に非表示
-            diceBtn.style.display = 'none';
-          }
-          
-          if (confirmBtn) {
-            confirmBtn.style.display = 'none';
-          }
-          
-          // 杯数表示を更新
-          const beerDisplay = document.getElementById('beer-display-' + chancePlayer.replace(/\s/g, '-'));
-          if (beerDisplay && newCups !== undefined) {
-            const beerIcons = '🍺'.repeat(newCups);
-            beerDisplay.textContent = beerIcons || 'セーフ！';
-          }
-          
-          // ステータステキストを更新
-          const statusElement = document.getElementById('action-status-' + chancePlayer.replace(/\s/g, '-'));
-          if (statusElement) {
-            statusElement.textContent = '✅';
-            statusElement.style.color = 'var(--color-success)';
-            statusElement.setAttribute('data-action-done', 'true'); // マーク
-          }
+        } else {
+          moveToNextDicePlayer();
         }
         
-        moveToNextDicePlayer();
         return;
       }
       
@@ -3281,12 +3303,20 @@
         return;
       }
       
-      // Firebaseに最終結果表示フラグを設定
-      roomRef.update({
-        showingFinalResults: true
+      // Firebaseから最新データを取得してから表示
+      roomRef.once('value').then((snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          syncGameState(data);
+        }
+        
+        // Firebaseに最終結果表示フラグを設定
+        roomRef.update({
+          showingFinalResults: true
+        });
+        
+        showFinalResults();
       });
-      
-      showFinalResults();
     }
 
     function showFinalResults() {
