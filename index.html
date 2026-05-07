@@ -2003,11 +2003,19 @@
       const container = document.getElementById('selectionStatusList');
       container.innerHTML = '';
       
+      console.log('updateSelectionStatus called');
+      console.log('gameState.roundData:', gameState.roundData);
+      console.log('gameState.players:', gameState.players);
+      
       const selectedCount = gameState.roundData.length;
       const totalCount = gameState.players.length;
       
+      console.log(`Selected: ${selectedCount}/${totalCount}`);
+      
       gameState.players.forEach(player => {
         const hasSelected = gameState.roundData.some(d => d.player === player.name);
+        
+        console.log(`${player.name}: ${hasSelected ? '✅' : '⏳'}`);
         
         const div = document.createElement('div');
         div.style.cssText = `
@@ -2022,7 +2030,7 @@
         `;
         
         div.innerHTML = `
-          <span style="font-weight: 700; font-size: 16px;">${player.name}</span>
+          <span style="font-weight: 700; font-size: 16px;">${escapeHtml(player.name)}</span>
           <span style="font-size: 24px;">${hasSelected ? '✅' : '⏳'}</span>
         `;
         
@@ -2031,21 +2039,31 @@
       
       // 全員選択完了したらボタンを表示(オーナーのみ)
       if (selectedCount === totalCount) {
+        console.log('All players selected!');
         if (isRoomHost) {
           document.getElementById('showResultBtn').style.display = 'block';
         }
         document.getElementById('waitingMessage').style.display = 'none';
       } else {
+        console.log('Still waiting...');
         document.getElementById('showResultBtn').style.display = 'none';
         document.getElementById('waitingMessage').style.display = 'block';
       }
     }
     
     function toggleDoubleDown() {
-      const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
-      const player = gameState.players[playerIndex];
+      let player;
       
-      if (player.hasUsedDoubleDown) return;
+      if (isOnlineMode) {
+        // オンラインモード: 自分のプレイヤー情報を取得
+        player = gameState.players.find(p => p.playerId === myPlayerId);
+      } else {
+        // オフラインモード: 現在のターンのプレイヤーを取得
+        const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
+        player = gameState.players[playerIndex];
+      }
+      
+      if (!player || player.hasUsedDoubleDown) return;
       
       isDoubleDownActive = !isDoubleDownActive;
       const toggleBtn = document.getElementById('toggleDoubleDown');
@@ -2890,11 +2908,8 @@
                 diceBtn.disabled = true;
               }
               
-              // 杯数確定ボタンを隠す
-              const confirmBtn = document.getElementById('confirm-btn-' + playerName.replace(/\s/g, '-'));
-              if (confirmBtn) {
-                confirmBtn.style.display = 'none';
-              }
+              // 注意: 確定ボタンはconfirmCupsFromResultやcloseChanceResultで既に消されているので、
+              // ここでは何もしない
               
               // roundFinalCupsを更新（さいころ結果を反映）
               if (action.action === 'rolled' || action.action === 'confirmed') {
