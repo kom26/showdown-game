@@ -1548,11 +1548,8 @@
             // 次のラウンドに進む
             document.getElementById('roundResults').style.display = 'none';
             
-            if (gameState.currentRound === gameState.totalRounds) {
-              showLastRoundAnnounce();
-            } else {
-              showCardSelect();
-            }
+            // オンラインモードでは抽選や最終ラウンドアナウンスをスキップ
+            showCardSelect();
           }
           
           // 結果画面が表示されている場合のみ、diceOrderとdiceActionsを監視
@@ -1610,6 +1607,11 @@
     }
     
     function leaveRoom() {
+      // 確認ダイアログを表示
+      if (!confirm('本当にルームを退出しますか?')) {
+        return;
+      }
+      
       if (roomRef) {
         if (isRoomHost) {
           roomRef.remove();
@@ -2234,9 +2236,15 @@
         const player = gameState.players.find(p => p.name === loser.player);
         let penalty = 1;
         
-        if (loser.isDoubleDown) {
+        // DOUBLE DOWNのペナルティ計算
+        if (loser.isDoubleDown && anyWinnerUsedDD) {
+          // 両方発動: 2杯 (どちらか一方だけカウント)
+          penalty = 2;
+        } else if (loser.isDoubleDown) {
+          // 自分のみ: 2杯
           penalty = 2;
         } else if (anyWinnerUsedDD) {
+          // 相手のみ: 2杯
           penalty = 2;
         }
         
@@ -2341,7 +2349,7 @@
             const isMyTurn = myPlayer && myPlayer.name === data.player && currentDicePlayer === data.player;
             
             // 確定ボタンは全員分生成し、自分のターンの時だけ表示
-            const confirmBtnDisplay = isMyTurn ? 'flex: 1;' : 'display: none;';
+            const confirmBtnDisplay = isMyTurn ? 'display: flex; flex: 1;' : 'display: none;';
             
             beerDisplay = `
               <div style="margin-top: 8px;">
@@ -2351,7 +2359,7 @@
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
                   <button id="confirm-btn-${data.player.replace(/\s/g, '-')}" onclick="confirmCupsFromResult('${data.player}', ${cups})" 
-                    style="${confirmBtnDisplay} background: rgba(0, 255, 159, 0.2); border: 2px solid var(--color-success); border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-weight: 700;">
+                    style="${confirmBtnDisplay} align-items: center; justify-content: center; background: rgba(0, 255, 159, 0.2); border: 2px solid var(--color-success); border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-weight: 700; white-space: nowrap;">
                     杯数を確定してアクションを終わる
                   </button>
                   <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
@@ -3165,7 +3173,14 @@
     function startFinalRound() {
       window.scrollTo(0, 0);
       document.getElementById('lastRoundAnnounce').style.display = 'none';
-      startLottery();
+      
+      if (isOnlineMode) {
+        // オンラインモード: 抽選なしで直接カード選択へ
+        showCardSelect();
+      } else {
+        // オフラインモード: 抽選を実施
+        startLottery();
+      }
     }
 
     function proceedToFinalResults() {
