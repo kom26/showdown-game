@@ -423,6 +423,11 @@
       background: rgba(255, 0, 102, 0.15);
       box-shadow: 0 0 25px rgba(255, 0, 102, 0.5), inset 0 0 15px rgba(255, 0, 102, 0.2);
     }
+    .result-card.action-turn { 
+      border: 2px solid var(--color-success);
+      background: rgba(0, 255, 159, 0.15);
+      box-shadow: 0 0 25px rgba(0, 255, 159, 0.5), inset 0 0 15px rgba(0, 255, 159, 0.2);
+    }
     .result-header { 
       display: flex; 
       justify-content: space-between; 
@@ -715,7 +720,7 @@
       <h2 style="margin-bottom: 1rem;">✨ ルーム作成</h2>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前（6文字まで）</label>
-        <input type="text" id="hostName" placeholder="名前を入力" maxlength="6" style="width: 100%;">
+        <input type="text" id="hostName" placeholder="名前を入力" maxlength="7" style="width: 100%;">
       </div>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ラウンド数</label>
@@ -736,7 +741,7 @@
       <h2 style="margin-bottom: 1rem;">🔗 ルームに参加</h2>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前（6文字まで）</label>
-        <input type="text" id="joinerName" placeholder="名前を入力" maxlength="6" style="width: 100%;">
+        <input type="text" id="joinerName" placeholder="名前を入力" maxlength="7" style="width: 100%;">
       </div>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ルームコード（4桁）</label>
@@ -924,8 +929,8 @@
       </div>
     </div>
     
-    <div id="chanceConfirm" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: var(--color-bg); overflow-y: auto;">
-      <div style="text-align: center; padding: 1.5rem 1rem;">
+    <div id="chanceConfirm" style="display: none;">
+      <div style="text-align: center; padding: 3rem 1rem;">
         <div style="font-size: 64px; margin-bottom: 1rem;">🎲</div>
         <h2 style="font-size: 24px; margin-bottom: 0.75rem; color: var(--color-neon-pink);" id="chancePlayerName"></h2>
         <div style="font-size: 18px; color: var(--color-text-secondary); margin-bottom: 1.5rem;">
@@ -940,16 +945,17 @@
           </div>
         </div>
         <div style="display: flex; gap: 1rem;">
-          <button onclick="confirmCups()" style="flex: 1; background: rgba(0, 255, 159, 0.2); border: 2px solid var(--color-success);">杯数を確定する</button>
+          <button onclick="cancelChance()" style="flex: 1;">戻る</button>
           <button class="primary" onclick="startDiceRoll()" style="flex: 1;">さいころを振る 🎲</button>
         </div>
       </div>
     </div>
     
     <div id="diceRolling" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: var(--color-bg); overflow-y: auto;">
-      <div style="text-align: center; padding: 1.5rem 1rem;">
-        <h2 style="font-size: 18px; margin-bottom: 1.5rem; color: var(--color-neon-pink);">タップで停止</h2>
-        <div id="diceDisplay" style="margin: 1rem 0; min-height: 150px; display: flex; align-items: center; justify-content: center;" onclick="stopDiceRoll()">
+      <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center; padding: 1.5rem 1rem; width: 100%;">
+          <h2 style="font-size: 18px; margin-bottom: 1.5rem; color: var(--color-neon-pink);">タップで停止</h2>
+          <div id="diceDisplay" style="margin: 1rem 0; min-height: 150px; display: flex; align-items: center; justify-content: center;" onclick="stopDiceRoll()">
           <div id="diceBox" style="width: 120px; height: 120px; position: relative; transform-style: preserve-3d; animation: diceRotate 0.3s infinite; cursor: pointer;">
             <div class="dice-face dice-front" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateZ(60px);">×0</div>
             <div class="dice-face dice-back" style="position: absolute; width: 120px; height: 120px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(255, 20, 147, 0.9)); border: 3px solid var(--color-neon-purple); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; color: white; text-shadow: 0 0 20px var(--color-neon-cyan); box-shadow: 0 0 30px var(--color-neon-purple); transform: translateZ(-60px) rotateY(180deg);">×2</div>
@@ -960,16 +966,19 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
     
     <div id="chanceResult" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: var(--color-bg); overflow-y: auto;">
-      <div style="text-align: center; padding: 3rem 1rem;">
-        <div id="chanceResultIcon" style="font-size: 80px; margin-bottom: 1.5rem;"></div>
-        <h2 style="font-size: 28px; margin-bottom: 1rem; color: var(--color-neon-pink);" id="chanceResultText"></h2>
-        <div style="font-size: 48px; margin-bottom: 2rem;" id="chanceResultBeer"></div>
-        <button class="primary" onclick="closeChanceResult()" style="width: 100%; font-size: 18px;">
-          OK
-        </button>
+      <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center; padding: 3rem 1rem; width: 100%;">
+          <div id="chanceResultIcon" style="font-size: 80px; margin-bottom: 1.5rem;"></div>
+          <h2 style="font-size: 28px; margin-bottom: 1rem; color: var(--color-neon-pink);" id="chanceResultText"></h2>
+          <div style="font-size: 48px; margin-bottom: 2rem;" id="chanceResultBeer"></div>
+          <button class="primary" onclick="closeChanceResult()" style="width: 100%; font-size: 18px;">
+            OK
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1617,9 +1626,11 @@
       gameState.roundData = Object.values(data.roundData || {});
       
       gameState.usedCards = {};
-      gameState.players.forEach((player, index) => {
+      gameState.players.forEach((player) => {
         if (data.players[player.playerId].usedCards) {
-          gameState.usedCards[index] = data.players[player.playerId].usedCards;
+          gameState.usedCards[player.name] = data.players[player.playerId].usedCards;
+        } else {
+          gameState.usedCards[player.name] = [];
         }
       });
     }
@@ -2186,7 +2197,15 @@
         }
         
         const card = document.createElement('div');
-        card.className = 'result-card' + (isLoser ? ' loser' : '');
+        let cardClasses = 'result-card';
+        if (isLoser) cardClasses += ' loser';
+        
+        // オンラインモード：アクション中のプレイヤーは緑枠
+        if (isOnlineMode && isLoser && currentDicePlayer === data.player) {
+          cardClasses += ' action-turn';
+        }
+        
+        card.className = cardClasses;
         
         let badgeHTML = '';
         let beerDisplay = '';
@@ -2228,18 +2247,59 @@
             : 'cursor: pointer;';
           
           badgeHTML = `<span class="loser-badge">LOSE 💔</span>`;
-          beerDisplay = `
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div class="card-value" style="margin: 0;">${data.card}</div>
-                <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
-              </div>
-              <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
-                style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
-                ${diceUsed ? 'disabled' : ''}>
-                🎲
-              </button>
-            </div>`;
+          
+          if (isOnlineMode) {
+            // オンラインモード：さいころボタンと杯数確定ボタンを表示
+            const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+            const isMyTurn = myPlayer && myPlayer.name === data.player && currentDicePlayer === data.player;
+            
+            if (isMyTurn) {
+              beerDisplay = `
+                <div style="margin-top: 8px;">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 8px;">
+                    <div class="card-value" style="margin: 0;">${data.card}</div>
+                    <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
+                  </div>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="confirmCupsFromResult('${data.player}', ${cups})" 
+                      style="flex: 1; background: rgba(0, 255, 159, 0.2); border: 2px solid var(--color-success); border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-weight: 700;">
+                      杯数を確定してアクションを終わる
+                    </button>
+                    <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
+                      style="flex: 0 0 auto; background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 12px; font-size: 18px; cursor: pointer;">
+                      🎲
+                    </button>
+                  </div>
+                </div>`;
+            } else {
+              beerDisplay = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="card-value" style="margin: 0;">${data.card}</div>
+                    <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
+                  </div>
+                  <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
+                    style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
+                    ${diceUsed ? 'disabled' : ''}>
+                    🎲
+                  </button>
+                </div>`;
+            }
+          } else {
+            // オフラインモード：さいころボタンのみ
+            beerDisplay = `
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <div class="card-value" style="margin: 0;">${data.card}</div>
+                  <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
+                </div>
+                <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
+                  style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
+                  ${diceUsed ? 'disabled' : ''}>
+                  🎲
+                </button>
+              </div>`;
+          }
           if (reasonText) {
             beerDisplay += `<div style="font-size: 10px; color: var(--color-text-secondary); margin-top: 4px;">(${reasonText})</div>`;
           }
@@ -2251,7 +2311,7 @@
         card.innerHTML = `
           <div class="result-header">
             <div style="display: flex; align-items: center;">
-              <span class="player-name">${data.player.substring(0, 6)}</span>
+              <span class="player-name">${data.player.substring(0, 7)}</span>
               ${actionStatus}
               ${data.isDoubleDown && !isLoser ? '<span style="font-size: 10px; color: var(--color-neon-purple); margin-left: 6px;">⚡DOUBLE DOWN発動中</span>' : ''}
             </div>
@@ -2326,28 +2386,13 @@
       
       document.getElementById('chancePlayerName').textContent = `${playerName}さん`;
       document.getElementById('roundResults').style.display = 'none';
-      document.getElementById('onlineCardWaiting').style.display = 'none';
       document.getElementById('chanceConfirm').style.display = 'block';
     }
     
     function cancelChance() {
       window.scrollTo(0, 0);
       document.getElementById('chanceConfirm').style.display = 'none';
-      
-      if (isOnlineMode) {
-        // オンラインモード：さいころを振らない選択をFirebaseに記録
-        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
-        if (myPlayer && roomRef) {
-          roomRef.child('diceActions').child(myPlayer.playerId).set({
-            action: 'skip',
-            playerName: myPlayer.name
-          });
-        }
-        // 次のプレイヤーへ
-        moveToNextDicePlayer();
-      } else {
-        document.getElementById('roundResults').style.display = 'block';
-      }
+      document.getElementById('roundResults').style.display = 'block';
       
       chancePlayer = null;
       chanceOriginalCups = 0;
@@ -2375,6 +2420,22 @@
       
       chancePlayer = null;
       chanceOriginalCups = 0;
+    }
+    
+    function confirmCupsFromResult(playerName, cups) {
+      // 結果画面から直接杯数を確定（オンライン専用）
+      if (!isOnlineMode) return;
+      
+      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+      if (myPlayer && roomRef) {
+        roomRef.child('diceActions').child(myPlayer.playerId).set({
+          action: 'confirmed',
+          playerName: myPlayer.name,
+          newCups: cups
+        });
+      }
+      // 次のプレイヤーへ
+      moveToNextDicePlayer();
     }
     
     function startDiceRoll() {
@@ -2681,6 +2742,21 @@
             
             const action = actions[playerObj.playerId];
             
+            // カード枠の色を変更
+            const resultCards = document.querySelectorAll('.result-card');
+            resultCards.forEach(cardElement => {
+              const cardPlayerName = cardElement.querySelector('.player-name')?.textContent;
+              if (cardPlayerName && cardPlayerName.trim() === playerName.substring(0, 7).trim()) {
+                // 既存のaction-turnクラスを削除
+                cardElement.classList.remove('action-turn');
+                
+                // アクション中のプレイヤーにaction-turnクラスを追加
+                if (index === order.currentIndex && (!action || action.action === 'rolling')) {
+                  cardElement.classList.add('action-turn');
+                }
+              }
+            });
+            
             // さいころボタンのグレーアウト
             const diceBtn = document.getElementById('dice-btn-' + playerName.replace(/\s/g, '-'));
             
@@ -2714,15 +2790,9 @@
               
               // rolling状態をチェック
               if (action && action.action === 'rolling') {
-                if (myPlayer && myPlayer.name === playerName) {
-                  // 自分がさいころを振っている
-                  statusElement.textContent = '🎲 神のさいころ抽選中...';
-                  statusElement.style.color = 'var(--color-warning)';
-                } else {
-                  // 他の人がさいころを振っている
-                  statusElement.textContent = '🎲 神のさいころ抽選中...';
-                  statusElement.style.color = 'var(--color-warning)';
-                }
+                statusElement.textContent = '神のさいころを振っています...';
+                statusElement.style.color = 'var(--color-neon-cyan)';
+                statusElement.style.fontWeight = '700';
               } else if (myPlayer && myPlayer.name === playerName) {
                 // 自分のターン
                 statusElement.textContent = '🎲 アクションしてください';
@@ -2753,9 +2823,22 @@
     }
     
     function showNextRoundButton() {
+      // オンラインモード：オーナーのみボタンを表示
+      if (isOnlineMode && !isRoomHost) {
+        const actionsContainer = document.getElementById('roundResultActions');
+        actionsContainer.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--color-text-secondary); font-size: 14px;">ルーム作成者が次のラウンドに進めます...</div>';
+        return;
+      }
+      
       const actionsContainer = document.getElementById('roundResultActions');
-      const nextRoundNumber = gameState.currentRound + 1;
-      actionsContainer.innerHTML = `<button class="primary" onclick="proceedToNextRound()" style="width: 100%;">第${nextRoundNumber}回戦へ</button>`;
+      const isFinalRound = gameState.currentRound >= gameState.totalRounds;
+      
+      if (isFinalRound) {
+        actionsContainer.innerHTML = '<button class="primary" onclick="showFinalResults()" style="width: 100%;">最終結果を見る</button>';
+      } else {
+        const nextRoundNumber = gameState.currentRound + 1;
+        actionsContainer.innerHTML = `<button class="primary" onclick="proceedToNextRound()" style="width: 100%;">第${nextRoundNumber}回戦へ</button>`;
+      }
     }
     
     function moveToNextDicePlayer() {
