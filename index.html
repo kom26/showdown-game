@@ -1564,7 +1564,8 @@
           }
           
           // 結果表示フラグがfalseで、結果画面が表示されている場合はカード選択へ
-          if (!data.showingResults && document.getElementById('roundResults').style.display === 'block') {
+          // ただし最終結果表示フラグがtrueの場合はスキップ（showFinalResultsが処理する）
+          if (!data.showingResults && document.getElementById('roundResults').style.display === 'block' && !data.showingFinalResults) {
             // 次のラウンドに進む
             document.getElementById('roundResults').style.display = 'none';
             
@@ -1827,26 +1828,6 @@
       document.getElementById('finalResults').style.display = 'none';
       
       updateCardSelect();
-    }
-
-    function updateCardSelect() {
-      const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
-      const player = gameState.players[playerIndex];
-      document.getElementById('currentPlayer').textContent = player.name;
-      document.getElementById('roundInfo').textContent = `第${gameState.currentRound}回戦`;
-      
-      const grid = document.getElementById('cardGrid');
-      grid.innerHTML = '';
-      
-      for (let i = 1; i <= 10; i++) {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.textContent = i;
-        card.onclick = () => selectCard(i, card);
-        grid.appendChild(card);
-      }
-      
-      document.getElementById('confirmBtn').disabled = true;
     }
 
     let selectedCard = null;
@@ -2272,6 +2253,7 @@
       if (!isOnlineMode) {
         losers.forEach(loser => {
           const player = gameState.players.find(p => p.name === loser.player);
+          if (!player) return;
           let penalty = 1;
           
           // DOUBLE DOWNのペナルティ計算
@@ -2301,7 +2283,8 @@
       roundFinalCups = {};
       
       sorted.forEach(data => {
-        const isLoser = data.card === minCard;
+        // reverseRule時はmaxCardNumberが負け
+        const isLoser = reverseRule ? (data.card === maxCardNumber) : (data.card === minCard);
         let cups = 0;
         let reasonText = '';
         
@@ -2317,7 +2300,7 @@
             reasonText = '';
           }
           
-          if (reverseRule && data.card === maxCardNumber) {
+          if (reverseRule) {
             reasonText = reasonText ? `天地逆転 + ${reasonText}` : '天地逆転';
           }
           
@@ -2367,7 +2350,7 @@
         }
         
         if (isLoser) {
-          const beerIcons = '🍺'.repeat(cups);
+          const beerIcons = '🍺'.repeat(Math.max(0, cups));
           
           // オンラインモード：Firebaseからさいころ使用状態を取得
           let diceUsed = gameState.diceUsedThisRound.includes(data.player);
@@ -2396,7 +2379,7 @@
               <div style="margin-top: 8px;">
                 <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 8px;">
                   <div class="card-value" style="margin: 0;">${data.card}</div>
-                  <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
+                  <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons || 'セーフ！'}</div>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
                   <button id="confirm-btn-${data.player.replace(/\s/g, '-')}" onclick="confirmCupsFromResult('${data.player}', ${cups})" 
@@ -2416,7 +2399,7 @@
               <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                   <div class="card-value" style="margin: 0;">${data.card}</div>
-                  <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons}</div>
+                  <div id="beer-display-${data.player.replace(/\s/g, '-')}" style="font-size: 28px;">${beerIcons || 'セーフ！'}</div>
                 </div>
                 <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
                   style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
@@ -2490,11 +2473,10 @@
         }
       }, 100);
       
-      // オンラインモード：プレイヤーのlossesをFirebaseに同期
+      // オンラインモード：DoubleDown使用状態をFirebaseに同期（lossesはさいころアクション後に個別更新）
       if (isOnlineMode && roomRef) {
         const updates = {};
         gameState.players.forEach(player => {
-          updates[`players/${player.playerId}/losses`] = player.losses;
           if (player.hasUsedDoubleDown) {
             updates[`players/${player.playerId}/hasUsedDoubleDown`] = true;
           }
@@ -2574,12 +2556,18 @@
       
       const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
       if (myPlayer && roomRef) {
-        // Firebaseに保存（完了を待つ）
+        // lossesを加算してFirebaseに保存
+        const newLosses = Math.max(0, (myPlayer.losses || 0) + cups);
         roomRef.child('diceActions').child(myPlayer.playerId).set({
           action: 'confirmed',
           playerName: myPlayer.name,
           newCups: cups
         }).then(() => {
+          // lossesをFirebaseに反映
+          return roomRef.child('players').child(myPlayer.playerId).child('losses').set(newLosses);
+        }).then(() => {
+          myPlayer.losses = newLosses;
+          
           // 保存完了後にステータス更新
           const statusElement = document.getElementById('action-status-' + playerName.replace(/\s/g, '-'));
           if (statusElement) {
@@ -2683,9 +2671,15 @@
       window.scrollTo(0, 0);
       const player = gameState.players.find(p => p.name === chancePlayer);
       const newCups = chanceOriginalCups * multiplier;
-      const diff = newCups - chanceOriginalCups;
       
-      player.losses += diff;
+      if (isOnlineMode) {
+        // オンラインモードでは showRoundResults で losses を加算していないので newCups を加算
+        player.losses = Math.max(0, (player.losses || 0) + newCups);
+      } else {
+        // オフラインモードでは showRoundResults で chanceOriginalCups 分加算済みなので差分のみ
+        const diff = newCups - chanceOriginalCups;
+        player.losses = Math.max(0, player.losses + diff);
+      }
       
       roundFinalCups[chancePlayer] = newCups;
       
@@ -2802,7 +2796,8 @@
       container.innerHTML = '';
       
       sorted.forEach(data => {
-        const isLoser = data.card === minCard;
+        // reverseRule時はmaxCardNumberが負け、通常はminCard
+        const isLoser = reverseRule ? (data.card === maxCardNumber) : (data.card === minCard);
         let cups = 0;
         let reasonText = '';
         
@@ -2818,7 +2813,7 @@
             reasonText = '';
           }
           
-          if (reverseRule && data.card === maxCardNumber) {
+          if (reverseRule) {
             reasonText = reasonText ? `天地逆転 + ${reasonText}` : '天地逆転';
           }
           
@@ -2836,7 +2831,7 @@
         let beerDisplay = '';
         
         if (isLoser) {
-          const displayCups = roundFinalCups[data.player] !== undefined ? roundFinalCups[data.player] : cups;
+          const displayCups = Math.max(0, roundFinalCups[data.player] !== undefined ? roundFinalCups[data.player] : cups);
           const beerIcons = '🍺'.repeat(displayCups);
           const diceUsed = gameState.diceUsedThisRound.includes(data.player);
           const diceButtonStyle = diceUsed 
@@ -2848,7 +2843,7 @@
             <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
               <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <div class="card-value" style="margin: 0;">${data.card}</div>
-                <div style="font-size: 28px;">${beerIcons}</div>
+                <div style="font-size: 28px;">${beerIcons || 'セーフ！'}</div>
               </div>
               <button class="dice-btn" data-player="${data.player}" data-cups="${displayCups}" 
                 style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
@@ -3128,15 +3123,21 @@
         const container = document.getElementById('diceActionList');
         container.innerHTML = '';
         
-        // 負けたプレイヤーのリストを作成
+        // 負けたプレイヤーのリストを作成（天地逆転を考慮）
         const losers = [];
         const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
-        const minCard = sorted[0].card;
-        gameState.roundData.forEach(data => {
-          if (data.card === minCard) {
-            losers.push(data.player);
-          }
-        });
+        const maxCardNumber = gameState.totalRounds;
+        const hasCard1 = gameState.roundData.some(d => d.card === 1);
+        const hasCardMax = gameState.roundData.some(d => d.card === maxCardNumber);
+        const reverseRule = hasCard1 && hasCardMax;
+        const losingCard = reverseRule ? maxCardNumber : (sorted.length > 0 ? sorted[0].card : null);
+        if (losingCard !== null) {
+          gameState.roundData.forEach(data => {
+            if (data.card === losingCard) {
+              losers.push(data.player);
+            }
+          });
+        }
         
         let actionCount = 0;
         const totalActions = losers.length;
@@ -3333,7 +3334,7 @@
       container.innerHTML = '';
       
       sorted.forEach(player => {
-        const totalCups = Math.floor(player.losses);
+        const totalCups = Math.max(0, Math.floor(player.losses));
         const beerIcons = '🍺'.repeat(totalCups);
         const card = document.createElement('div');
         card.className = 'final-card';
