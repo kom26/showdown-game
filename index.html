@@ -1093,6 +1093,7 @@
     let currentRoomCode = null;
     let isRoomHost = false;
     let isPlayingAgain = false; // playAgain処理中はリスナーを抑制
+    let diceActionsListener = null; // diceActionsのリアルタイムリスナー
     let myPlayerId = null;
     let roomRef = null;
     let currentDicePlayer = null; // 現在さいころを選択中のプレイヤー
@@ -1598,10 +1599,6 @@
             showCardSelect();
           }
           
-          // 結果画面が表示されている場合のみ、diceOrderとdiceActionsを監視
-          if (document.getElementById('roundResults').style.display === 'block') {
-            updateRoundResultDiceStatus();
-          }
           
           // 最終ラウンドアナウンス表示フラグがtrueの場合
           if (data.showingLastRoundAnnounce && document.getElementById('lastRoundAnnounce').style.display !== 'block') {
@@ -2454,36 +2451,13 @@
         container.appendChild(card);
       });
       
-      // オンラインモードかつ負けがいる場合はアクション完了後にshowNextRoundButtonを呼ぶ
-      // 負けがいない or オフラインなら即表示
       if (!isOnlineMode) {
+        // オフライン：即ボタン表示
         showNextRoundButton();
       } else {
-        // Firebase上のdiceOrderを確認してアクション完了済みなら表示、未完了なら空にして待機
-        roomRef.child('diceOrder').once('value').then(snap => {
-          const order = snap.val();
-          if (!order || !order.losers || order.losers.length === 0) {
-            // 負けなし：即ボタン表示
-            showNextRoundButton();
-            return;
-          }
-          // 負けあり：diceActionsを確認して全員完了チェック
-          roomRef.child('diceActions').once('value').then(actSnap => {
-            const actions = actSnap.val() || {};
-            const allCompleted = order.losers.every(playerName => {
-              const playerObj = gameState.players.find(p => p.name === playerName);
-              if (!playerObj) return false;
-              const action = actions[playerObj.playerId];
-              return action && action.action !== 'rolling' && action.action !== 'rolling_done';
-            });
-            if (allCompleted) {
-              showNextRoundButton();
-            } else {
-              // 未完了：ボタンなし（updateRoundResultDiceStatusが完了後に呼ぶ）
-              document.getElementById('roundResultActions').innerHTML = '';
-            }
-          });
-        });
+        // オンライン：ボタンは空にしてupdateRoundResultDiceStatusのリスナーに任せる
+        document.getElementById('roundResultActions').innerHTML = '';
+        updateRoundResultDiceStatus();
       }
       
       setTimeout(() => {
@@ -2965,13 +2939,27 @@
     function updateRoundResultDiceStatus() {
       if (!isOnlineMode || !roomRef) return;
       
+      // 既存リスナーを解除
+      if (diceActionsListener) {
+        roomRef.child('diceActions').off('value', diceActionsListener);
+        diceActionsListener = null;
+      }
+      
+      // diceOrderを1回取得してからdiceActionsをリアルタイム監視
       roomRef.child('diceOrder').once('value').then((orderSnapshot) => {
         const order = orderSnapshot.val();
         if (!order) return;
         
         currentDicePlayer = order.losers[order.currentIndex];
         
-        roomRef.child('diceActions').once('value').then((actionsSnapshot) => {
+        diceActionsListener = roomRef.child('diceActions').on('value', (actionsSnapshot) => {
+          // 結果画面が非表示になったらリスナー解除
+          if (document.getElementById('roundResults').style.display !== 'block') {
+            roomRef.child('diceActions').off('value', diceActionsListener);
+            diceActionsListener = null;
+            return;
+          }
+          
           const actions = actionsSnapshot.val() || {};
           
           // アクション状態を更新
@@ -2990,10 +2978,7 @@
             resultCards.forEach(cardElement => {
               const cardPlayerName = cardElement.querySelector('.player-name')?.textContent;
               if (cardPlayerName && cardPlayerName.trim() === playerName.substring(0, 7).trim()) {
-                // 既存のaction-turnクラスを削除
                 cardElement.classList.remove('action-turn');
-                
-                // アクション中のプレイヤーにaction-turnクラスを追加
                 if (index === order.currentIndex && (!action || action.action === 'rolling' || action.action === 'rolling_done')) {
                   cardElement.classList.add('action-turn');
                 }
@@ -3084,6 +3069,9 @@
           });
           
           if (allCompleted) {
+            // リスナー解除してからボタン表示
+            roomRef.child('diceActions').off('value', diceActionsListener);
+            diceActionsListener = null;
             showNextRoundButton();
           }
         });
@@ -3133,11 +3121,9 @@
         const nextIndex = order.currentIndex + 1;
         
         if (nextIndex >= order.losers.length) {
-          // 全員完了：結果画面に戻って次へボタン表示
+          // 全員完了：結果画面に戻る（ボタンはdiceActionsリスナーが検知して表示）
           document.getElementById('onlineCardWaiting').style.display = 'none';
           document.getElementById('roundResults').style.display = 'block';
-          updateRoundResultDiceStatus();
-          showNextRoundButton();
         } else {
           // 次のプレイヤーへ
           roomRef.child('diceOrder').child('currentIndex').set(nextIndex).then(() => {
