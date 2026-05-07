@@ -2350,6 +2350,8 @@
             
             // 確定ボタンは全員分生成し、自分のターンの時だけ表示
             const confirmBtnDisplay = isMyTurn ? 'display: flex; flex: 1;' : 'display: none;';
+            // さいころボタンも自分のターンの時だけ表示
+            const diceBtnDisplay = isMyTurn ? 'display: block;' : 'display: none;';
             
             beerDisplay = `
               <div style="margin-top: 8px;">
@@ -2363,7 +2365,7 @@
                     杯数を確定してアクションを終わる
                   </button>
                   <button class="dice-btn" id="dice-btn-${data.player.replace(/\s/g, '-')}" data-player="${data.player}" data-cups="${cups}" 
-                    style="flex: 0 0 auto; background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: ${isMyTurn ? '18px' : '22px'}; ${diceButtonStyle}"
+                    style="${diceBtnDisplay} flex: 0 0 auto; background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 18px; ${diceButtonStyle}"
                     ${diceUsed ? 'disabled' : ''}>
                     🎲
                   </button>
@@ -2533,6 +2535,13 @@
           diceBtn.style.pointerEvents = 'none';
           diceBtn.disabled = true;
         }
+        
+        // ステータステキストを更新
+        const statusElement = document.getElementById('action-status-' + playerName.replace(/\s/g, '-'));
+        if (statusElement) {
+          statusElement.textContent = '✅';
+          statusElement.style.color = 'var(--color-success)';
+        }
       }
       
       // 次のプレイヤーへ
@@ -2691,6 +2700,13 @@
           if (beerDisplay && newCups !== undefined) {
             const beerIcons = '🍺'.repeat(newCups);
             beerDisplay.textContent = beerIcons || 'セーフ！';
+          }
+          
+          // ステータステキストを更新
+          const statusElement = document.getElementById('action-status-' + chancePlayer.replace(/\s/g, '-'));
+          if (statusElement) {
+            statusElement.textContent = '✅';
+            statusElement.style.color = 'var(--color-success)';
           }
         }
         
