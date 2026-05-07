@@ -2454,8 +2454,37 @@
         container.appendChild(card);
       });
       
-      // ボタン表示はshowNextRoundButtonに統一（オーナー判定はそちらで行う）
-      showNextRoundButton();
+      // オンラインモードかつ負けがいる場合はアクション完了後にshowNextRoundButtonを呼ぶ
+      // 負けがいない or オフラインなら即表示
+      if (!isOnlineMode) {
+        showNextRoundButton();
+      } else {
+        // Firebase上のdiceOrderを確認してアクション完了済みなら表示、未完了なら空にして待機
+        roomRef.child('diceOrder').once('value').then(snap => {
+          const order = snap.val();
+          if (!order || !order.losers || order.losers.length === 0) {
+            // 負けなし：即ボタン表示
+            showNextRoundButton();
+            return;
+          }
+          // 負けあり：diceActionsを確認して全員完了チェック
+          roomRef.child('diceActions').once('value').then(actSnap => {
+            const actions = actSnap.val() || {};
+            const allCompleted = order.losers.every(playerName => {
+              const playerObj = gameState.players.find(p => p.name === playerName);
+              if (!playerObj) return false;
+              const action = actions[playerObj.playerId];
+              return action && action.action !== 'rolling' && action.action !== 'rolling_done';
+            });
+            if (allCompleted) {
+              showNextRoundButton();
+            } else {
+              // 未完了：ボタンなし（updateRoundResultDiceStatusが完了後に呼ぶ）
+              document.getElementById('roundResultActions').innerHTML = '';
+            }
+          });
+        });
+      }
       
       setTimeout(() => {
         const diceBtns = document.querySelectorAll('.dice-btn');
@@ -3108,6 +3137,7 @@
           document.getElementById('onlineCardWaiting').style.display = 'none';
           document.getElementById('roundResults').style.display = 'block';
           updateRoundResultDiceStatus();
+          showNextRoundButton();
         } else {
           // 次のプレイヤーへ
           roomRef.child('diceOrder').child('currentIndex').set(nextIndex).then(() => {
