@@ -697,10 +697,11 @@
         📱 オフライン対戦<br>
         <span style="font-size: 13px; opacity: 0.8;">同じ端末で交代プレイ</span>
       </button>
-      <button class="primary" onclick="selectOnlineMode()" style="width: 100%; background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-purple) 100%); font-size: 18px;">
+      <button class="primary" onclick="selectOnlineMode()" style="width: 100%; margin-bottom: 1rem; background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-purple) 100%); font-size: 18px;">
         🌐 オンライン対戦<br>
         <span style="font-size: 13px; opacity: 0.8;">ルームコードで友達と対戦</span>
       </button>
+      <button onclick="showRulesFromTop()" style="width: 100%; background: rgba(168, 85, 247, 0.2); border: 2px solid var(--color-neon-purple);">📖 ルールを見る</button>
     </div>
     
     <div id="onlineMenu" style="display: none;">
@@ -796,7 +797,8 @@
       <div id="playerInputs" class="player-inputs"></div>
       
       <button class="primary" onclick="startGame()" style="width: 100%; margin-bottom: 0.75rem;">ゲーム開始</button>
-      <button onclick="showRules()" style="width: 100%; background: rgba(168, 85, 247, 0.2); border: 2px solid var(--color-neon-purple);">📖 ルールを見る</button>
+      <button onclick="showRules()" style="width: 100%; margin-bottom: 0.75rem; background: rgba(168, 85, 247, 0.2); border: 2px solid var(--color-neon-purple);">📖 ルールを見る</button>
+      <button onclick="backToModeSelect()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← TOPに戻る</button>
     </div>
     
     <div id="rulesScreen" style="display: none;">
@@ -1340,9 +1342,11 @@
     
     function backToModeSelect() {
       window.scrollTo(0, 0);
+      document.getElementById('setup').style.display = 'none';
       document.getElementById('onlineMenu').style.display = 'none';
       document.getElementById('createRoom').style.display = 'none';
       document.getElementById('joinRoom').style.display = 'none';
+      document.getElementById('rulesScreen').style.display = 'none';
       document.getElementById('modeSelect').style.display = 'block';
     }
     
@@ -1735,8 +1739,18 @@
       });
     }
     
+    let rulesCalledFrom = 'setup'; // 'setup' or 'top'
+
+    function showRulesFromTop() {
+      window.scrollTo(0, 0);
+      rulesCalledFrom = 'top';
+      document.getElementById('modeSelect').style.display = 'none';
+      document.getElementById('rulesScreen').style.display = 'block';
+    }
+
     function showRules() {
       window.scrollTo(0, 0);
+      rulesCalledFrom = 'setup';
       document.getElementById('setup').style.display = 'none';
       document.getElementById('rulesScreen').style.display = 'block';
     }
@@ -1744,7 +1758,11 @@
     function closeRules() {
       window.scrollTo(0, 0);
       document.getElementById('rulesScreen').style.display = 'none';
-      document.getElementById('setup').style.display = 'block';
+      if (rulesCalledFrom === 'top') {
+        document.getElementById('modeSelect').style.display = 'block';
+      } else {
+        document.getElementById('setup').style.display = 'block';
+      }
     }
 
     function startGame() {
