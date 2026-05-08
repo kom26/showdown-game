@@ -1716,7 +1716,7 @@
         div.className = 'player-input';
         div.innerHTML = `
           <span>Player ${i + 1}</span>
-          <input type="text" id="player${i}" placeholder="Player ${i + 1}" value="${existingValues[i] || ''}">
+          <input type="text" id="player${i}" placeholder="Player ${i + 1}" maxlength="8" value="${existingValues[i] || ''}">
         `;
         container.appendChild(div);
       }
@@ -2872,7 +2872,7 @@
           }
           
           const diceButtonStyle = diceUsed 
-            ? 'opacity: 0.3; cursor: not-allowed; pointer-events: none;' 
+            ? 'display: none;' 
             : 'cursor: pointer;';
           
           badgeHTML = `<span class="loser-badge">LOSE 💔</span>`;
@@ -2931,7 +2931,7 @@
         card.innerHTML = `
           <div class="result-header">
             <div style="display: flex; align-items: center;">
-              <span class="player-name">${escapeHtml(data.player.substring(0, 7))}</span>
+              <span class="player-name">${escapeHtml(data.player.substring(0, 8))}</span>
               ${actionStatus}
               ${data.isDoubleDown && !isLoser ? '<span style="font-size: 10px; color: var(--color-neon-purple); margin-left: 6px;">⚡DOUBLE DOWN発動中</span>' : ''}
             </div>
@@ -3255,13 +3255,10 @@
         gameState.diceUsedThisRound.push(chancePlayer);
       }
       
-      // さいころボタンを無効化
+      // さいころボタンを非表示
       const diceBtn = document.getElementById('dice-btn-' + safeDomId(chancePlayer));
       if (diceBtn) {
-        diceBtn.disabled = true;
-        diceBtn.style.opacity = '0.3';
-        diceBtn.style.cursor = 'not-allowed';
-        diceBtn.style.pointerEvents = 'none';
+        diceBtn.style.display = 'none';
       }
       
       // 杯数表示を倍率適用後の値に更新
@@ -3373,7 +3370,7 @@
             const resultCards = document.querySelectorAll('.result-card');
             resultCards.forEach(cardElement => {
               const cardPlayerName = cardElement.querySelector('.player-name')?.textContent;
-              if (cardPlayerName && cardPlayerName.trim() === playerName.substring(0, 7).trim()) {
+              if (cardPlayerName && cardPlayerName.trim() === playerName.substring(0, 8).trim()) {
                 cardElement.classList.remove('action-turn');
                 if (index === order.currentIndex && (!action || action.action === 'rolling' || action.action === 'rolling_done')) {
                   cardElement.classList.add('action-turn');
@@ -3390,12 +3387,9 @@
               statusElement.style.color = 'var(--color-success)';
               statusElement.style.fontWeight = '700';
               
-              // さいころ・確定ボタンをグレーアウト
+              // さいころボタンを非表示
               if (diceBtn) {
-                diceBtn.style.opacity = '0.3';
-                diceBtn.style.cursor = 'not-allowed';
-                diceBtn.style.pointerEvents = 'none';
-                diceBtn.disabled = true;
+                diceBtn.style.display = 'none';
               }
               const confirmBtn = document.getElementById('confirm-btn-' + safeDomId(playerName));
               if (confirmBtn) confirmBtn.style.display = 'none';
