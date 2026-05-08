@@ -2974,8 +2974,8 @@
           : targetData.card === minCard);
 
         if (targetIsLoser) {
-          // 庇い成功：ターゲット免除、ガーディアンが引き受け
-          guardImmuneSet.add(target);
+          // 庇い成功：ターゲットの杯数を0に、ガーディアンが引き受け
+          // ※ guardImmuneSet には追加しない（いちゃうざ等が後から乗るため）
           const targetCups = guardCupsMap[target] || 0;
           guardCupsMap[guardian] = (guardCupsMap[guardian] || 0) + targetCups;
           guardCupsMap[target] = 0;
@@ -3072,8 +3072,9 @@
 
         if (isLoneWin) {
           const loneWinner = winners[0].player;
-          loneWinnerMessages[loneWinner] = '🕵️‍♂️ 一人勝ちボーナスGET!';
-          newLoneWinnerBonus[loneWinner] = true; // 次ラウンド用フラグ（実際の杯数はさいころ後に確定するためtrue）
+          const isFinalRoundForBonus = gameState.currentRound === gameState.totalRounds;
+          loneWinnerMessages[loneWinner] = isFinalRoundForBonus ? '🕵️‍♂️ 一人勝ち！' : '🕵️‍♂️ 一人勝ちボーナスGET!';
+          newLoneWinnerBonus[loneWinner] = true; // 最終ラウンドでもフラグは立てる（どうせゲーム終了で消える）
         }
       }
 
@@ -3150,6 +3151,7 @@
         const reasonLines = [];
         
         if (isLoser) {
+          if (reverseRule) reasonLines.push('🔄 天地逆転');
           reasonLines.push('負け +1杯');
           if (allSameCard) {
             // 全員同じカード：負け+1 を打ち消し。DD・最終は乗らない
@@ -3158,7 +3160,6 @@
             if (data.isDoubleDown && anyWinnerUsedDD) reasonLines.push('⚡ 自分のDOUBLE DOWN ×2');
             else if (data.isDoubleDown) reasonLines.push('⚡ 自分のDOUBLE DOWN ×2');
             else if (anyWinnerUsedDD) reasonLines.push('⚡ 相手が発動したDOUBLE DOWN ×2');
-            if (reverseRule) reasonLines.push('🔄 天地逆転');
             const isFinalRound = gameState.currentRound === gameState.totalRounds;
             if (isFinalRound) reasonLines.push('🔥 最終ラウンド ×2');
           }
