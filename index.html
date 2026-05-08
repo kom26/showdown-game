@@ -2399,7 +2399,12 @@
         
         document.getElementById('confirmBtn').style.display = 'block';
         
-        isDoubleDownActive = false;
+        // 初回表示のみリセット（再描画時はDD・GUARD選択状態を保持）
+        const isFirstDraw = !selectedCard;
+        if (isFirstDraw) {
+          isDoubleDownActive = false;
+          guardTargetSelected = null;
+        }
         
         const isFinalRound = gameState.currentRound === gameState.totalRounds;
         const mustUseDD = isFinalRound && !myPlayer.hasUsedDoubleDown;
@@ -3091,7 +3096,7 @@
               <div style="margin-top: 8px;">
                 <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 8px;">
                   <div class="card-value" style="margin: 0;">${data.card}</div>
-                  <div id="beer-display-${safeDomId(data.player)}" style="font-size: 28px;">${beerIcons || 'SAFE🙌'}</div>
+                  <div id="beer-display-${safeDomId(data.player)}" style="font-size: 28px;">${beerIcons || 'SAFE👍'}</div>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
                   <button id="confirm-btn-${safeDomId(data.player)}" onclick="confirmCupsFromResult('${data.player}', ${cups})" 
@@ -3111,7 +3116,7 @@
               <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                   <div class="card-value" style="margin: 0;">${data.card}</div>
-                  <div id="beer-display-${safeDomId(data.player)}" style="font-size: 28px;">${beerIcons || 'SAFE🙌'}</div>
+                  <div id="beer-display-${safeDomId(data.player)}" style="font-size: 28px;">${beerIcons || 'SAFE👍'}</div>
                 </div>
                 <button class="dice-btn" id="dice-btn-${safeDomId(data.player)}" data-player="${data.player}" data-cups="${cups}" 
                   style="background: rgba(168, 85, 247, 0.3); border: 1px solid var(--color-neon-purple); border-radius: 8px; padding: 6px 10px; font-size: 22px; ${diceButtonStyle}"
@@ -3494,7 +3499,7 @@
         document.getElementById('chanceResultText').textContent = '3倍！！！';
       }
       
-      document.getElementById('chanceResultBeer').textContent = beerIcons || 'SAFE🙌';
+      document.getElementById('chanceResultBeer').textContent = beerIcons || 'SAFE👍';
     }
     
     function closeChanceResult() {
@@ -3532,7 +3537,7 @@
       const finalCups = roundFinalCups[chancePlayer] !== undefined ? roundFinalCups[chancePlayer] : 0;
       const beerDisplay = document.getElementById('beer-display-' + safeDomId(chancePlayer));
       if (beerDisplay) {
-        beerDisplay.textContent = '🍺'.repeat(Math.max(0, finalCups)) || 'SAFE🙌';
+        beerDisplay.textContent = '🍺'.repeat(Math.max(0, finalCups)) || 'SAFE👍';
       }
       
       chancePlayer = null;
@@ -3682,7 +3687,7 @@
               roundFinalCups[playerName] = action.newCups;
               const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
               if (beerDisplay) {
-                beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'SAFE🙌';
+                beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'SAFE👍';
               }
             } else if (action && action.action === 'rolled') {
               // ② さいころ結果出たがOK待ち中
@@ -3693,7 +3698,7 @@
               roundFinalCups[playerName] = action.newCups;
               const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
               if (beerDisplay) {
-                beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'SAFE🙌';
+                beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'SAFE👍';
               }
             } else if (action && (action.action === 'rolling' || action.action === 'rolling_done')) {
               // ③ さいころ抽選中
@@ -4361,7 +4366,7 @@
         label.textContent = `🛡️ GUARD（残${remaining}回）`;
         btn.style.color = 'var(--color-neon-cyan)';
         btn.style.borderStyle = 'dashed';
-        if (msg) msg.style.display = 'none';
+        if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
       }
     }
 
