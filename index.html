@@ -3541,6 +3541,7 @@
       
       console.log('[DICE DEBUG] initializeDiceOrder called, roundFinalCups:', JSON.stringify(roundFinalCups));
       // 負けたプレイヤーのリストを作成（天地逆転を考慮）
+      // ※losers確定後もログ出力
       const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
       const maxCardNumber = gameState.totalRounds;
       const hasCard1 = gameState.roundData.some(d => d.card === 1);
@@ -3557,14 +3558,18 @@
       
       // 免除者（0杯）をlosersから除外
       losers = losers.filter(playerName => (roundFinalCups[playerName] || 0) > 0);
+      console.log('[DICE DEBUG] losers after immune filter:', losers);
 
       // 庇って杯数を引き受けた人（WIN側）をアクション対象に追加
       gameState.roundData.forEach(d => {
         const isBaseLoser = reverseRule ? d.card === maxCardNumber : d.card === sorted[0].card;
+        console.log('[DICE DEBUG] checking WIN player:', d.player, 'isBaseLoser:', isBaseLoser, 'cups:', roundFinalCups[d.player]);
         if (!isBaseLoser && (roundFinalCups[d.player] || 0) > 0 && !losers.includes(d.player)) {
           losers.push(d.player);
+          console.log('[DICE DEBUG] added guardian to losers:', d.player);
         }
       });
+      console.log('[DICE DEBUG] final losers:', losers);
 
       if (losers.length === 0) {
         // 杯数がある人がいない場合は次のラウンドへ
