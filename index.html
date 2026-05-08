@@ -829,7 +829,7 @@
       </div>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ルームコード（4桁）</label>
-        <input type="number" id="roomCodeInput" placeholder="1234" min="1000" max="9999" style="width: 100%; font-size: 24px; text-align: center; letter-spacing: 8px; -moz-appearance: textfield;" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
+        <input type="number" id="roomCodeInput" placeholder="1234" min="1000" max="9999" style="width: 100%; font-size: 24px; text-align: center; letter-spacing: 8px; -moz-appearance: textfield; background: var(--color-surface); color: var(--color-text-primary); border: 2px solid var(--color-border); border-radius: 12px;" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
       </div>
       <button class="primary" onclick="joinRoom()" style="width: 100%; margin-bottom: 0.75rem;">参加する</button>
       <button onclick="backToOnlineMenu()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← 戻る</button>
@@ -1923,6 +1923,14 @@
           alert('ルームが満員です');
           return;
         }
+
+        // 重複名チェック
+        const existingNames = Object.values(roomData.players).map(p => p.name);
+        if (existingNames.includes(joinerName)) {
+          alert(`「${joinerName}」はすでに使われています。別の名前を入力してください`);
+          roomRef = null;
+          return;
+        }
         
         console.log('Adding player to room...');
         
@@ -2746,6 +2754,8 @@
         selectedElement = null;
         isDoubleDownActive = false;
         guardTargetSelected = null;
+        const msgEl = document.getElementById('guardSelectedMsg');
+        if (msgEl) { msgEl.style.display = 'none'; msgEl.textContent = ''; }
         
         // 待機画面へ
         showOnlineWaitingScreen();
@@ -2784,6 +2794,8 @@
       selectedElement = null;
       isDoubleDownActive = false;
       guardTargetSelected = null;
+      const msgEl2 = document.getElementById('guardSelectedMsg');
+      if (msgEl2) { msgEl2.style.display = 'none'; msgEl2.textContent = ''; }
       
       gameState.currentPlayerIndex++;
       
