@@ -2894,13 +2894,16 @@
       console.log('[GUARD DEBUG] step1: soso check');
       const sosoSet = new Set();
       const sosoPairs = [];
+      console.log('[GUARD DEBUG] step2: before entries loop, entries:', Object.entries(roundGuardTargets).length);
       Object.entries(roundGuardTargets).forEach(([a, b]) => {
+        console.log('[GUARD DEBUG] step3: checking', a, b, 'reverse?', roundGuardTargets[b]);
         if (roundGuardTargets[b] === a && !sosoSet.has(a) && !sosoSet.has(b)) {
           sosoSet.add(a);
           sosoSet.add(b);
           sosoPairs.push([a, b]);
         }
       });
+      console.log('[GUARD DEBUG] step4: soso done, pairs:', sosoPairs.length);
 
       // 相思相愛処理
       if (sosoPairs.length > 0) {
