@@ -868,7 +868,7 @@
       </div>
       <button id="startOnlineGameBtn" class="primary" onclick="startOnlineGame()" style="width: 100%; display: none; margin-bottom: 0.75rem;">ゲーム開始</button>
       <div id="waitingForGameStart" style="font-size: 14px; color: var(--color-neon-cyan); text-align: center; margin-bottom: 0.75rem; display: none;">
-        ルーム作成者がゲームを開始します...
+        がゲームを開始します...
       </div>
       <button onclick="leaveRoom()" style="width: 100%; background: rgba(255, 0, 102, 0.2); border: 2px solid var(--color-danger);">ルームを退出</button>
     </div>
@@ -966,7 +966,7 @@
         <h3 style="font-size: 16px; color: var(--color-accent); margin-bottom: 0.75rem;">⚡ DOUBLE DOWN</h3>
         <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
           <strong style="color: var(--color-text-primary);">ゲーム中に必ず1回使用</strong><br>
-          勝った場合：相手の罰が<strong style="color: var(--color-success);">2杯</strong>になる<br>
+          勝った場合：負けた人の罰が<strong style="color: var(--color-success);">2杯</strong>になる<br>
           負けた場合：自分の罰が<strong style="color: var(--color-danger);">2杯</strong>になる
         </div>
       </div>
@@ -987,6 +987,43 @@
           <strong style="color: var(--color-neon-cyan);">× 2（倍増）: <span id="rulesRate2">40</span>%</strong><br>
           <strong style="color: var(--color-danger);">× 3（3倍）: <span id="rulesRate3">10</span>%</strong><br>
           タップして止めた瞬間に結果が確定。
+        </div>
+      </div>
+
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-neon-cyan);">
+        <h3 style="font-size: 16px; color: var(--color-neon-cyan); margin-bottom: 0.75rem;">🛡️ GUARD</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          カード選択時に<strong style="color: var(--color-text-primary);">誰かを指名して庇える</strong><br>
+          使用回数：<strong style="color: var(--color-text-primary);">7回戦以下→1回、8回戦以上→2回</strong><br>
+          指名した人が負けた場合：<strong style="color: var(--color-success);">庇い成功</strong> — 相手の杯数を肩代わり<br>
+          指名した人が勝った場合：<strong style="color: var(--color-danger);">GUARDミス +1杯</strong>
+        </div>
+      </div>
+
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-neon-pink);">
+        <h3 style="font-size: 16px; color: var(--color-neon-pink); margin-bottom: 0.75rem;">💞 相思相愛</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          同じラウンドで<strong style="color: var(--color-text-primary);">2人が互いに庇い合った</strong>場合<br>
+          相思相愛カップル成立となり<strong style="color: var(--color-success);">負けでも全免除</strong><br>
+          カップル<strong style="color: var(--color-danger);">以外の全員に +1杯</strong>（いちゃうざ 💢）
+        </div>
+      </div>
+
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-neon-cyan);">
+        <h3 style="font-size: 16px; color: var(--color-neon-cyan); margin-bottom: 0.75rem;">🤝 全員一致</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          3人以上で<strong style="color: var(--color-text-primary);">全員が同じカード</strong>を出した場合<br>
+          負け+1が相殺されて<strong style="color: var(--color-success);">全員0杯</strong>（いちゃうざ 💢 は発動）<br>
+          DOUBLE DOWN・最終ラウンド倍率は乗らない
+        </div>
+      </div>
+
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-neon-cyan);">
+        <h3 style="font-size: 16px; color: var(--color-neon-cyan); margin-bottom: 0.75rem;">🕵️‍♂️ 一人勝ちボーナス</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          3人以上で<strong style="color: var(--color-text-primary);">自分以外が全員同じカードで負け</strong>た場合<br>
+          次のラウンドに<strong style="color: var(--color-success);">一人勝ちボーナス</strong>を持ち越し<br>
+          次ラウンドで<strong style="color: var(--color-text-primary);">確定した杯数をすべて相殺</strong>（勝ちでも自動消費）
         </div>
       </div>
       
@@ -1062,7 +1099,7 @@
           他のプレイヤーの選択を待っています...
         </div>
         <div id="waitingForHostMessage" style="font-size: 14px; color: var(--color-neon-cyan); display: none;">
-          ルーム作成者が結果を表示します...
+          が結果を表示します...
         </div>
       </div>
     </div>
@@ -1086,7 +1123,7 @@
           ⚡ カード選択をスキップして結果を表示
         </button>
         <div id="waitingForFinalRoundStart" style="font-size: 14px; color: var(--color-neon-cyan); display: none;">
-          ルーム作成者が開始します...
+          が開始します...
         </div>
       </div>
     </div>
@@ -1264,6 +1301,7 @@
     let myPlayerId = null;
     let roomRef = null;
     let currentDicePlayer = null; // 現在さいころを選択中のプレイヤー
+    let hostPlayerName = ''; // ホストのプレイヤー名
     
     // DOM ID用の安全な文字列生成（全角スペース・特殊文字も無害化）
     function safeDomId(text) {
@@ -1865,6 +1903,7 @@
       currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
       isRoomHost = true;
       myPlayerId = generatePlayerId();
+      hostPlayerName = hostName; // ホスト名を保持
       
       console.log('Creating room:', { roomCode: currentRoomCode, hostName, myPlayerId });
       
@@ -2040,6 +2079,8 @@
             if (playerCount >= 2) {
               startBtn.style.display = 'none';
               waitingMsg.style.display = 'block';
+              // ホスト名を動的にセット
+              waitingMsg.textContent = `${hostPlayerName}がゲームを開始します...`;
             } else {
               startBtn.style.display = 'none';
               waitingMsg.style.display = 'none';
@@ -2254,6 +2295,10 @@
       gameState.diceUsedThisRound = data.diceUsedThisRound || [];
       // さいころ倍率を同期（Firebaseにあればそれを使い、なければデフォルト）
       gameState.diceRates = data.diceRates || { zero: 50, double: 40, triple: 10 };
+      // ホスト名を同期
+      if (data.host && data.players && data.players[data.host]) {
+        hostPlayerName = data.players[data.host].name || '';
+      }
       
       gameState.players = data.playerOrder.map(playerId => {
         const p = data.players[playerId];
@@ -2678,7 +2723,9 @@
           document.getElementById('waitingForHostMessage').style.display = 'none';
         } else {
           document.getElementById('showResultBtn').style.display = 'none';
-          document.getElementById('waitingForHostMessage').style.display = 'block';
+          const whm = document.getElementById('waitingForHostMessage');
+          whm.style.display = 'block';
+          whm.textContent = `${hostPlayerName}が結果を表示します...`;
         }
         document.getElementById('waitingMessage').style.display = 'none';
       } else {
@@ -3931,7 +3978,7 @@
         if (isOnlineMode && isRoomHost) {
           actionsContainer.innerHTML = '<button class="primary" onclick="proceedToFinalResults()" style="width: 100%;">最終結果を見る</button>';
         } else if (isOnlineMode) {
-          actionsContainer.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--color-neon-cyan); font-size: 14px;">ルーム作成者が最終結果を表示します...</div>';
+          actionsContainer.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--color-neon-cyan); font-size: 14px;">${escapeHtml(hostPlayerName)}が最終結果を表示します...</div>`;
         } else {
           actionsContainer.innerHTML = '<button class="primary" onclick="showFinalResults()" style="width: 100%;">最終結果を見る</button>';
         }
@@ -3940,7 +3987,7 @@
       
       // 通常ラウンド：オーナーのみボタンを表示
       if (isOnlineMode && !isRoomHost) {
-        actionsContainer.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--color-neon-cyan); font-size: 14px;">ルーム作成者が次のゲームを開始します...</div>';
+        actionsContainer.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--color-neon-cyan); font-size: 14px;">${escapeHtml(hostPlayerName)}が次のラウンドを開始します...</div>`;
         return;
       }
       
@@ -4174,7 +4221,9 @@
         } else {
           document.getElementById('startFinalRoundBtn').style.display = 'none';
           document.getElementById('skipFinalRoundBtn').style.display = 'none';
-          document.getElementById('waitingForFinalRoundStart').style.display = 'block';
+          const wfrs = document.getElementById('waitingForFinalRoundStart');
+          wfrs.style.display = 'block';
+          wfrs.textContent = `${hostPlayerName}が開始します...`;
         }
       } else {
         // オフラインモード：両ボタン表示
