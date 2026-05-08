@@ -3250,10 +3250,10 @@
       document.getElementById('chanceResult').style.display = 'none';
       
       if (isOnlineMode) {
-        // OKを押したことをFirebaseに記録してから次へ
+        // OKを押した → action を 'rolled_ok' に更新してから次へ
         const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
         if (myPlayer && roomRef) {
-          roomRef.child('diceActions').child(myPlayer.playerId).update({ okDone: true }).then(() => {
+          roomRef.child('diceActions').child(myPlayer.playerId).update({ action: 'rolled_ok' }).then(() => {
             moveToNextDicePlayer();
           });
         } else {
@@ -3390,7 +3390,7 @@
                 const stillMyTurn = !action 
                   || action.action === 'rolling' 
                   || action.action === 'rolling_done'
-                  || (action.action === 'rolled' && !action.okDone);
+                  || action.action === 'rolled';
                 if (index === order.currentIndex && stillMyTurn) {
                   cardElement.classList.add('action-turn');
                 }
@@ -3400,9 +3400,7 @@
             // さいころボタンのグレーアウト
             const diceBtn = document.getElementById('dice-btn-' + safeDomId(playerName));
             
-            const isRolledAndOkDone = action && action.action === 'rolled' && action.okDone === true;
-            const isConfirmed = action && action.action === 'confirmed';
-            const isFullyDone = isRolledAndOkDone || isConfirmed;
+            const isFullyDone = action && (action.action === 'rolled_ok' || action.action === 'confirmed');
 
             if (isFullyDone) {
               // ① アクション完了（OK押下済み or さいころスキップ）
@@ -3423,7 +3421,7 @@
               if (beerDisplay) {
                 beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'セーフ！';
               }
-            } else if (action && action.action === 'rolled' && !action.okDone) {
+            } else if (action && action.action === 'rolled') {
               // ② さいころ結果出たがOK待ち中
               statusElement.textContent = '結果確認中...';
               statusElement.style.color = 'var(--color-neon-pink)';
@@ -3482,17 +3480,16 @@
           });
           
           // 全員完了チェック
-          // rolled: さいころ結果確定済み、okDone: OKボタン押下済み
-          // confirmed: さいころスキップして確定
-          // → rolled の場合は okDone: true になるまで未完了扱い
+          // rolled_ok: さいころ結果確認してOK押下済み → 完了
+          // confirmed: さいころスキップして確定 → 完了
+          // rolled: さいころ結果は出たがOK未押下 → 未完了
+          // rolling / rolling_done: 抽選中 → 未完了
           const allCompleted = order.losers.every(playerName => {
             const playerObj = gameState.players.find(p => p.name === playerName);
             if (!playerObj) return false;
             const action = actions[playerObj.playerId];
             if (!action) return false;
-            if (action.action === 'rolling' || action.action === 'rolling_done') return false;
-            if (action.action === 'rolled') return action.okDone === true;
-            return true; // confirmed など
+            return action.action === 'rolled_ok' || action.action === 'confirmed';
           });
           
           if (allCompleted) {
