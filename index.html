@@ -1291,7 +1291,8 @@
       diceUsedThisRound: [],
       diceRates: { zero: 50, double: 40, triple: 10 }, // さいころ倍率確率（%）
       guardUsed: {},    // { "たかし": 残り回数 }
-      guardTargets: {}  // { "たかし": "みか" } 今ラウンドの指名
+      guardTargets: {}, // { "たかし": "みか" } 今ラウンドの指名
+      loneWinnerBonus: {} // { "たかし": 3 } 次ラウンドに持ち越す一人勝ちボーナス（杯数）
     };
     
     const ADMIN_SEQ = [1, 1, 1, 1, 5, 2];
@@ -2276,6 +2277,15 @@
         gameState.guardUsed[player.name] = pd.guardUsed !== undefined ? pd.guardUsed : maxGuard;
       });
 
+      // loneWinnerBonusをFirebaseから復元
+      gameState.loneWinnerBonus = {};
+      data.playerOrder.forEach(playerId => {
+        const pd = data.players[playerId];
+        if (pd && pd.loneWinnerBonus) {
+          gameState.loneWinnerBonus[pd.name] = true;
+        }
+      });
+
       // 今ラウンドのguardTargetsをroundDataから復元
       gameState.guardTargets = {};
       gameState.roundData.forEach(d => {
@@ -3037,6 +3047,74 @@
         });
       }
 
+      // ===== 全員同じカード → 全員免除 =====
+      const allCards = gameState.roundData.map(d => d.card);
+      const allSameCard = gameState.players.length >= 3 && allCards.length >= 3
+        && allCards.every(c => c === allCards[0]);
+      
+      if (allSameCard) {
+        // オフライン：GUARD反映で加算済みのlossesを差し引いてから0にする
+        if (!isOnlineMode) {
+          gameState.players.forEach(p => {
+            const alreadyAdded = guardImmuneSet.has(p.name) ? 0 : (guardCupsMap[p.name] || 0);
+            p.losses = Math.max(0, p.losses - alreadyAdded);
+          });
+        }
+        // 全員guardCupsMapを0にして全員免除
+        gameState.roundData.forEach(d => {
+          guardCupsMap[d.player] = 0;
+          guardImmuneSet.add(d.player);
+        });
+      }
+
+      // ===== 一人勝ちボーナス 判定 =====
+      // 条件：3人以上 & 勝者1人 & 負け側全員同じカード
+      const loneWinnerMessages = {}; // { playerName: message } 今ラウンドの表示用
+      const newLoneWinnerBonus = {}; // 次ラウンドに引き継ぐボーナス（名前: 杯数）
+
+      if (!allSameCard && gameState.players.length >= 3) {
+        const loserCards = losers.map(l => l.card);
+        const loserAllSame = loserCards.length > 0 && loserCards.every(c => c === loserCards[0]);
+        const isLoneWin = winners.length === 1 && loserAllSame;
+
+        if (isLoneWin) {
+          const loneWinner = winners[0].player;
+          loneWinnerMessages[loneWinner] = '🕵️‍♂️ 一人勝ちボーナスGET!';
+          newLoneWinnerBonus[loneWinner] = true; // 次ラウンド用フラグ（実際の杯数はさいころ後に確定するためtrue）
+        }
+      }
+
+      // ===== 前ラウンドの一人勝ちボーナス 適用（さいころ処理より前） =====
+      const bonusMessages = {}; // { playerName: message }
+      Object.keys(gameState.loneWinnerBonus).forEach(playerName => {
+        const hasBonus = gameState.loneWinnerBonus[playerName];
+        if (!hasBonus) return;
+
+        // guardCupsMapの現在値を取得（GUARD・いちゃうざ処理後の値）
+        const currentCups = guardImmuneSet.has(playerName) ? 0 : (guardCupsMap[playerName] || 0);
+        bonusMessages[playerName] = `🕵️‍♂️ 前ターン一人勝ちボーナス -${currentCups}杯`;
+
+        if (currentCups > 0) {
+          // 負けていた → 免除に変える
+          guardCupsMap[playerName] = 0;
+          guardImmuneSet.add(playerName);
+          // オフライン：加算済みのlossesから差し引く
+          if (!isOnlineMode) {
+            const player = gameState.players.find(p => p.name === playerName);
+            if (player) {
+              player.losses = Math.max(0, player.losses - currentCups);
+            }
+          }
+        }
+        // 勝ちや全員免除の場合はcurrentCups=0で「-0杯」として消費される
+      });
+
+      // 今ラウンドの一人勝ちボーナスをgameStateに書き込む（次ラウンド用）
+      // 前ラウンドのボーナスは消費済みなのでリセット、新しいボーナスを上書き
+      gameState.loneWinnerBonus = {};
+      Object.keys(newLoneWinnerBonus).forEach(name => {
+        gameState.loneWinnerBonus[name] = true;
+      });
 
       const container = document.getElementById('resultsContainer');
       container.innerHTML = '';
@@ -3220,6 +3298,16 @@
           return `<div style="font-size: 11px; font-weight: 700; color: ${color}; margin-top: 4px;">${msg}</div>`;
         }).join('');
 
+        // 一人勝ちボーナス関連メッセージHTML生成
+        const loneWinMsg = loneWinnerMessages[data.player] || '';
+        const loneWinMsgHTML = loneWinMsg
+          ? `<div style="font-size: 11px; font-weight: 700; color: var(--color-neon-cyan); margin-top: 4px;">${loneWinMsg}</div>`
+          : '';
+        const bonusMsg = bonusMessages[data.player] || '';
+        const bonusMsgHTML = bonusMsg
+          ? `<div style="font-size: 11px; font-weight: 700; color: var(--color-neon-cyan); margin-top: 4px;">${bonusMsg}</div>`
+          : '';
+
         const immuneBadge = ''; // 免除バッジなし
 
         // 理由行HTML（処理順：天地逆転→DD→最終ラウンド）
@@ -3245,6 +3333,8 @@
           ${reasonHTML}
           ${ddMsgHTML}
           ${guardMsgHTML}
+          ${bonusMsgHTML}
+          ${loneWinMsgHTML}
         `;
         container.appendChild(card);
       });
@@ -3295,6 +3385,8 @@
           if (player.hasUsedDoubleDown) {
             updates[`players/${player.playerId}/hasUsedDoubleDown`] = true;
           }
+          // 一人勝ちボーナスをFirebaseに同期
+          updates[`players/${player.playerId}/loneWinnerBonus`] = gameState.loneWinnerBonus[player.name] ? true : false;
         });
         updates.showingResults = true;
         roomRef.update(updates);
@@ -4011,6 +4103,7 @@
       gameState.roundData = [];
       gameState.diceUsedThisRound = [];
       gameState.guardTargets = {}; // ラウンドごとにリセット
+      // loneWinnerBonus はshowRoundResults()内で更新済みのためここではリセットしない
       
       // オンラインモード：Firebaseを更新
       if (isOnlineMode && roomRef) {
@@ -4231,7 +4324,8 @@
         totalRounds: 10,
         diceUsedThisRound: [],
         guardUsed: {},
-        guardTargets: {}
+        guardTargets: {},
+        loneWinnerBonus: {}
       };
       
       document.getElementById('modeSelect').style.display = 'block';
@@ -4279,7 +4373,8 @@
             name: player.name,
             losses: 0,
             hasUsedDoubleDown: false,
-            usedCards: []
+            usedCards: [],
+            loneWinnerBonus: false
           };
         });
 
@@ -4307,6 +4402,7 @@
           gameState.diceUsedThisRound = [];
           gameState.guardUsed = {};
           gameState.guardTargets = {};
+          gameState.loneWinnerBonus = {};
 
           // 画面を切り替えてからリスナー抑制を解除
           document.getElementById('finalResults').style.display = 'none';
@@ -4327,6 +4423,7 @@
         gameState.diceUsedThisRound = [];
         gameState.guardUsed = {};
         gameState.guardTargets = {};
+        gameState.loneWinnerBonus = {};
         startLottery();
       }
     }
