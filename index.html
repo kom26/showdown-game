@@ -2479,8 +2479,8 @@
           selectCard(remainingCards[0].value, remainingCards[0].el);
         }
 
-        // GUARDボタン更新
-        resetGuardUI();
+        // GUARDボタン更新（自分がまだ選択していない場合のみUIリセット）
+        // alreadySelectedの場合はresetGuardUIを呼ばない（選択済みで待機画面に移るため不要）
         updateGuardBtn(myPlayer.name);
         
         return;
@@ -2850,7 +2850,9 @@
         winners = gameState.roundData.filter(p => p.card !== minCard);
       }
       
-      // オンラインモード：最初に負けたプレイヤーを特定
+      // オンラインモード：最初に負けたプレイヤーを特定（GUARD後に実際にアクションが必要な人）
+      // ※ initializeDiceOrderで免除者・GUARDで庇った人を考慮した正確なlosersを設定するため
+      // ここではひとまず元の負け人を設定し、initializeDiceOrder後に上書きされる
       if (isOnlineMode && losers.length > 0) {
         currentDicePlayer = losers[0].player;
       }
@@ -3841,7 +3843,7 @@
       // 既存リスナーをクリアして貼り直し（二重登録防止）
       stopDiceActionWaitingListener();
 
-      // 負けたプレイヤーのリストを計算（リスナー外で一度だけ計算）
+      // 負けたプレイヤーのリストを計算（免除者除外・庇った人追加）
       const losers = [];
       const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
       const maxCardNumber = gameState.totalRounds;
@@ -3851,9 +3853,18 @@
       const losingCard = reverseRule ? maxCardNumber : (sorted.length > 0 ? sorted[0].card : null);
       if (losingCard !== null) {
         gameState.roundData.forEach(data => {
-          if (data.card === losingCard) losers.push(data.player);
+          if (data.card === losingCard && (roundFinalCups[data.player] || 0) > 0) {
+            losers.push(data.player);
+          }
         });
       }
+      // 庇って杯数を引き受けた人（WIN側）を追加
+      gameState.roundData.forEach(d => {
+        const isBaseLoser = d.card === losingCard;
+        if (!isBaseLoser && (roundFinalCups[d.player] || 0) > 0 && !losers.includes(d.player)) {
+          losers.push(d.player);
+        }
+      });
 
       diceActionWaitingListener = roomRef.child('diceActions').on('value', (snapshot) => {
         // diceActionWaiting画面が非表示になったらリスナー解除
