@@ -2850,11 +2850,10 @@
         winners = gameState.roundData.filter(p => p.card !== minCard);
       }
       
-      // オンラインモード：最初に負けたプレイヤーを特定（GUARD後に実際にアクションが必要な人）
-      // ※ initializeDiceOrderで免除者・GUARDで庇った人を考慮した正確なlosersを設定するため
-      // ここではひとまず元の負け人を設定し、initializeDiceOrder後に上書きされる
-      if (isOnlineMode && losers.length > 0) {
-        currentDicePlayer = losers[0].player;
+      // オンラインモード：currentDicePlayerはinitializeDiceOrder後に正しく設定される
+      // ここでは一旦nullにしておく（免除者が誤ってアクション者になるのを防ぐ）
+      if (isOnlineMode) {
+        currentDicePlayer = null;
       }
       
       const anyWinnerUsedDD = winners.some(w => w.isDoubleDown);
@@ -3540,6 +3539,7 @@
     function initializeDiceOrder() {
       if (!isOnlineMode || !roomRef) return;
       
+      console.log('[DICE DEBUG] initializeDiceOrder called, roundFinalCups:', JSON.stringify(roundFinalCups));
       // 負けたプレイヤーのリストを作成（天地逆転を考慮）
       const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
       const maxCardNumber = gameState.totalRounds;
