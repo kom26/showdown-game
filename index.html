@@ -3904,44 +3904,48 @@
       document.getElementById('finalResults').style.display = 'none';
       document.getElementById('rulesScreen').style.display = 'none';
       
-      function shareGame() {
-      const shareUrl = (() => {
-        // PWAのスタンドアロンモードではlocation.hrefが使えるが念のため
-        try { return window.location.href; } catch(e) { return ''; }
-      })();
+      const GAME_URL = 'https://kom26.github.io/showdown-game/';
+
+    function shareGame() {
       const shareData = {
         title: 'SHOWDOWN',
         text: '✧ カードバトルゲーム SHOWDOWN で遊ぼう！',
-        url: shareUrl
+        url: GAME_URL
       };
 
       if (navigator.share) {
-        // Web Share API 対応（スマホネイティブ共有シート）
-        navigator.share(shareData).catch(() => {});
+        navigator.share(shareData).catch((err) => {
+          // AbortError はユーザーが自分でキャンセルしただけなので無視
+          if (err && err.name !== 'AbortError') {
+            copyToClipboard();
+          }
+        });
       } else {
-        // 非対応ブラウザ：URLをクリップボードにコピー
-        const textToCopy = shareUrl || 'https://showdown-game.github.io/';
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(textToCopy).then(() => {
-            showCopiedMsg();
-          }).catch(() => {
-            fallbackCopy(textToCopy);
-          });
-        } else {
-          fallbackCopy(textToCopy);
-        }
+        copyToClipboard();
       }
     }
 
-    function fallbackCopy(text) {
+    function copyToClipboard() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(GAME_URL)
+          .then(() => { showCopiedMsg(); })
+          .catch(() => { fallbackCopy(); });
+      } else {
+        fallbackCopy();
+      }
+    }
+
+    function fallbackCopy() {
       const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
+      ta.value = GAME_URL;
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
       document.body.appendChild(ta);
       ta.focus();
       ta.select();
-      try { document.execCommand('copy'); showCopiedMsg(); } catch(e) {}
+      try {
+        const ok = document.execCommand('copy');
+        if (ok) showCopiedMsg();
+      } catch(e) {}
       document.body.removeChild(ta);
     }
 
