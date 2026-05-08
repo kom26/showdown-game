@@ -2822,6 +2822,7 @@
       document.getElementById('resultRoundInfo').textContent = `第${gameState.currentRound}回戦`;
       
       console.log('[GUARD DEBUG] roundData:', JSON.stringify(gameState.roundData));
+      console.log('[GUARD DEBUG] roundGuardTargets will be computed from roundData');
       
       gameState.roundData.forEach(data => {
         if (data.isDoubleDown) {
@@ -2887,6 +2888,7 @@
       gameState.roundData.forEach(d => {
         if (d.guardTarget) roundGuardTargets[d.player] = d.guardTarget;
       });
+      console.log('[GUARD DEBUG] minCard:', minCard, 'roundGuardTargets:', JSON.stringify(roundGuardTargets));
 
       // 相思相愛判定
       const sosoSet = new Set();
@@ -2985,8 +2987,10 @@
 
       // オフライン：GUARD計算済みの最終杯数をplayer.lossesに反映
       if (!isOnlineMode) {
+        console.log('[GUARD DEBUG] guardCupsMap:', JSON.stringify(guardCupsMap), 'immune:', [...guardImmuneSet]);
         gameState.players.forEach(p => {
           const finalCups = guardImmuneSet.has(p.name) ? 0 : (guardCupsMap[p.name] || 0);
+          console.log('[GUARD DEBUG]', p.name, 'finalCups:', finalCups);
           p.losses = Math.max(0, p.losses + finalCups);
         });
       }
