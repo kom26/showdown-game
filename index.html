@@ -2933,7 +2933,7 @@
         if (d.guardTarget) roundGuardTargets[d.player] = d.guardTarget;
       });
 
-      // 相思相愛判定
+      // 相思相愛判定（先に検出だけしておく）
       const sosoSet = new Set();
       const sosoPairs = [];
       Object.entries(roundGuardTargets).forEach(([a, b]) => {
@@ -2944,9 +2944,36 @@
         }
       });
 
-      // 相思相愛処理
+      // ① 通常GUARD処理を先に（相思相愛でない指名のみ）
+      Object.entries(roundGuardTargets).forEach(([guardian, target]) => {
+        if (sosoSet.has(guardian)) return; // 相思相愛は後で処理
+
+        const targetData = gameState.roundData.find(d => d.player === target);
+        const targetIsLoser = targetData && (reverseRule
+          ? targetData.card === maxCardNumber
+          : targetData.card === minCard);
+
+        if (targetIsLoser) {
+          // 庇い成功：ターゲット免除、ガーディアンが引き受け
+          guardImmuneSet.add(target);
+          const targetCups = guardCupsMap[target] || 0;
+          guardCupsMap[guardian] = (guardCupsMap[guardian] || 0) + targetCups;
+          guardCupsMap[target] = 0;
+          if (!guardMessages[target]) guardMessages[target] = [];
+          if (!guardMessages[guardian]) guardMessages[guardian] = [];
+          guardMessages[target].push(`💘 ${guardian}に庇われました -${targetCups}杯`);
+          guardMessages[guardian].push(`💘 ${target}を庇いました +${targetCups}杯`);
+        } else {
+          // GUARDミス：ガーディアンに+1杯
+          guardCupsMap[guardian] = (guardCupsMap[guardian] || 0) + 1;
+          if (!guardMessages[guardian]) guardMessages[guardian] = [];
+          guardMessages[guardian].push('💦 GUARDミス +1杯');
+        }
+      });
+
+      // ② 相思相愛処理（GUARD後）
       if (sosoPairs.length > 0) {
-        // 相思相愛ペア全員免除（勝ち負け問わず）
+        // 相思相愛ペア全員免除
         sosoSet.forEach(name => guardImmuneSet.add(name));
 
         // カップル以外全員にカップル数分+杯（強制）
@@ -2969,45 +2996,15 @@
           sosoMessages.push({ a, b });
         });
 
-        // 相思相愛者の guardTarget使用回数を消費（GUARD使用扱い）
+        // 相思相愛者のGUARD使用回数を消費
         sosoSet.forEach(name => {
-          if (roundGuardTargets[name]) {
-            if (!isOnlineMode) {
-              if (gameState.guardUsed[name] !== undefined) {
-                gameState.guardUsed[name] = Math.max(0, gameState.guardUsed[name] - 1);
-              }
+          if (roundGuardTargets[name] && !isOnlineMode) {
+            if (gameState.guardUsed[name] !== undefined) {
+              gameState.guardUsed[name] = Math.max(0, gameState.guardUsed[name] - 1);
             }
           }
         });
       }
-
-      // 通常GUARD処理（相思相愛でない指名のみ）
-      Object.entries(roundGuardTargets).forEach(([guardian, target]) => {
-        if (sosoSet.has(guardian)) return; // 相思相愛は処理済み
-
-        const targetData = gameState.roundData.find(d => d.player === target);
-        const targetIsLoser = targetData && (reverseRule
-          ? targetData.card === maxCardNumber
-          : targetData.card === minCard);
-
-        if (targetIsLoser) {
-          // 庇い成功：ターゲット免除、ガーディアンが引き受け
-          guardImmuneSet.add(target);
-          const targetCups = guardCupsMap[target] || 0;
-          guardCupsMap[guardian] = (guardCupsMap[guardian] || 0) + targetCups;
-          guardCupsMap[target] = 0;
-          // メッセージ
-          if (!guardMessages[target]) guardMessages[target] = [];
-          if (!guardMessages[guardian]) guardMessages[guardian] = [];
-          guardMessages[target].push(`💘 ${guardian}に庇われました -${targetCups}杯`);
-          guardMessages[guardian].push(`💘 ${target}を庇いました +${targetCups}杯`);
-        } else {
-          // GUARDミス：ガーディアンに+1杯
-          guardCupsMap[guardian] = (guardCupsMap[guardian] || 0) + 1;
-          if (!guardMessages[guardian]) guardMessages[guardian] = [];
-          guardMessages[guardian].push('💦 GUARDミス +1杯');
-        }
-      });
 
       // 複数のガーディアンが同じターゲットを庇った場合のメッセージ修正
       const targetGuardians = {}; // { target: [guardian1, guardian2...] }
@@ -3067,14 +3064,17 @@
         let cups = finalCupsForPlayer;
         const reasonLines = [];
         
-        if (isLoser && !guardImmuneSet.has(data.player)) {
-          if (reverseRule) reasonLines.push('🔄 天地逆転');
-          if (data.isDoubleDown) reasonLines.push('⚡ 自分のDOUBLE DOWN ×2');
+        if (isLoser) {
+          // 免除者も含め、基本理由は全員表示
+          reasonLines.push('負け +1杯');
+          if (data.isDoubleDown && anyWinnerUsedDD) reasonLines.push('⚡ 自分のDOUBLE DOWN ×2');
+          else if (data.isDoubleDown) reasonLines.push('⚡ 自分のDOUBLE DOWN ×2');
           else if (anyWinnerUsedDD) reasonLines.push('⚡ 相手が発動したDOUBLE DOWN ×2');
+          if (reverseRule) reasonLines.push('🔄 天地逆転');
           const isFinalRound = gameState.currentRound === gameState.totalRounds;
           if (isFinalRound) reasonLines.push('🔥 最終ラウンド ×2');
         }
-        const reasonText = reasonLines.join('_NEWLINE_'); // 後でHTMLに変換
+        const reasonText = reasonLines.length > 0 ? 'has_reasons' : '';
 
         roundFinalCups[data.player] = cups;
         
