@@ -1163,11 +1163,26 @@
       <h2 style="margin-bottom: 1rem;">カードを選択</h2>
       <div class="card-grid" id="cardGrid"></div>
       
-      <div id="doubleDownToggle" style="margin-bottom: 1rem; text-align: center;">
+      <div id="doubleDownToggle" style="margin-bottom: 0.75rem; text-align: center;">
         <button id="toggleDoubleDown" onclick="toggleDoubleDown()" style="width: 100%; background: var(--color-surface); border: 2px dashed var(--color-border);">
           <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">⚡ DOUBLE DOWN ⚡</div>
           <div style="font-size: 11px; color: var(--color-text-secondary); line-height: 1.4;">勝ったら負けが2杯、負けたら自分が2杯<br>どこかで必ず1回使う必要あり</div>
         </button>
+      </div>
+
+      <!-- GUARDボタン -->
+      <div id="guardToggle" style="margin-bottom: 1rem; text-align: center;">
+        <button id="guardBtn" onclick="openGuardSelect()" style="width: 100%; background: var(--color-surface); border: 2px dashed var(--color-neon-cyan); color: var(--color-neon-cyan);">
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;" id="guardBtnLabel">🛡️ GUARD（残N回）</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); line-height: 1.4;">誰かを庇う・成功で身代わり / ミスで+1杯</div>
+        </button>
+        <!-- GUARD指名パネル -->
+        <div id="guardSelectPanel" style="display: none; margin-top: 0.5rem; background: rgba(0,255,255,0.08); border: 2px solid var(--color-neon-cyan); border-radius: 12px; padding: 0.75rem;">
+          <div style="font-size: 12px; color: var(--color-neon-cyan); font-weight: 700; margin-bottom: 0.5rem;">誰を庇う？</div>
+          <div id="guardTargetList" style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;"></div>
+          <button onclick="cancelGuard()" style="width: 100%; margin-top: 0.5rem; font-size: 12px; padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); color: var(--color-text-secondary);">キャンセル</button>
+        </div>
+        <div id="guardSelectedMsg" style="display: none; font-size: 12px; color: var(--color-neon-cyan); margin-top: 4px; font-weight: 700;"></div>
       </div>
       
       <button id="confirmBtn" onclick="confirmCard()" style="width: 100%;" disabled>このカードで決定</button>
@@ -1274,7 +1289,9 @@
       usedCards: {},
       totalRounds: 10,
       diceUsedThisRound: [],
-      diceRates: { zero: 50, double: 40, triple: 10 } // さいころ倍率確率（%）
+      diceRates: { zero: 50, double: 40, triple: 10 }, // さいころ倍率確率（%）
+      guardUsed: {},    // { "たかし": 残り回数 }
+      guardTargets: {}  // { "たかし": "みか" } 今ラウンドの指名
     };
     
     const ADMIN_SEQ = [1, 1, 1, 1, 5, 2];
@@ -2214,12 +2231,19 @@
       gameState.roundData = Object.values(data.roundData || {});
       
       gameState.usedCards = {};
+      gameState.guardUsed = {};
+      const maxGuard = (data.totalRounds || 10) <= 7 ? 1 : 2;
       gameState.players.forEach((player) => {
-        if (data.players[player.playerId].usedCards) {
-          gameState.usedCards[player.name] = data.players[player.playerId].usedCards;
-        } else {
-          gameState.usedCards[player.name] = [];
-        }
+        const pd = data.players[player.playerId];
+        gameState.usedCards[player.name] = pd.usedCards || [];
+        // guardUsedはFirebaseから取得、なければ初期値
+        gameState.guardUsed[player.name] = pd.guardUsed !== undefined ? pd.guardUsed : maxGuard;
+      });
+
+      // 今ラウンドのguardTargetsをroundDataから復元
+      gameState.guardTargets = {};
+      gameState.roundData.forEach(d => {
+        if (d.guardTarget) gameState.guardTargets[d.player] = d.guardTarget;
       });
     }
     
@@ -2284,6 +2308,11 @@
       gameState.currentRound = 1;
       gameState.currentPlayerIndex = 0;
       gameState.roundData = [];
+      gameState.guardUsed = {};
+      gameState.guardTargets = {};
+      // guardUsedを全プレイヤー分初期化
+      const maxGuard = rounds <= 7 ? 1 : 2;
+      gameState.players.forEach(p => { gameState.guardUsed[p.name] = maxGuard; });
       
       startLottery();
     }
@@ -2449,6 +2478,10 @@
         if (remainingCards.length === 1 && selectedCard !== remainingCards[0].value) {
           selectCard(remainingCards[0].value, remainingCards[0].el);
         }
+
+        // GUARDボタン更新
+        resetGuardUI();
+        updateGuardBtn(myPlayer.name);
         
         return;
       }
@@ -2535,6 +2568,10 @@
       } else {
         document.getElementById('confirmBtn').disabled = true;
       }
+
+      // GUARDボタン更新
+      resetGuardUI();
+      updateGuardBtn(player.name);
     }
     
     function showOnlineWaitingScreen() {
@@ -2678,13 +2715,20 @@
           [`roundData/${myPlayer.playerId}`]: {
             player: myPlayer.name,
             card: selectedCard,
-            isDoubleDown: isDoubleDownActive
+            isDoubleDown: isDoubleDownActive,
+            guardTarget: guardTargetSelected || null
           },
           [`players/${myPlayer.playerId}/usedCards`]: [...(gameState.usedCards[myPlayer.name] || []), selectedCard]
         };
         
         if (isDoubleDownActive || (gameState.currentRound === gameState.totalRounds && !myPlayer.hasUsedDoubleDown)) {
           updates[`players/${myPlayer.playerId}/hasUsedDoubleDown`] = true;
+        }
+
+        // GUARDを使用した場合は残り回数を保存
+        if (guardTargetSelected) {
+          const remaining = getGuardRemaining(myPlayer.name);
+          updates[`players/${myPlayer.playerId}/guardUsed`] = remaining - 1;
         }
         
         roomRef.update(updates).then(() => {
@@ -2696,6 +2740,7 @@
         selectedCard = null;
         selectedElement = null;
         isDoubleDownActive = false;
+        guardTargetSelected = null;
         
         // 待機画面へ
         showOnlineWaitingScreen();
@@ -2711,10 +2756,18 @@
         player.hasUsedDoubleDown = true;
       }
       
+      // GUARDを使用した場合は残り回数を減らす
+      if (guardTargetSelected) {
+        const remaining = getGuardRemaining(player.name);
+        gameState.guardUsed[player.name] = remaining - 1;
+        gameState.guardTargets[player.name] = guardTargetSelected;
+      }
+
       gameState.roundData.push({
         player: player.name,
         card: selectedCard,
-        isDoubleDown: isDoubleDownActive
+        isDoubleDown: isDoubleDownActive,
+        guardTarget: guardTargetSelected || null
       });
       
       if (!gameState.usedCards[player.name]) {
@@ -2725,6 +2778,7 @@
       selectedCard = null;
       selectedElement = null;
       isDoubleDownActive = false;
+      guardTargetSelected = null;
       
       gameState.currentPlayerIndex++;
       
@@ -2802,69 +2856,181 @@
       
       const anyWinnerUsedDD = winners.some(w => w.isDoubleDown);
       
-      // オフラインモードのみペナルティを加算
-      if (!isOnlineMode) {
-        losers.forEach(loser => {
-          const player = gameState.players.find(p => p.name === loser.player);
-          if (!player) return;
-          let penalty = 1;
-          
-          // DOUBLE DOWNのペナルティ計算
-          if (loser.isDoubleDown && anyWinnerUsedDD) {
-            // 両方発動: 2杯 (どちらか一方だけカウント)
-            penalty = 2;
-          } else if (loser.isDoubleDown) {
-            // 自分のみ: 2杯
-            penalty = 2;
-          } else if (anyWinnerUsedDD) {
-            // 相手のみ: 2杯
-            penalty = 2;
+      // オフラインモード：基本ペナルティをguardCupsMapに初期セット済み
+      // GUARD計算後にまとめてplayer.lossesに反映するのでここでは何もしない
+
+      // ===== GUARD計算 =====
+      // guardInfoMap: { playerName: { cups, isLoser, guardTarget } }
+      // まず全員の基本杯数を確定してからGUARD処理
+      const guardCupsMap = {}; // { name: 杯数 } 最終的にさいころ対象
+      const guardImmuneSet = new Set(); // 免除された人
+      const guardMessages = {}; // { name: [メッセージ配列] }
+      const sosoMessages = []; // 相思相愛バナー用
+
+      // 基本杯数をまず計算（GUARD前）
+      gameState.roundData.forEach(data => {
+        const isLoser = reverseRule ? (data.card === maxCardNumber) : (data.card === minCard);
+        if (!isLoser) { guardCupsMap[data.player] = 0; return; }
+        let cups = 1;
+        if (data.isDoubleDown && anyWinnerUsedDD) cups = 2;
+        else if (data.isDoubleDown) cups = 2;
+        else if (anyWinnerUsedDD) cups = 2;
+        const isFinalRound = gameState.currentRound === gameState.totalRounds;
+        if (isFinalRound) cups *= 2;
+        guardCupsMap[data.player] = cups;
+      });
+
+      // guardTarget収集（roundDataから）
+      const roundGuardTargets = {}; // { guardianName: targetName }
+      gameState.roundData.forEach(d => {
+        if (d.guardTarget) roundGuardTargets[d.player] = d.guardTarget;
+      });
+
+      // 相思相愛判定
+      const sosoSet = new Set();
+      const sosoPairs = [];
+      Object.entries(roundGuardTargets).forEach(([a, b]) => {
+        if (roundGuardTargets[b] === a && !sosoSet.has(a) && !sosoSet.has(b)) {
+          sosoSet.add(a);
+          sosoSet.add(b);
+          sosoPairs.push([a, b]);
+        }
+      });
+
+      // 相思相愛処理
+      if (sosoPairs.length > 0) {
+        // 相思相愛ペア全員免除（勝ち負け問わず）
+        sosoSet.forEach(name => guardImmuneSet.add(name));
+
+        // カップル以外全員に+1杯（強制）
+        gameState.players.forEach(p => {
+          if (!sosoSet.has(p.name)) {
+            guardCupsMap[p.name] = (guardCupsMap[p.name] || 0) + 1;
+            if (!guardMessages[p.name]) guardMessages[p.name] = [];
+            guardMessages[p.name].push('💢 いちゃうざ +1杯');
           }
-          
-          const isFinalRound = gameState.currentRound === gameState.totalRounds;
-          if (isFinalRound) {
-            penalty = penalty * 2;
+        });
+
+        // 相思相愛者のメッセージ
+        sosoPairs.forEach(([a, b]) => {
+          if (!guardMessages[a]) guardMessages[a] = [];
+          if (!guardMessages[b]) guardMessages[b] = [];
+          guardMessages[a].push(`💞 ${a}♥${b} 相思相愛！`);
+          guardMessages[b].push(`💞 ${a}♥${b} 相思相愛！`);
+          sosoMessages.push({ a, b });
+        });
+
+        // 相思相愛者の guardTarget使用回数を消費（GUARD使用扱い）
+        sosoSet.forEach(name => {
+          if (roundGuardTargets[name]) {
+            if (!isOnlineMode) {
+              if (gameState.guardUsed[name] !== undefined) {
+                gameState.guardUsed[name] = Math.max(0, gameState.guardUsed[name] - 1);
+              }
+            }
           }
-          
-          player.losses += penalty;
         });
       }
-      
+
+      // 通常GUARD処理（相思相愛でない指名のみ）
+      Object.entries(roundGuardTargets).forEach(([guardian, target]) => {
+        if (sosoSet.has(guardian)) return; // 相思相愛は処理済み
+
+        const targetData = gameState.roundData.find(d => d.player === target);
+        const targetIsLoser = targetData && (reverseRule
+          ? targetData.card === maxCardNumber
+          : targetData.card === minCard);
+
+        if (targetIsLoser) {
+          // 庇い成功：ターゲット免除、ガーディアンが引き受け
+          guardImmuneSet.add(target);
+          const targetCups = guardCupsMap[target] || 0;
+          guardCupsMap[guardian] = (guardCupsMap[guardian] || 0) + targetCups;
+          guardCupsMap[target] = 0;
+          // メッセージ
+          if (!guardMessages[target]) guardMessages[target] = [];
+          if (!guardMessages[guardian]) guardMessages[guardian] = [];
+          guardMessages[target].push(`💘 ${guardian}に庇われました`);
+          guardMessages[guardian].push(`💘 ${target}を庇いました`);
+        } else {
+          // GUARDミス：ガーディアンに+1杯
+          guardCupsMap[guardian] = (guardCupsMap[guardian] || 0) + 1;
+          if (!guardMessages[guardian]) guardMessages[guardian] = [];
+          guardMessages[guardian].push('💦 GUARDミス +1杯');
+        }
+      });
+
+      // 複数のガーディアンが同じターゲットを庇った場合のメッセージ修正
+      // （すでに個別に処理されているが「AとBに庇われました」に統合）
+      const targetGuardians = {}; // { target: [guardian1, guardian2...] }
+      Object.entries(roundGuardTargets).forEach(([guardian, target]) => {
+        if (sosoSet.has(guardian)) return;
+        const targetData = gameState.roundData.find(d => d.player === target);
+        const targetIsLoser = targetData && (reverseRule
+          ? targetData.card === maxCardNumber
+          : targetData.card === minCard);
+        if (!targetIsLoser) return;
+        if (!targetGuardians[target]) targetGuardians[target] = [];
+        targetGuardians[target].push(guardian);
+      });
+      Object.entries(targetGuardians).forEach(([target, guardians]) => {
+        if (guardians.length > 1) {
+          // 複数ガーディアン → メッセージを統合
+          guardMessages[target] = (guardMessages[target] || []).filter(m => !m.includes('庇われました'));
+          guardMessages[target].push(`💘 ${guardians.join('と')}に庇われました`);
+        }
+      });
+
+      // オフライン：GUARD計算済みの最終杯数をplayer.lossesに反映
+      if (!isOnlineMode) {
+        gameState.players.forEach(p => {
+          const finalCups = guardImmuneSet.has(p.name) ? 0 : (guardCupsMap[p.name] || 0);
+          p.losses = Math.max(0, p.losses + finalCups);
+        });
+      }
+
       const container = document.getElementById('resultsContainer');
       container.innerHTML = '';
       
       roundFinalCups = {};
+
+      // 相思相愛バナー表示
+      if (sosoMessages.length > 0) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background: linear-gradient(135deg, rgba(255,20,147,0.3), rgba(168,85,247,0.3)); border: 2px solid var(--color-neon-pink); border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 0.75rem; text-align: center;';
+        const pairText = sosoMessages.map(({a, b}) => `${a} ♥ ${b}`).join('  /  ');
+        banner.innerHTML = `
+          <div style="font-size: 22px; margin-bottom: 4px;">💞</div>
+          <div style="font-size: 14px; font-weight: 800; color: var(--color-neon-pink); text-shadow: 0 0 10px var(--color-neon-pink);">相思相愛！${pairText}</div>
+          <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 4px;">カップル以外 +1杯 💢</div>
+        `;
+        container.appendChild(banner);
+      }
       
       sorted.forEach(data => {
         // reverseRule時はmaxCardNumberが負け
         const isLoser = reverseRule ? (data.card === maxCardNumber) : (data.card === minCard);
-        let cups = 0;
+        // GUARD処理後の最終杯数を使用
+        const finalCupsForPlayer = guardImmuneSet.has(data.player) ? 0 : (guardCupsMap[data.player] || 0);
+        let cups = finalCupsForPlayer;
         let reasonText = '';
         
-        if (isLoser) {
+        if (isLoser && !guardImmuneSet.has(data.player)) {
           if (data.isDoubleDown) {
-            cups = 2;
             reasonText = '自分のDOUBLE DOWN';
           } else if (anyWinnerUsedDD) {
-            cups = 2;
             reasonText = '相手が発動したDOUBLE DOWN';
-          } else {
-            cups = 1;
-            reasonText = '';
           }
-          
           if (reverseRule) {
             reasonText = reasonText ? `天地逆転 + ${reasonText}` : '天地逆転';
           }
-          
           const isFinalRound = gameState.currentRound === gameState.totalRounds;
           if (isFinalRound) {
-            cups = cups * 2;
             reasonText = reasonText ? `${reasonText} + 最終ラウンド` : '最終ラウンド';
           }
-          
-          roundFinalCups[data.player] = cups;
         }
+
+        roundFinalCups[data.player] = cups;
         
         const card = document.createElement('div');
         let cardClasses = 'result-card';
@@ -2953,16 +3119,33 @@
           beerDisplay = `<div class="card-value" style="margin-top: 8px;">${data.card}</div>`;
         }
         
+        // GUARDメッセージHTML生成
+        const playerGuardMsgs = guardMessages[data.player] || [];
+        const guardMsgHTML = playerGuardMsgs.map(msg => {
+          const isSuccess = msg.includes('庇われました') || msg.includes('庇いました') || msg.includes('相思相愛');
+          const isMiss = msg.includes('GUARDミス');
+          const isUzai = msg.includes('いちゃうざ');
+          let color = isSuccess ? 'var(--color-neon-pink)' : (isMiss ? 'var(--color-neon-cyan)' : 'var(--color-danger)');
+          return `<div style="font-size: 11px; font-weight: 700; color: ${color}; margin-top: 4px;">${msg}</div>`;
+        }).join('');
+
+        // 免除バッジ
+        const immuneBadge = guardImmuneSet.has(data.player)
+          ? `<span style="font-size: 11px; background: rgba(255,20,147,0.3); border: 1px solid var(--color-neon-pink); color: var(--color-neon-pink); border-radius: 6px; padding: 2px 6px; margin-left: 4px; font-weight: 700;">免除💘</span>`
+          : '';
+
         card.innerHTML = `
           <div class="result-header">
-            <div style="display: flex; align-items: center;">
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
               <span class="player-name">${escapeHtml(data.player.substring(0, 8))}</span>
+              ${immuneBadge}
               ${actionStatus}
               ${data.isDoubleDown && !isLoser ? '<span style="font-size: 10px; color: var(--color-neon-purple); margin-left: 6px;">⚡DOUBLE DOWN発動中</span>' : ''}
             </div>
             ${badgeHTML}
           </div>
           ${beerDisplay}
+          ${guardMsgHTML}
         `;
         container.appendChild(card);
       });
@@ -3706,6 +3889,7 @@
       gameState.currentPlayerIndex = 0;
       gameState.roundData = [];
       gameState.diceUsedThisRound = [];
+      gameState.guardTargets = {}; // ラウンドごとにリセット
       
       // オンラインモード：Firebaseを更新
       if (isOnlineMode && roomRef) {
@@ -3924,7 +4108,9 @@
         playerOrder: [],
         usedCards: {},
         totalRounds: 10,
-        diceUsedThisRound: []
+        diceUsedThisRound: [],
+        guardUsed: {},
+        guardTargets: {}
       };
       
       document.getElementById('modeSelect').style.display = 'block';
@@ -3998,6 +4184,8 @@
           gameState.currentPlayerIndex = 0;
           gameState.roundData = [];
           gameState.diceUsedThisRound = [];
+          gameState.guardUsed = {};
+          gameState.guardTargets = {};
 
           // 画面を切り替えてからリスナー抑制を解除
           document.getElementById('finalResults').style.display = 'none';
@@ -4016,6 +4204,8 @@
         gameState.currentPlayerIndex = 0;
         gameState.roundData = [];
         gameState.diceUsedThisRound = [];
+        gameState.guardUsed = {};
+        gameState.guardTargets = {};
         startLottery();
       }
     }
@@ -4038,6 +4228,139 @@
       gameState.diceUsedThisRound = [];
       
       startLottery();
+    }
+
+
+    // ===== GUARD システム =====
+    let guardTargetSelected = null; // 今ラウンド自分が選んだターゲット
+
+    function getGuardRemaining(playerName) {
+      if (gameState.guardUsed[playerName] === undefined) {
+        const maxGuard = gameState.totalRounds <= 7 ? 1 : 2;
+        gameState.guardUsed[playerName] = maxGuard;
+      }
+      return gameState.guardUsed[playerName];
+    }
+
+    function updateGuardBtn(playerName) {
+      const btn = document.getElementById('guardBtn');
+      const label = document.getElementById('guardBtnLabel');
+      const panel = document.getElementById('guardSelectPanel');
+      const msg = document.getElementById('guardSelectedMsg');
+      if (!btn || !label) return;
+
+      const remaining = getGuardRemaining(playerName);
+      const isFinalRound = gameState.currentRound === gameState.totalRounds;
+
+      if (isFinalRound) {
+        label.textContent = '🛡️ GUARD（最終ラウンド使用不可）';
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+        btn.style.borderColor = '#555';
+        btn.style.color = '#888';
+        if (panel) panel.style.display = 'none';
+        return;
+      }
+      if (remaining <= 0) {
+        label.textContent = '🛡️ GUARD（残0回）';
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+        btn.style.borderColor = '#555';
+        btn.style.color = '#888';
+        if (panel) panel.style.display = 'none';
+        return;
+      }
+      // 有効
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.style.borderColor = 'var(--color-neon-cyan)';
+
+      if (guardTargetSelected) {
+        label.textContent = `🛡️ GUARD 発動中（残${remaining}回）`;
+        btn.style.color = 'var(--color-success)';
+        btn.style.borderColor = 'var(--color-success)';
+        btn.style.borderStyle = 'solid';
+        if (msg) {
+          msg.style.display = 'block';
+          msg.textContent = `→ ${guardTargetSelected} を庇う`;
+          msg.style.color = 'var(--color-success)';
+        }
+      } else {
+        label.textContent = `🛡️ GUARD（残${remaining}回）`;
+        btn.style.color = 'var(--color-neon-cyan)';
+        btn.style.borderStyle = 'dashed';
+        if (msg) msg.style.display = 'none';
+      }
+    }
+
+    function openGuardSelect() {
+      const isFinalRound = gameState.currentRound === gameState.totalRounds;
+      if (isFinalRound) {
+        alert('最終ラウンドはGUARDを使用できません');
+        return;
+      }
+
+      let playerName;
+      if (isOnlineMode) {
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        if (!myPlayer) return;
+        playerName = myPlayer.name;
+      } else {
+        const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
+        playerName = gameState.players[playerIndex].name;
+      }
+
+      const remaining = getGuardRemaining(playerName);
+      if (remaining <= 0) return;
+
+      // 既に選択中なら解除
+      if (guardTargetSelected) {
+        guardTargetSelected = null;
+        document.getElementById('guardSelectPanel').style.display = 'none';
+        updateGuardBtn(playerName);
+        return;
+      }
+
+      // ターゲット一覧を生成
+      const list = document.getElementById('guardTargetList');
+      list.innerHTML = '';
+      gameState.players.forEach(p => {
+        if (p.name === playerName) return; // 自分は除外
+        const btn = document.createElement('button');
+        btn.textContent = p.name;
+        btn.style.cssText = 'padding: 6px 14px; border-radius: 20px; border: 2px solid var(--color-neon-cyan); background: rgba(0,255,255,0.1); color: var(--color-neon-cyan); font-size: 13px; font-weight: 700; cursor: pointer;';
+        btn.onclick = () => selectGuardTarget(p.name, playerName);
+        list.appendChild(btn);
+      });
+      document.getElementById('guardSelectPanel').style.display = 'block';
+    }
+
+    function selectGuardTarget(targetName, selfName) {
+      guardTargetSelected = targetName;
+      document.getElementById('guardSelectPanel').style.display = 'none';
+      updateGuardBtn(selfName);
+    }
+
+    function cancelGuard() {
+      guardTargetSelected = null;
+      document.getElementById('guardSelectPanel').style.display = 'none';
+      let playerName;
+      if (isOnlineMode) {
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        if (myPlayer) playerName = myPlayer.name;
+      } else {
+        const playerIndex = gameState.playerOrder[gameState.currentPlayerIndex];
+        playerName = gameState.players[playerIndex].name;
+      }
+      if (playerName) updateGuardBtn(playerName);
+    }
+
+    function resetGuardUI() {
+      guardTargetSelected = null;
+      const panel = document.getElementById('guardSelectPanel');
+      const msg = document.getElementById('guardSelectedMsg');
+      if (panel) panel.style.display = 'none';
+      if (msg) msg.style.display = 'none';
     }
 
     // ===== SoSo-mode =====
