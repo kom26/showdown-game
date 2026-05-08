@@ -3903,58 +3903,6 @@
       document.getElementById('roundResults').style.display = 'none';
       document.getElementById('finalResults').style.display = 'none';
       document.getElementById('rulesScreen').style.display = 'none';
-      
-      const GAME_URL = 'https://kom26.github.io/showdown-game/';
-
-    function shareGame() {
-      const shareData = {
-        title: 'SHOWDOWN',
-        text: '✧ カードバトルゲーム SHOWDOWN で遊ぼう！',
-        url: GAME_URL
-      };
-
-      if (navigator.share) {
-        navigator.share(shareData).catch((err) => {
-          // AbortError はユーザーが自分でキャンセルしただけなので無視
-          if (err && err.name !== 'AbortError') {
-            copyToClipboard();
-          }
-        });
-      } else {
-        copyToClipboard();
-      }
-    }
-
-    function copyToClipboard() {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(GAME_URL)
-          .then(() => { showCopiedMsg(); })
-          .catch(() => { fallbackCopy(); });
-      } else {
-        fallbackCopy();
-      }
-    }
-
-    function fallbackCopy() {
-      const ta = document.createElement('textarea');
-      ta.value = GAME_URL;
-      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      try {
-        const ok = document.execCommand('copy');
-        if (ok) showCopiedMsg();
-      } catch(e) {}
-      document.body.removeChild(ta);
-    }
-
-    function showCopiedMsg() {
-      const msg = document.getElementById('shareCopiedMsg');
-      if (!msg) return;
-      msg.style.display = 'block';
-      setTimeout(() => { msg.style.display = 'none'; }, 2500);
-    }
 
     updatePlayerInputs();
       
@@ -4047,6 +3995,57 @@
       gameState.diceUsedThisRound = [];
       
       startLottery();
+    }
+
+    const GAME_URL = 'https://kom26.github.io/showdown-game/';
+
+    function shareGame() {
+      const shareData = {
+        title: 'SHOWDOWN',
+        text: '✧ カードバトルゲーム SHOWDOWN で遊ぼう！',
+        url: GAME_URL
+      };
+
+      if (navigator.share) {
+        navigator.share(shareData).catch((err) => {
+          if (err && err.name !== 'AbortError') {
+            copyToClipboard();
+          }
+        });
+      } else {
+        copyToClipboard();
+      }
+    }
+
+    function copyToClipboard() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(GAME_URL)
+          .then(() => { showCopiedMsg(); })
+          .catch(() => { fallbackCopy(); });
+      } else {
+        fallbackCopy();
+      }
+    }
+
+    function fallbackCopy() {
+      const ta = document.createElement('textarea');
+      ta.value = GAME_URL;
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try {
+        const ok = document.execCommand('copy');
+        if (ok) showCopiedMsg();
+      } catch(e) {}
+      document.body.removeChild(ta);
+    }
+
+    function showCopiedMsg() {
+      const msg = document.getElementById('shareCopiedMsg');
+      if (!msg) return;
+      msg.style.display = 'block';
+      setTimeout(() => { msg.style.display = 'none'; }, 2500);
     }
 
     updatePlayerInputs();
