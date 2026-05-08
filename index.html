@@ -812,7 +812,7 @@
       </div>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ルームコード（4桁）</label>
-        <input type="text" id="roomCodeInput" placeholder="1234" maxlength="4" style="width: 100%; font-size: 24px; text-align: center; letter-spacing: 8px;">
+        <input type="text" id="roomCodeInput" placeholder="1234" maxlength="4" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'')" style="width: 100%; font-size: 24px; text-align: center; letter-spacing: 8px;">
       </div>
       <button class="primary" onclick="joinRoom()" style="width: 100%; margin-bottom: 0.75rem;">参加する</button>
       <button onclick="backToOnlineMenu()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← 戻る</button>
