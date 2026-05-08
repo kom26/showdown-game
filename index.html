@@ -2890,7 +2890,8 @@
       });
       console.log('[GUARD DEBUG] minCard:', minCard, 'roundGuardTargets:', JSON.stringify(roundGuardTargets));
 
-      try {
+      // 相思相愛判定
+      console.log('[GUARD DEBUG] step1: soso check');
       const sosoSet = new Set();
       const sosoPairs = [];
       Object.entries(roundGuardTargets).forEach(([a, b]) => {
@@ -2994,7 +2995,7 @@
           p.losses = Math.max(0, p.losses + finalCups);
         });
       }
-      } catch(e) { console.error('[GUARD ERROR]', e); }
+
 
       const container = document.getElementById('resultsContainer');
       container.innerHTML = '';
