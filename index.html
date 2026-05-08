@@ -658,7 +658,7 @@
     <div class="back-warning-content">
       <div class="back-warning-icon">⚠️</div>
       <div class="back-warning-title">ブラウザバック検出</div>
-      <div class="back-warning-text">
+      <div class="back-warning-text" id="backWarningText">
         他のプレイヤーの手札が見えてしまうため<br>
         ブラウザバックは禁止されています
       </div>
@@ -686,6 +686,19 @@
     </div>
   </div>
   
+  <div class="back-warning" id="roomDeletedModal">
+    <div class="back-warning-content">
+      <div class="back-warning-icon">🚪</div>
+      <div class="back-warning-title">ルーム解散</div>
+      <div class="back-warning-text">
+        <span id="roomDeletedName"></span>さんが退出したため<br>このルームは削除されました
+      </div>
+      <button class="primary" onclick="closeRoomDeletedModal()" style="width: 100%; font-size: 16px;">
+        TOPに戻る
+      </button>
+    </div>
+  </div>
+
   <div class="container" id="app">
     <div class="logo" onclick="checkTitleTap()">SHOWDOWN</div>
     <div class="tagline">✧ card battle ✧</div>
@@ -1044,6 +1057,9 @@
         <button id="startFinalRoundBtn" class="primary" onclick="startFinalRound()" style="width: 100%; font-size: 18px; display: none;">
           最終決戦 開始 ⚡
         </button>
+        <button id="skipFinalRoundBtn" onclick="skipFinalRound()" style="width: 100%; margin-top: 0.75rem; font-size: 14px; background: rgba(255,20,147,0.15); border: 2px dashed var(--color-neon-pink); color: var(--color-neon-pink); display: none;">
+          ⚡ カード選択をスキップして結果を表示
+        </button>
         <div id="waitingForFinalRoundStart" style="font-size: 14px; color: var(--color-neon-cyan); display: none;">
           ルーム作成者が開始します...
         </div>
@@ -1255,6 +1271,15 @@
       window.addEventListener('popstate', function() {
         if (isGameActive) {
           history.pushState(null, null, location.href);
+          // オンライン中はテキストを切り替え
+          const warnText = document.getElementById('backWarningText');
+          if (warnText) {
+            if (isOnlineMode) {
+              warnText.innerHTML = '退出するとルームが削除され、<br>全員がTOPに戻されます';
+            } else {
+              warnText.innerHTML = '他のプレイヤーの手札が見えてしまうため<br>ブラウザバックは禁止されています';
+            }
+          }
           document.getElementById('backWarning').classList.add('show');
         }
       });
@@ -1271,9 +1296,14 @@
     }
     
     function confirmAbortFromWarning() {
-      if (confirm('本当にゲームを中止してTOPに戻りますか？')) {
-        document.getElementById('backWarning').classList.remove('show');
-        abortGame();
+      document.getElementById('backWarning').classList.remove('show');
+      if (isOnlineMode && roomRef) {
+        // オンライン中は退出扱い（全員強制終了）
+        leaveRoom(false);
+      } else {
+        if (confirm('本当にゲームを中止してTOPに戻りますか？')) {
+          abortGame();
+        }
       }
     }
     
@@ -1884,8 +1914,15 @@
       roomRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) {
-          alert('ルームが削除されました');
-          leaveRoom(true);
+          // ルームが削除された：deletedByは既に消えているので別途取得不可
+          // → 直前のsnapshotから名前を拾うため、削除前にFirebaseへ書き込む運用
+          _resetOnlineState('不明なプレイヤー');
+          return;
+        }
+
+        // 退出者名が書き込まれていたら（削除直前の書き込みを検知）
+        if (data.deletedBy) {
+          _resetOnlineState(data.deletedBy);
           return;
         }
         
@@ -2050,28 +2087,31 @@
       }
     }
     
-    function leaveRoom(forced = false) {
-      // 強制退出（ホストがルームを削除した場合）以外は確認ダイアログを表示
-      if (!forced && !confirm('本当にルームを退出しますか?')) {
+    function leaveRoom(forced = false, deletedByName = null) {
+      // 強制退出（ルームが削除された場合）以外は確認ダイアログを表示
+      if (!forced && !confirm('本当にルームを退出しますか？\n退出するとルームが削除され、全員がTOPに戻ります。')) {
         return;
       }
-      
+
       if (roomRef) {
-        if (isRoomHost) {
-          roomRef.remove();
-        } else {
-          roomRef.child('players').child(myPlayerId).remove();
-          roomRef.child('playerOrder').once('value').then((snapshot) => {
-            const order = snapshot.val();
-            if (order && Array.isArray(order)) {
-              const newOrder = order.filter(id => id !== myPlayerId);
-              roomRef.child('playerOrder').set(newOrder);
-            }
+        if (!forced) {
+          // 自分が退出する側：退出者名をFirebaseに書く
+          // リスナーがそれを検知して全員に通知→その後削除
+          const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+          const myName = myPlayer ? myPlayer.name : '誰か';
+          roomRef.update({ deletedBy: myName }).then(() => {
+            // 少し待って全員のリスナーに届いてから削除
+            setTimeout(() => { roomRef.remove(); }, 800);
           });
         }
         roomRef.off();
+        stopDiceListeners();
       }
-      
+
+      _resetOnlineState(deletedByName);
+    }
+
+    function _resetOnlineState(deletedByName = null) {
       window.scrollTo(0, 0);
       isOnlineMode = false;
       currentRoomCode = null;
@@ -2079,33 +2119,38 @@
       myPlayerId = null;
       roomRef = null;
       currentDicePlayer = null;
-      
+
       // 全ての画面を非表示にする
-      document.getElementById('modeSelect').style.display = 'block';
-      document.getElementById('setup').style.display = 'none';
-      document.getElementById('onlineMenu').style.display = 'none';
-      document.getElementById('createRoom').style.display = 'none';
-      document.getElementById('joinRoom').style.display = 'none';
-      document.getElementById('waitingRoom').style.display = 'none';
-      document.getElementById('lottery').style.display = 'none';
-      document.getElementById('cardSelect').style.display = 'none';
-      document.getElementById('handover').style.display = 'none';
-      document.getElementById('readyToShowResult').style.display = 'none';
-      document.getElementById('onlineCardWaiting').style.display = 'none';
-      document.getElementById('diceActionWaiting').style.display = 'none';
-      document.getElementById('lastRoundAnnounce').style.display = 'none';
-      document.getElementById('chanceConfirm').style.display = 'none';
-      document.getElementById('diceRolling').style.display = 'none';
-      document.getElementById('chanceResult').style.display = 'none';
-      document.getElementById('roundResults').style.display = 'none';
-      document.getElementById('finalResults').style.display = 'none';
-      document.getElementById('rulesScreen').style.display = 'none';
-      
+      const screens = [
+        'setup','onlineMenu','createRoom','joinRoom','waitingRoom',
+        'lottery','cardSelect','handover','readyToShowResult',
+        'onlineCardWaiting','diceActionWaiting','lastRoundAnnounce',
+        'chanceConfirm','diceRolling','chanceResult',
+        'roundResults','finalResults','rulesScreen'
+      ];
+      screens.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+
+      // 退出者名があれば通知モーダルを出してからTOPへ
+      if (deletedByName) {
+        document.getElementById('roomDeletedName').textContent = deletedByName;
+        document.getElementById('roomDeletedModal').classList.add('show');
+      } else {
+        document.getElementById('modeSelect').style.display = 'block';
+      }
+
       // 入力フィールドをクリア（名前はlocalStorageから保持、ルームコードのみリセット）
       const savedName = loadOnlineName();
       document.getElementById('hostName').value = savedName;
       document.getElementById('joinerName').value = savedName;
       document.getElementById('roomCodeInput').value = '';
+    }
+
+    function closeRoomDeletedModal() {
+      document.getElementById('roomDeletedModal').classList.remove('show');
+      document.getElementById('modeSelect').style.display = 'block';
     }
     
     function startOnlineGame() {
@@ -2347,6 +2392,7 @@
         
         const usedCardsByPlayer = gameState.usedCards[myPlayer.name] || [];
         const maxCard = gameState.totalRounds;
+        const remainingCards = [];
         
         for (let i = 1; i <= maxCard; i++) {
           const card = document.createElement('div');
@@ -2360,6 +2406,7 @@
             // 使用済みでも裏モードシーケンス判定は通す
             card.onclick = () => checkAdminSeq(i);
           } else {
+            remainingCards.push({ value: i, el: card });
             card.onclick = () => selectCard(i, card);
             
             // 既に選択していたカードを復元
@@ -2371,6 +2418,11 @@
           }
           
           grid.appendChild(card);
+        }
+        
+        // 最終ラウンドで残り1枚なら自動選択状態にする
+        if (remainingCards.length === 1 && selectedCard !== remainingCards[0].value) {
+          selectCard(remainingCards[0].value, remainingCards[0].el);
         }
         
         return;
@@ -2431,6 +2483,7 @@
       
       const usedCardsByPlayer = gameState.usedCards[player.name] || [];
       const maxCard = gameState.totalRounds;
+      const remainingCards = [];
       
       for (let i = 1; i <= maxCard; i++) {
         const card = document.createElement('div');
@@ -2444,13 +2497,19 @@
           // 使用済みでも裏モードシーケンス判定は通す
           card.onclick = () => checkAdminSeq(i);
         } else {
+          remainingCards.push({ value: i, el: card });
           card.onclick = () => selectCard(i, card);
         }
         
         grid.appendChild(card);
       }
       
-      document.getElementById('confirmBtn').disabled = true;
+      // 最終ラウンドで残り1枚なら自動選択状態にする
+      if (remainingCards.length === 1) {
+        selectCard(remainingCards[0].value, remainingCards[0].el);
+      } else {
+        document.getElementById('confirmBtn').disabled = true;
+      }
     }
     
     function showOnlineWaitingScreen() {
@@ -3145,12 +3204,12 @@
       
       gameState.diceUsedThisRound.push(chancePlayer);
       
-      // オンラインモード：さいころ結果を一時保存(まだ非表示)
+      // オンラインモード：さいころが止まった瞬間に全員へ即時反映
       if (isOnlineMode && roomRef) {
         const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
         if (myPlayer) {
           roomRef.child('diceActions').child(myPlayer.playerId).set({
-            action: 'rolling_done', // OKボタンを押すまでは非表示
+            action: 'rolled', // 止まった瞬間に全員に反映（OKを待たない）
             playerName: myPlayer.name,
             multiplier: multiplier,
             newCups: newCups
@@ -3183,47 +3242,8 @@
       document.getElementById('chanceResult').style.display = 'none';
       
       if (isOnlineMode) {
-        // オンラインモード：OKボタン押下時にFirebaseを更新して全員に反映
-        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
-        if (myPlayer && chancePlayer === myPlayer.name) {
-          // Firebaseの状態を'rolled'に更新(これで全員に杯数が反映される)
-          const newCups = roundFinalCups[chancePlayer];
-          roomRef.child('diceActions').child(myPlayer.playerId).update({
-            action: 'rolled' // OKボタンを押したので全員に表示
-          }).then(() => {
-            // 保存完了後に更新
-            const statusElement = document.getElementById('action-status-' + safeDomId(chancePlayer));
-            if (statusElement) {
-              statusElement.textContent = '✅';
-              statusElement.style.color = 'var(--color-success)';
-              statusElement.setAttribute('data-action-done', 'true');
-            }
-            
-            // 自分のさいころボタンと確定ボタンを無効化
-            const diceBtn = document.getElementById('dice-btn-' + safeDomId(chancePlayer));
-            const confirmBtn = document.getElementById('confirm-btn-' + safeDomId(chancePlayer));
-            
-            if (diceBtn) {
-              diceBtn.style.display = 'none';
-            }
-            
-            if (confirmBtn) {
-              confirmBtn.style.display = 'none';
-            }
-            
-            // 杯数表示を更新
-            const beerDisplay = document.getElementById('beer-display-' + safeDomId(chancePlayer));
-            if (beerDisplay && newCups !== undefined) {
-              const beerIcons = '🍺'.repeat(newCups);
-              beerDisplay.textContent = beerIcons || 'セーフ！';
-            }
-            
-            moveToNextDicePlayer();
-          });
-        } else {
-          moveToNextDicePlayer();
-        }
-        
+        // オンラインモード：さいころ止まった瞬間にFirebase反映済みなのでOKはそのまま次へ
+        moveToNextDicePlayer();
         return;
       }
       
@@ -3689,15 +3709,81 @@
       if (isOnlineMode) {
         if (isRoomHost) {
           document.getElementById('startFinalRoundBtn').style.display = 'block';
+          document.getElementById('skipFinalRoundBtn').style.display = 'block';
           document.getElementById('waitingForFinalRoundStart').style.display = 'none';
         } else {
           document.getElementById('startFinalRoundBtn').style.display = 'none';
+          document.getElementById('skipFinalRoundBtn').style.display = 'none';
           document.getElementById('waitingForFinalRoundStart').style.display = 'block';
         }
       } else {
-        // オフラインモード：ボタン表示
+        // オフラインモード：両ボタン表示
         document.getElementById('startFinalRoundBtn').style.display = 'block';
+        document.getElementById('skipFinalRoundBtn').style.display = 'block';
         document.getElementById('waitingForFinalRoundStart').style.display = 'none';
+      }
+    }
+
+    function skipFinalRound() {
+      window.scrollTo(0, 0);
+      document.getElementById('lastRoundAnnounce').style.display = 'none';
+
+      if (isOnlineMode && roomRef) {
+        // 全プレイヤーのカードを自動確定してFirebaseへ書き込む
+        roomRef.update({ showingLastRoundAnnounce: false });
+
+        const updates = {};
+        gameState.players.forEach(player => {
+          const usedCards = gameState.usedCards[player.name] || [];
+          const maxCard = gameState.totalRounds;
+          // 残り1枚を特定
+          const remaining = [];
+          for (let i = 1; i <= maxCard; i++) {
+            if (!usedCards.includes(i)) remaining.push(i);
+          }
+          if (remaining.length !== 1) return; // 念のため残り1枚以外は何もしない
+          const autoCard = remaining[0];
+          const isDD = !player.hasUsedDoubleDown; // 最終ラウンドは強制DD
+
+          updates[`roundData/${player.playerId}`] = {
+            player: player.name,
+            card: autoCard,
+            isDoubleDown: isDD
+          };
+          updates[`players/${player.playerId}/usedCards`] = [...usedCards, autoCard];
+          if (isDD) updates[`players/${player.playerId}/hasUsedDoubleDown`] = true;
+        });
+
+        roomRef.update(updates).then(() => {
+          // 全員の選択が揃ったので結果表示フラグを立てる
+          roomRef.update({ showingResults: true });
+          showRoundResults();
+        });
+      } else {
+        // オフラインモード：全プレイヤーのカードをローカルで自動確定
+        const maxCard = gameState.totalRounds;
+        gameState.playerOrder.forEach(playerIndex => {
+          const player = gameState.players[playerIndex];
+          const usedCards = gameState.usedCards[player.name] || [];
+          const remaining = [];
+          for (let i = 1; i <= maxCard; i++) {
+            if (!usedCards.includes(i)) remaining.push(i);
+          }
+          if (remaining.length !== 1) return;
+          const autoCard = remaining[0];
+          const isDD = !player.hasUsedDoubleDown;
+
+          gameState.roundData.push({
+            player: player.name,
+            card: autoCard,
+            isDoubleDown: isDD
+          });
+          if (!gameState.usedCards[player.name]) gameState.usedCards[player.name] = [];
+          gameState.usedCards[player.name].push(autoCard);
+          if (isDD) player.hasUsedDoubleDown = true;
+        });
+
+        showRoundResults();
       }
     }
     
