@@ -3250,8 +3250,15 @@
       document.getElementById('chanceResult').style.display = 'none';
       
       if (isOnlineMode) {
-        // オンラインモード：さいころ止まった瞬間にFirebase反映済みなのでOKはそのまま次へ
-        moveToNextDicePlayer();
+        // OKを押したことをFirebaseに記録してから次へ
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        if (myPlayer && roomRef) {
+          roomRef.child('diceActions').child(myPlayer.playerId).update({ okDone: true }).then(() => {
+            moveToNextDicePlayer();
+          });
+        } else {
+          moveToNextDicePlayer();
+        }
         return;
       }
       
@@ -3380,7 +3387,11 @@
               const cardPlayerName = cardElement.querySelector('.player-name')?.textContent;
               if (cardPlayerName && cardPlayerName.trim() === playerName.substring(0, 8).trim()) {
                 cardElement.classList.remove('action-turn');
-                if (index === order.currentIndex && (!action || action.action === 'rolling' || action.action === 'rolling_done')) {
+                const stillMyTurn = !action 
+                  || action.action === 'rolling' 
+                  || action.action === 'rolling_done'
+                  || (action.action === 'rolled' && !action.okDone);
+                if (index === order.currentIndex && stillMyTurn) {
                   cardElement.classList.add('action-turn');
                 }
               }
@@ -3389,8 +3400,12 @@
             // さいころボタンのグレーアウト
             const diceBtn = document.getElementById('dice-btn-' + safeDomId(playerName));
             
-            if (action && action.action !== 'rolling' && action.action !== 'rolling_done') {
-              // ① アクション完了（confirmed / rolled）
+            const isRolledAndOkDone = action && action.action === 'rolled' && action.okDone === true;
+            const isConfirmed = action && action.action === 'confirmed';
+            const isFullyDone = isRolledAndOkDone || isConfirmed;
+
+            if (isFullyDone) {
+              // ① アクション完了（OK押下済み or さいころスキップ）
               statusElement.textContent = '✅';
               statusElement.style.color = 'var(--color-success)';
               statusElement.style.fontWeight = '700';
@@ -3403,15 +3418,24 @@
               if (confirmBtn) confirmBtn.style.display = 'none';
               
               // roundFinalCupsを更新（さいころ結果を反映）
-              if (action.action === 'rolled' || action.action === 'confirmed') {
-                roundFinalCups[playerName] = action.newCups;
-                const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
-                if (beerDisplay) {
-                  beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'セーフ！';
-                }
+              roundFinalCups[playerName] = action.newCups;
+              const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
+              if (beerDisplay) {
+                beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'セーフ！';
+              }
+            } else if (action && action.action === 'rolled' && !action.okDone) {
+              // ② さいころ結果出たがOK待ち中
+              statusElement.textContent = '結果確認中...';
+              statusElement.style.color = 'var(--color-neon-pink)';
+              statusElement.style.fontWeight = '700';
+              // 杯数はリアルタイム反映（他プレイヤーには見える）
+              roundFinalCups[playerName] = action.newCups;
+              const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
+              if (beerDisplay) {
+                beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'セーフ！';
               }
             } else if (action && (action.action === 'rolling' || action.action === 'rolling_done')) {
-              // ② さいころ抽選中または結果確認中
+              // ③ さいころ抽選中
               statusElement.textContent = '神のさいころを振っています...';
               statusElement.style.color = 'var(--color-neon-cyan)';
               statusElement.style.fontWeight = '700';
@@ -3457,13 +3481,18 @@
             }
           });
           
-          // 全員完了チェック (rolling と rolling_done は未完了扱い)
+          // 全員完了チェック
+          // rolled: さいころ結果確定済み、okDone: OKボタン押下済み
+          // confirmed: さいころスキップして確定
+          // → rolled の場合は okDone: true になるまで未完了扱い
           const allCompleted = order.losers.every(playerName => {
             const playerObj = gameState.players.find(p => p.name === playerName);
             if (!playerObj) return false;
             const action = actions[playerObj.playerId];
-            // actionが存在し、かつrollingでもrolling_doneでもない場合のみ完了
-            return action && action.action !== 'rolling' && action.action !== 'rolling_done';
+            if (!action) return false;
+            if (action.action === 'rolling' || action.action === 'rolling_done') return false;
+            if (action.action === 'rolled') return action.okDone === true;
+            return true; // confirmed など
           });
           
           if (allCompleted) {
