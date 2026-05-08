@@ -57,7 +57,7 @@
     }
     body::before {
       content: '';
-      position: fixed;
+      position: absolute;
       top: 0;
       left: 0;
       right: 0;
@@ -2949,12 +2949,14 @@
         // 相思相愛ペア全員免除（勝ち負け問わず）
         sosoSet.forEach(name => guardImmuneSet.add(name));
 
-        // カップル以外全員に+1杯（強制）
+        // カップル以外全員にカップル数分+杯（強制）
+        const uzaiCups = sosoPairs.length;
+        const uzaiText = uzaiCups === 1 ? '💢 いちゃうざ +1杯' : `💢 いちゃうざ +${uzaiCups}杯`;
         gameState.players.forEach(p => {
           if (!sosoSet.has(p.name)) {
-            guardCupsMap[p.name] = (guardCupsMap[p.name] || 0) + 1;
+            guardCupsMap[p.name] = (guardCupsMap[p.name] || 0) + uzaiCups;
             if (!guardMessages[p.name]) guardMessages[p.name] = [];
-            guardMessages[p.name].push('💢 いちゃうざ +1杯');
+            guardMessages[p.name].push(uzaiText);
           }
         });
 
@@ -3052,7 +3054,7 @@
         banner.innerHTML = `
           <div style="font-size: 22px; margin-bottom: 4px;">💞</div>
           <div style="font-size: 14px; font-weight: 800; color: var(--color-neon-pink); text-shadow: 0 0 10px var(--color-neon-pink);">相思相愛！${pairText}</div>
-          <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 4px;">相思相愛カップル以外 +1杯 💢</div>
+          <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 4px;">相思相愛カップル以外 +${sosoPairs.length}杯 💢</div>
         `;
         container.appendChild(banner);
       }
