@@ -2924,10 +2924,20 @@
       const guardMessages = {}; // { name: [メッセージ配列] }
       const sosoMessages = []; // 相思相愛バナー用
 
+      // 全員同じカード判定（基本杯数計算前に確定させる）
+      const allCards = gameState.roundData.map(d => d.card);
+      const allSameCard = gameState.players.length >= 3 && allCards.length >= 3
+        && allCards.every(c => c === allCards[0]);
+
       // 基本杯数をまず計算（GUARD前）
       gameState.roundData.forEach(data => {
         const isLoser = reverseRule ? (data.card === maxCardNumber) : (data.card === minCard);
         if (!isLoser) { guardCupsMap[data.player] = 0; return; }
+        if (allSameCard) {
+          // 全員一致：負け+1 の後に -1 で打ち消し → 0杯。DD・最終×2は乗らない
+          guardCupsMap[data.player] = 0;
+          return;
+        }
         let cups = 1;
         if (data.isDoubleDown && anyWinnerUsedDD) cups = 2;
         else if (data.isDoubleDown) cups = 2;
@@ -3047,25 +3057,8 @@
         });
       }
 
-      // ===== 全員同じカード → 全員免除 =====
-      const allCards = gameState.roundData.map(d => d.card);
-      const allSameCard = gameState.players.length >= 3 && allCards.length >= 3
-        && allCards.every(c => c === allCards[0]);
-      
-      if (allSameCard) {
-        // オフライン：GUARD反映で加算済みのlossesを差し引いてから0にする
-        if (!isOnlineMode) {
-          gameState.players.forEach(p => {
-            const alreadyAdded = guardImmuneSet.has(p.name) ? 0 : (guardCupsMap[p.name] || 0);
-            p.losses = Math.max(0, p.losses - alreadyAdded);
-          });
-        }
-        // 全員guardCupsMapを0にして全員免除
-        gameState.roundData.forEach(d => {
-          guardCupsMap[d.player] = 0;
-          guardImmuneSet.add(d.player);
-        });
-      }
+      // ===== 全員同じカード の処理は基本杯数計算時に済み =====
+      // allSameCard のとき guardCupsMap は全員 0（GUARD・相思相愛は通常通り発動）
 
       // ===== 一人勝ちボーナス 判定 =====
       // 条件：3人以上 & 勝者1人 & 負け側全員同じカード
@@ -3089,6 +3082,8 @@
       Object.keys(gameState.loneWinnerBonus).forEach(playerName => {
         const hasBonus = gameState.loneWinnerBonus[playerName];
         if (!hasBonus) return;
+        // 今ラウンドで新たにGETした人には前ターンボーナスを適用しない（同ラウンドGET防止）
+        if (newLoneWinnerBonus[playerName]) return;
 
         // guardCupsMapの現在値を取得（GUARD・いちゃうざ処理後の値）
         const currentCups = guardImmuneSet.has(playerName) ? 0 : (guardCupsMap[playerName] || 0);
@@ -3133,6 +3128,18 @@
         `;
         container.appendChild(banner);
       }
+
+      // 全員同じカード バナー表示
+      if (allSameCard) {
+        const allSameBanner = document.createElement('div');
+        allSameBanner.style.cssText = 'background: linear-gradient(135deg, rgba(0,255,255,0.15), rgba(168,85,247,0.15)); border: 2px solid var(--color-neon-cyan); border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 0.75rem; text-align: center;';
+        allSameBanner.innerHTML = `
+          <div style="font-size: 22px; margin-bottom: 4px;">🤝</div>
+          <div style="font-size: 14px; font-weight: 800; color: var(--color-neon-cyan); text-shadow: 0 0 10px var(--color-neon-cyan);">全員一致！負け相殺</div>
+          <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 4px;">全員が同じカードを出しました — 負け +1 を相殺</div>
+        `;
+        container.appendChild(allSameBanner);
+      }
       
       sorted.forEach(data => {
         // reverseRule時はmaxCardNumberが負け
@@ -3143,14 +3150,18 @@
         const reasonLines = [];
         
         if (isLoser) {
-          // 免除者も含め、基本理由は全員表示
           reasonLines.push('負け +1杯');
-          if (data.isDoubleDown && anyWinnerUsedDD) reasonLines.push('⚡ 自分のDOUBLE DOWN ×2');
-          else if (data.isDoubleDown) reasonLines.push('⚡ 自分のDOUBLE DOWN ×2');
-          else if (anyWinnerUsedDD) reasonLines.push('⚡ 相手が発動したDOUBLE DOWN ×2');
-          if (reverseRule) reasonLines.push('🔄 天地逆転');
-          const isFinalRound = gameState.currentRound === gameState.totalRounds;
-          if (isFinalRound) reasonLines.push('🔥 最終ラウンド ×2');
+          if (allSameCard) {
+            // 全員同じカード：負け+1 を打ち消し。DD・最終は乗らない
+            reasonLines.push('🤝 全員一致 -1杯');
+          } else {
+            if (data.isDoubleDown && anyWinnerUsedDD) reasonLines.push('⚡ 自分のDOUBLE DOWN ×2');
+            else if (data.isDoubleDown) reasonLines.push('⚡ 自分のDOUBLE DOWN ×2');
+            else if (anyWinnerUsedDD) reasonLines.push('⚡ 相手が発動したDOUBLE DOWN ×2');
+            if (reverseRule) reasonLines.push('🔄 天地逆転');
+            const isFinalRound = gameState.currentRound === gameState.totalRounds;
+            if (isFinalRound) reasonLines.push('🔥 最終ラウンド ×2');
+          }
         }
         const reasonText = reasonLines.length > 0 ? 'has_reasons' : '';
 
@@ -3820,10 +3831,13 @@
               if (confirmBtn) confirmBtn.style.display = 'none';
               
               // roundFinalCupsを更新（さいころ結果を反映）
-              roundFinalCups[playerName] = action.newCups;
-              const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
-              if (beerDisplay) {
-                beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'SAFE👍';
+              // 免除者（ボーナス・GUARD等でroundFinalCups=0）はビール表示を上書きしない
+              if ((roundFinalCups[playerName] || 0) > 0 || action.newCups > 0) {
+                roundFinalCups[playerName] = action.newCups;
+                const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
+                if (beerDisplay) {
+                  beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'SAFE👍';
+                }
               }
             } else if (action && action.action === 'rolled') {
               // ② さいころ結果出たがOK待ち中
@@ -3831,10 +3845,12 @@
               statusElement.style.color = 'var(--color-neon-pink)';
               statusElement.style.fontWeight = '700';
               // 杯数はリアルタイム反映（他プレイヤーには見える）
-              roundFinalCups[playerName] = action.newCups;
-              const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
-              if (beerDisplay) {
-                beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'SAFE👍';
+              if ((roundFinalCups[playerName] || 0) > 0 || action.newCups > 0) {
+                roundFinalCups[playerName] = action.newCups;
+                const beerDisplay = document.getElementById('beer-display-' + safeDomId(playerName));
+                if (beerDisplay) {
+                  beerDisplay.textContent = '🍺'.repeat(Math.max(0, action.newCups)) || 'SAFE👍';
+                }
               }
             } else if (action && (action.action === 'rolling' || action.action === 'rolling_done')) {
               // ③ さいころ抽選中
