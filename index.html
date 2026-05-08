@@ -2821,6 +2821,8 @@
       
       document.getElementById('resultRoundInfo').textContent = `第${gameState.currentRound}回戦`;
       
+      console.log('[GUARD DEBUG] roundData:', JSON.stringify(gameState.roundData));
+      
       gameState.roundData.forEach(data => {
         if (data.isDoubleDown) {
           const player = gameState.players.find(p => p.name === data.player);
