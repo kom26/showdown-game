@@ -802,7 +802,6 @@
       <div style="background: rgba(168, 85, 247, 0.2); border: 3px solid var(--color-neon-purple); border-radius: 16px; padding: 2rem 1rem; margin-bottom: 1.5rem; text-align: center;">
         <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 0.5rem;">ルームコード</div>
         <div id="displayRoomCode" style="font-size: 48px; font-weight: 800; letter-spacing: 12px; color: var(--color-neon-pink); text-shadow: 0 0 20px var(--color-neon-pink);">----</div>
-        <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 0.5rem;">このコードを友達に共有</div>
       </div>
       <!-- さいころ倍率表示（待機室・変更不可） -->
       <div id="waitingDiceRatesBox" style="background: rgba(26,10,40,0.7); border: 2px solid var(--color-neon-purple); border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 1.5rem;">
@@ -946,9 +945,9 @@
         <h3 style="font-size: 16px; color: var(--color-neon-purple); margin-bottom: 0.75rem;">🎲 神のさいころ</h3>
         <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
           負けた人は<strong style="color: var(--color-text-primary);">各ラウンドで1回だけ</strong>さいころを振れる<br>
-          <strong style="color: var(--color-success);">× 0（帳消し）: 50%</strong><br>
-          <strong style="color: var(--color-neon-cyan);">× 2（倍増）: 40%</strong><br>
-          <strong style="color: var(--color-danger);">× 3（3倍）: 10%</strong><br>
+          <strong style="color: var(--color-success);">× 0（帳消し）: <span id="rulesRate0">50</span>%</strong><br>
+          <strong style="color: var(--color-neon-cyan);">× 2（倍増）: <span id="rulesRate2">40</span>%</strong><br>
+          <strong style="color: var(--color-danger);">× 3（3倍）: <span id="rulesRate3">10</span>%</strong><br>
           タップして止めた瞬間に結果が確定。
         </div>
       </div>
@@ -1726,16 +1725,30 @@
       document.getElementById('onlineMenu').style.display = 'block';
     }
     
+    const ONLINE_NAME_KEY = 'showdown_online_name';
+
+    function saveOnlineName(name) {
+      try { localStorage.setItem(ONLINE_NAME_KEY, name); } catch(e) {}
+    }
+
+    function loadOnlineName() {
+      try { return localStorage.getItem(ONLINE_NAME_KEY) || ''; } catch(e) { return ''; }
+    }
+
     function showCreateRoom() {
       window.scrollTo(0, 0);
       document.getElementById('onlineMenu').style.display = 'none';
       document.getElementById('createRoom').style.display = 'block';
+      const saved = loadOnlineName();
+      if (saved) document.getElementById('hostName').value = saved;
     }
     
     function showJoinRoom() {
       window.scrollTo(0, 0);
       document.getElementById('onlineMenu').style.display = 'none';
       document.getElementById('joinRoom').style.display = 'block';
+      const saved = loadOnlineName();
+      if (saved) document.getElementById('joinerName').value = saved;
     }
     
     function createRoom() {
@@ -1745,6 +1758,7 @@
         return;
       }
       
+      saveOnlineName(hostName);
       const rounds = parseInt(document.getElementById('onlineRoundCount').value);
       const diceRates = getOnlineDiceRatesFromUI(); // さいころ倍率をUIから取得
       currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
@@ -1807,6 +1821,7 @@
         return;
       }
       
+      saveOnlineName(joinerName);
       currentRoomCode = roomCode;
       isRoomHost = false;
       myPlayerId = generatePlayerId();
@@ -2086,9 +2101,10 @@
       document.getElementById('finalResults').style.display = 'none';
       document.getElementById('rulesScreen').style.display = 'none';
       
-      // 入力フィールドをクリア
-      document.getElementById('hostName').value = '';
-      document.getElementById('joinerName').value = '';
+      // 入力フィールドをクリア（名前はlocalStorageから保持、ルームコードのみリセット）
+      const savedName = loadOnlineName();
+      document.getElementById('hostName').value = savedName;
+      document.getElementById('joinerName').value = savedName;
       document.getElementById('roomCodeInput').value = '';
     }
     
@@ -2139,9 +2155,20 @@
     
     let rulesCalledFrom = 'setup'; // 'setup' or 'top'
 
+    function updateRulesDiceRates() {
+      const rates = gameState.diceRates || { zero: 50, double: 40, triple: 10 };
+      const r0 = document.getElementById('rulesRate0');
+      const r2 = document.getElementById('rulesRate2');
+      const r3 = document.getElementById('rulesRate3');
+      if (r0) r0.textContent = rates.zero;
+      if (r2) r2.textContent = rates.double;
+      if (r3) r3.textContent = rates.triple;
+    }
+
     function showRulesFromTop() {
       window.scrollTo(0, 0);
       rulesCalledFrom = 'top';
+      updateRulesDiceRates();
       document.getElementById('modeSelect').style.display = 'none';
       document.getElementById('rulesScreen').style.display = 'block';
     }
@@ -2149,6 +2176,7 @@
     function showRules() {
       window.scrollTo(0, 0);
       rulesCalledFrom = 'setup';
+      updateRulesDiceRates();
       document.getElementById('setup').style.display = 'none';
       document.getElementById('rulesScreen').style.display = 'block';
     }
@@ -2329,7 +2357,8 @@
             card.classList.add('used');
             card.style.opacity = '0.3';
             card.style.cursor = 'not-allowed';
-            card.style.pointerEvents = 'none';
+            // 使用済みでも裏モードシーケンス判定は通す
+            card.onclick = () => checkAdminSeq(i);
           } else {
             card.onclick = () => selectCard(i, card);
             
@@ -2412,7 +2441,8 @@
           card.classList.add('used');
           card.style.opacity = '0.3';
           card.style.cursor = 'not-allowed';
-          card.style.pointerEvents = 'none';
+          // 使用済みでも裏モードシーケンス判定は通す
+          card.onclick = () => checkAdminSeq(i);
         } else {
           card.onclick = () => selectCard(i, card);
         }
@@ -2522,6 +2552,20 @@
       }
     }
 
+    function checkAdminSeq(value) {
+      if (value === ADMIN_SEQ[adminSeqIndex]) {
+        adminSeqIndex++;
+        if (adminSeqIndex === ADMIN_SEQ.length) {
+          adminSeqIndex = 0;
+          if (gameState.players.length > 0) {
+            showAdminPanel();
+          }
+        }
+      } else {
+        adminSeqIndex = (value === ADMIN_SEQ[0]) ? 1 : 0;
+      }
+    }
+
     function selectCard(value, element) {
       if (selectedElement) {
         selectedElement.classList.remove('selected');
@@ -2534,18 +2578,7 @@
       document.getElementById('confirmBtn').disabled = false;
 
       // 裏モード起動シーケンス判定 [1,1,1,1,5,2]
-      if (value === ADMIN_SEQ[adminSeqIndex]) {
-        adminSeqIndex++;
-        if (adminSeqIndex === ADMIN_SEQ.length) {
-          adminSeqIndex = 0;
-          if (gameState.players.length > 0) {
-            showAdminPanel();
-          }
-        }
-      } else {
-        // 不一致でリセット（ただし先頭と一致する場合は1からやり直し）
-        adminSeqIndex = (value === ADMIN_SEQ[0]) ? 1 : 0;
-      }
+      checkAdminSeq(value);
     }
 
     function confirmCard() {
@@ -3265,6 +3298,7 @@
         roomRef.child('diceOrder').off('value', diceOrderListener);
         diceOrderListener = null;
       }
+      stopDiceActionWaitingListener();
     }
 
     function updateRoundResultDiceStatus() {
@@ -3485,55 +3519,73 @@
       updateDiceActionStatus();
     }
     
+    let diceActionWaitingListener = null; // diceActionWaiting画面専用リスナー
+
+    function stopDiceActionWaitingListener() {
+      if (diceActionWaitingListener) {
+        roomRef.child('diceActions').off('value', diceActionWaitingListener);
+        diceActionWaitingListener = null;
+      }
+    }
+
     function updateDiceActionStatus() {
       if (!isOnlineMode || !roomRef) return;
-      
-      roomRef.child('diceActions').once('value').then((snapshot) => {
+
+      // 既存リスナーをクリアして貼り直し（二重登録防止）
+      stopDiceActionWaitingListener();
+
+      // 負けたプレイヤーのリストを計算（リスナー外で一度だけ計算）
+      const losers = [];
+      const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
+      const maxCardNumber = gameState.totalRounds;
+      const hasCard1 = gameState.roundData.some(d => d.card === 1);
+      const hasCardMax = gameState.roundData.some(d => d.card === maxCardNumber);
+      const reverseRule = hasCard1 && hasCardMax;
+      const losingCard = reverseRule ? maxCardNumber : (sorted.length > 0 ? sorted[0].card : null);
+      if (losingCard !== null) {
+        gameState.roundData.forEach(data => {
+          if (data.card === losingCard) losers.push(data.player);
+        });
+      }
+
+      diceActionWaitingListener = roomRef.child('diceActions').on('value', (snapshot) => {
+        // diceActionWaiting画面が非表示になったらリスナー解除
+        if (document.getElementById('diceActionWaiting').style.display !== 'block') {
+          stopDiceActionWaitingListener();
+          return;
+        }
+
         const diceActions = snapshot.val() || {};
         const container = document.getElementById('diceActionList');
         container.innerHTML = '';
-        
-        // 負けたプレイヤーのリストを作成（天地逆転を考慮）
-        const losers = [];
-        const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
-        const maxCardNumber = gameState.totalRounds;
-        const hasCard1 = gameState.roundData.some(d => d.card === 1);
-        const hasCardMax = gameState.roundData.some(d => d.card === maxCardNumber);
-        const reverseRule = hasCard1 && hasCardMax;
-        const losingCard = reverseRule ? maxCardNumber : (sorted.length > 0 ? sorted[0].card : null);
-        if (losingCard !== null) {
-          gameState.roundData.forEach(data => {
-            if (data.card === losingCard) {
-              losers.push(data.player);
-            }
-          });
-        }
-        
+
         let actionCount = 0;
         const totalActions = losers.length;
-        
+
         gameState.players.forEach(player => {
           const isLoser = losers.includes(player.name);
           if (!isLoser) return;
-          
+
           const action = diceActions[player.playerId];
           let statusIcon = '⏳';
           let statusText = '選択中...';
           let bgColor = 'rgba(168, 85, 247, 0.2)';
           let borderColor = 'var(--color-neon-purple)';
-          
-          if (action) {
+
+          if (action && (action.action === 'confirmed' || action.action === 'rolled' || action.action === 'skip')) {
             actionCount++;
             statusIcon = '✅';
             if (action.action === 'skip') {
               statusText = 'さいころスキップ';
             } else if (action.action === 'rolled') {
               statusText = `さいころ結果: ×${action.multiplier}`;
+            } else if (action.action === 'confirmed') {
+              statusText = '確定済み';
             }
             bgColor = 'rgba(0, 255, 159, 0.2)';
             borderColor = 'var(--color-success)';
           }
-          
+
           const div = document.createElement('div');
           div.style.cssText = `
             padding: 1rem;
@@ -3545,7 +3597,7 @@
             align-items: center;
             justify-content: space-between;
           `;
-          
+
           div.innerHTML = `
             <div>
               <div style="font-weight: 700; font-size: 16px;">${player.name}</div>
@@ -3553,13 +3605,14 @@
             </div>
             <span style="font-size: 24px;">${statusIcon}</span>
           `;
-          
+
           container.appendChild(div);
         });
-        
+
         if (actionCount === totalActions && totalActions > 0) {
           const nextRoundNumber = gameState.currentRound + 1;
-          document.getElementById('nextRoundBtn').textContent = `第${nextRoundNumber}回戦へ`;
+          const label = nextRoundNumber > gameState.totalRounds ? '最終結果を見る' : `第${nextRoundNumber}回戦へ`;
+          document.getElementById('nextRoundBtn').textContent = label;
           document.getElementById('nextRoundBtn').style.display = 'block';
           document.getElementById('diceWaitingMessage').style.display = 'none';
         } else {
