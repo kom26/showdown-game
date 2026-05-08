@@ -2972,7 +2972,7 @@
       });
 
       // 複数のガーディアンが同じターゲットを庇った場合のメッセージ修正
-      // （すでに個別に処理されているが「AとBに庇われました」に統合）
+      console.log('[GUARD DEBUG] step8: multi-guardian check');
       const targetGuardians = {}; // { target: [guardian1, guardian2...] }
       Object.entries(roundGuardTargets).forEach(([guardian, target]) => {
         if (sosoSet.has(guardian)) return;
