@@ -39,6 +39,8 @@
     }
     
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     html {
       touch-action: manipulation;
     }
@@ -812,7 +814,7 @@
       </div>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ルームコード（4桁）</label>
-        <input type="text" id="roomCodeInput" placeholder="1234" maxlength="4" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'')" style="width: 100%; font-size: 24px; text-align: center; letter-spacing: 8px;">
+        <input type="number" id="roomCodeInput" placeholder="1234" min="1000" max="9999" style="width: 100%; font-size: 24px; text-align: center; letter-spacing: 8px; -moz-appearance: textfield;" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
       </div>
       <button class="primary" onclick="joinRoom()" style="width: 100%; margin-bottom: 0.75rem;">参加する</button>
       <button onclick="backToOnlineMenu()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← 戻る</button>
