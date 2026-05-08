@@ -2941,7 +2941,9 @@
       }
 
       // 通常GUARD処理（相思相愛でない指名のみ）
+      console.log('[GUARD DEBUG] step5: normal guard start, guardCupsMap=', JSON.stringify(guardCupsMap));
       Object.entries(roundGuardTargets).forEach(([guardian, target]) => {
+        console.log('[GUARD DEBUG] step6: guardian=', guardian, 'target=', target);
         if (sosoSet.has(guardian)) return; // 相思相愛は処理済み
 
         const targetData = gameState.roundData.find(d => d.player === target);
@@ -2960,6 +2962,7 @@
           if (!guardMessages[guardian]) guardMessages[guardian] = [];
           guardMessages[target].push(`💘 ${guardian}に庇われました`);
           guardMessages[guardian].push(`💘 ${target}を庇いました`);
+          console.log('[GUARD DEBUG] step7: guard success, guardCupsMap=', JSON.stringify(guardCupsMap));
         } else {
           // GUARDミス：ガーディアンに+1杯
           guardCupsMap[guardian] = (guardCupsMap[guardian] || 0) + 1;
