@@ -1458,6 +1458,19 @@
               doubleDownBadge = '<span class="status-badge" style="background: rgba(168,85,247,0.3); border-color:var(--color-neon-purple); box-shadow:0 0 6px var(--color-neon-purple); color:var(--color-neon-purple);">DD未使用</span>';
             }
 
+            // GUARD バッジ
+            const guardTarget = roundInfo && roundInfo.guardTarget;
+            const maxGuard = (data.totalRounds || 10) <= 7 ? 1 : 2;
+            const guardRemaining = player.guardUsed !== undefined ? player.guardUsed : maxGuard;
+            let guardBadge = '';
+            if (guardTarget) {
+              guardBadge = `<span class="status-badge" style="background:rgba(0,255,255,0.2); border-color:var(--color-neon-cyan); color:var(--color-neon-cyan); box-shadow:0 0 6px var(--color-neon-cyan);">🛡️ ${escapeHtml(guardTarget)}を庇う</span>`;
+            } else if (guardRemaining <= 0) {
+              guardBadge = '<span class="status-badge" style="background:#333; border-color:#555; color:#666;">🛡️ GUARD使用済</span>';
+            } else {
+              guardBadge = `<span class="status-badge" style="background:rgba(168,85,247,0.15); border-color:#555; color:#888;">🛡️ GUARD残${guardRemaining}回</span>`;
+            }
+
             // カード一覧（選択済みのカードを含む全カード表示）
             const usedCards = player.usedCards || [];
             const selectedCardThisRound = roundInfo ? roundInfo.card : null;
@@ -1483,6 +1496,7 @@
                 <div style="display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end;">
                   ${statusBadge}
                   ${doubleDownBadge}
+                  ${guardBadge}
                 </div>
               </div>
               ${cardsHTML}
@@ -1537,6 +1551,19 @@
           } else {
             doubleDownBadge = '<span class="status-badge" style="background: rgba(168, 85, 247, 0.3); border-color: var(--color-neon-purple); box-shadow: 0 0 6px var(--color-neon-purple); color: var(--color-neon-purple);">DD未使用</span>';
           }
+
+          // GUARD バッジ
+          const offGuardTarget = roundInfo && roundInfo.guardTarget;
+          const offMaxGuard = gameState.totalRounds <= 7 ? 1 : 2;
+          const offGuardRemaining = gameState.guardUsed[player.name] !== undefined ? gameState.guardUsed[player.name] : offMaxGuard;
+          let guardBadge = '';
+          if (offGuardTarget) {
+            guardBadge = `<span class="status-badge" style="background:rgba(0,255,255,0.2); border-color:var(--color-neon-cyan); color:var(--color-neon-cyan); box-shadow:0 0 6px var(--color-neon-cyan);">🛡️ ${escapeHtml(offGuardTarget)}を庇う</span>`;
+          } else if (offGuardRemaining <= 0) {
+            guardBadge = '<span class="status-badge" style="background:#333; border-color:#555; color:#666;">🛡️ GUARD使用済</span>';
+          } else {
+            guardBadge = `<span class="status-badge" style="background:rgba(168,85,247,0.15); border-color:#555; color:#888;">🛡️ GUARD残${offGuardRemaining}回</span>`;
+          }
           
           const usedCardsByPlayer = gameState.usedCards[player.name] || [];
           const selectedCardThisRound = isCompleted ? gameState.roundData.find(r => r.player === player.name)?.card : null;
@@ -1563,9 +1590,10 @@
           playerDiv.innerHTML = `
             <div class="player-status-header">
               <div class="player-name" style="font-size: 11px;">${player.name}${turnIndex === 0 ? '★' : ''}</div>
-              <div style="display: flex; gap: 2px;">
+              <div style="display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end;">
                 ${statusBadge}
                 ${doubleDownBadge}
+                ${guardBadge}
               </div>
             </div>
             ${cardsHTML}
@@ -3024,7 +3052,7 @@
         banner.innerHTML = `
           <div style="font-size: 22px; margin-bottom: 4px;">💞</div>
           <div style="font-size: 14px; font-weight: 800; color: var(--color-neon-pink); text-shadow: 0 0 10px var(--color-neon-pink);">相思相愛！${pairText}</div>
-          <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 4px;">カップル以外 +1杯 💢</div>
+          <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 4px;">相思相愛カップル以外 +1杯 💢</div>
         `;
         container.appendChild(banner);
       }
@@ -3201,17 +3229,22 @@
 
         const immuneBadge = ''; // 免除バッジなし
 
+        // DD発動中テキストをguardMsgと同じ詳細欄に追加
+        const ddMsgHTML = (data.isDoubleDown && !isLoser)
+          ? `<div style="font-size: 11px; font-weight: 700; color: var(--color-neon-purple); margin-top: 4px;">⚡ DOUBLE DOWN 発動中</div>`
+          : '';
+
         card.innerHTML = `
           <div class="result-header">
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
               <span class="player-name">${escapeHtml(data.player.substring(0, 8))}</span>
               ${immuneBadge}
               ${actionStatus}
-              ${data.isDoubleDown && !isLoser ? '<span style="font-size: 10px; color: var(--color-neon-purple); margin-left: 6px;">⚡DOUBLE DOWN発動中</span>' : ''}
             </div>
             ${badgeHTML}
           </div>
           ${beerDisplay}
+          ${ddMsgHTML}
           ${guardMsgHTML}
         `;
         container.appendChild(card);
