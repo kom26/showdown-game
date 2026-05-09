@@ -687,7 +687,7 @@
   <div class="back-warning" id="abortMenu">
     <div class="back-warning-content">
       <div class="back-warning-icon">⚙️</div>
-      <div class="back-warning-text">
+      <div class="back-warning-text" id="abortMenuText">
         ゲームを中止してTOPに戻りますか？
       </div>
 
@@ -1427,10 +1427,10 @@
     }
 
     function checkTitleTap() {
+      abortClicks++;
+      clearTimeout(abortTimeout);
       if (isGameActive) {
         // ゲーム中は5回タップで設定を開く
-        abortClicks++;
-        clearTimeout(abortTimeout);
         if (abortClicks === 5) {
           showAbortMenu(false);
           abortClicks = 0;
@@ -1438,8 +1438,13 @@
           abortTimeout = setTimeout(() => { abortClicks = 0; }, 2000);
         }
       } else {
-        // ゲーム外（TOP・ルーム待機など）はタップ1回で設定を開く
-        showAbortMenu(true);
+        // ゲーム外（TOP・ルーム待機など）は5回タップで設定を開く
+        if (abortClicks === 5) {
+          showAbortMenu(true);
+          abortClicks = 0;
+        } else {
+          abortTimeout = setTimeout(() => { abortClicks = 0; }, 2000);
+        }
       }
     }
 
@@ -1449,14 +1454,17 @@
       const backBtn = document.getElementById('abortMenuBackBtn');
       const abortBtn = document.getElementById('abortMenuAbortBtn');
       const topOnlyBtn = document.getElementById('abortMenuTopOnlyBtn');
+      const menuText = document.getElementById('abortMenuText');
       if (fromTop) {
         if (backBtn) backBtn.style.display = 'none';
         if (abortBtn) abortBtn.style.display = 'none';
         if (topOnlyBtn) topOnlyBtn.style.display = 'block';
+        if (menuText) menuText.style.display = 'none';
       } else {
         if (backBtn) backBtn.style.display = 'block';
         if (abortBtn) abortBtn.style.display = 'block';
         if (topOnlyBtn) topOnlyBtn.style.display = 'none';
+        if (menuText) menuText.style.display = 'block';
       }
       menuEl.classList.add('show');
     }
