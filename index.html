@@ -705,11 +705,14 @@
         </div>
       </div>
 
-      <button class="primary" onclick="closeAbortMenu()" style="width: 100%; font-size: 16px; margin-bottom: 0.75rem;">
+      <button id="abortMenuBackBtn" class="primary" onclick="closeAbortMenu()" style="width: 100%; font-size: 16px; margin-bottom: 0.75rem;">
         ゲームに戻る ➜
       </button>
-      <button onclick="confirmAbortFromMenu()" style="width: 100%; font-size: 14px; background: rgba(255, 0, 102, 0.2); color: var(--color-danger); border: 2px solid var(--color-border);">
+      <button id="abortMenuAbortBtn" onclick="confirmAbortFromMenu()" style="width: 100%; font-size: 14px; background: rgba(255, 0, 102, 0.2); color: var(--color-danger); border: 2px solid var(--color-border);">
         ゲームを中止してTOPに戻る
+      </button>
+      <button id="abortMenuTopOnlyBtn" onclick="closeAbortMenu()" style="width: 100%; font-size: 16px; display: none;">
+        TOPに戻る
       </button>
     </div>
   </div>
@@ -1315,6 +1318,7 @@
     let isPlayingAgain = false; // playAgain処理中はリスナーを抑制
     let diceActionsListener = null; // diceActionsのリアルタイムリスナー
     let diceOrderListener = null;   // diceOrderのリアルタイムリスナー
+    let sosoEventListener = null;   // SoSo-modeのリアルタイムリスナー
     let myPlayerId = null;
     let roomRef = null;
     let currentDicePlayer = null; // 現在さいころを選択中のプレイヤー
@@ -1424,26 +1428,43 @@
 
     function checkTitleTap() {
       if (isGameActive) {
+        // ゲーム中は5回タップで設定を開く
         abortClicks++;
         clearTimeout(abortTimeout);
-        
         if (abortClicks === 5) {
-          showAbortMenu();
+          showAbortMenu(false);
           abortClicks = 0;
         } else {
           abortTimeout = setTimeout(() => { abortClicks = 0; }, 2000);
         }
+      } else {
+        // ゲーム外（TOP・ルーム待機など）はタップ1回で設定を開く
+        showAbortMenu(true);
       }
     }
-    
-    function showAbortMenu() {
-      document.getElementById('abortMenu').classList.add('show');
+
+    // fromTop: true = ゲーム外から開いた（「ゲームに戻る」「ゲームを中止」ボタン非表示）
+    function showAbortMenu(fromTop) {
+      const menuEl = document.getElementById('abortMenu');
+      const backBtn = document.getElementById('abortMenuBackBtn');
+      const abortBtn = document.getElementById('abortMenuAbortBtn');
+      const topOnlyBtn = document.getElementById('abortMenuTopOnlyBtn');
+      if (fromTop) {
+        if (backBtn) backBtn.style.display = 'none';
+        if (abortBtn) abortBtn.style.display = 'none';
+        if (topOnlyBtn) topOnlyBtn.style.display = 'block';
+      } else {
+        if (backBtn) backBtn.style.display = 'block';
+        if (abortBtn) abortBtn.style.display = 'block';
+        if (topOnlyBtn) topOnlyBtn.style.display = 'none';
+      }
+      menuEl.classList.add('show');
     }
-    
+
     function closeAbortMenu() {
       document.getElementById('abortMenu').classList.remove('show');
     }
-    
+
     function confirmAbortFromMenu() {
       if (confirm('本当にゲームを中止してTOPに戻りますか？')) {
         document.getElementById('abortMenu').classList.remove('show');
@@ -2246,6 +2267,7 @@
         }
         roomRef.off();
         stopDiceListeners();
+        stopOnlineSosoListener();
       }
 
       _resetOnlineState(deletedByName);
@@ -2303,8 +2325,32 @@
       window.scrollTo(0, 0);
       document.getElementById('waitingRoom').style.display = 'none';
       showAbortButton();
+      // SoSo-modeのイベントリスナーを登録
+      startOnlineSosoListener();
       // オンラインモードは抽選なしで直接カード選択へ
       showCardSelect();
+    }
+
+    function startOnlineSosoListener() {
+      if (!roomRef || sosoEventListener) return;
+      sosoEventListener = roomRef.child('sosoEvent').on('value', (snap) => {
+        const ev = snap.val();
+        if (!ev || !ev.playerName) {
+          // sosoEventがnull（削除された）→ 全員モーダルを閉じる
+          closeSosoModal();
+          return;
+        }
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        const isMine = myPlayer && myPlayer.name === ev.playerName;
+        showSosoModal(ev.playerName, isMine);
+      });
+    }
+
+    function stopOnlineSosoListener() {
+      if (roomRef && sosoEventListener) {
+        roomRef.child('sosoEvent').off('value', sosoEventListener);
+        sosoEventListener = null;
+      }
     }
     
     function syncGameState(data) {
@@ -4777,7 +4823,7 @@
     function startSosoDetection() {
       if (sosoMotionHandler) return; // 二重登録防止
       sosoMotionHandler = function(e) {
-        if (!sosoModeEnabled || isOnlineMode || !isGameActive) return;
+        if (!sosoModeEnabled || !isGameActive) return;
         const acc = e.accelerationIncludingGravity;
         if (!acc) return;
         const total = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
@@ -4806,49 +4852,82 @@
     }
 
     function onSosoDrop() {
-      if (isOnlineMode || !isGameActive) return;
-      showSosoModal();
+      if (!isGameActive) return;
+      if (isOnlineMode) {
+        // オンライン：Firebaseにsosoイベントを書き込み → 全員のリスナーが反応
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        if (!myPlayer || !roomRef) return;
+        // losses +1 をFirebaseに反映
+        myPlayer.losses = (myPlayer.losses || 0) + 1;
+        roomRef.child(`players/${myPlayerId}/losses`).set(myPlayer.losses);
+        // 全員に通知（timestampで毎回ユニーク）
+        roomRef.child('sosoEvent').set({
+          playerName: myPlayer.name,
+          timestamp: Date.now()
+        });
+        // モーダルはリスナー経由で表示されるので直接呼ばない
+      } else {
+        // オフライン
+        showSosoModal(null, true);
+      }
     }
 
-    function showSosoModal() {
+    function showSosoModal(playerName, isMine) {
+      // 既存モーダルがあれば再利用
       let modal = document.getElementById('sosoModal');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'sosoModal';
-        modal.style.cssText = [
-          'position:fixed', 'top:0', 'left:0', 'right:0', 'bottom:0',
-          'background:rgba(10,0,20,0.97)', 'z-index:3000',
-          'display:flex', 'align-items:center', 'justify-content:center',
-          'backdrop-filter:blur(12px)'
-        ].join(';');
-        modal.innerHTML = `
-          <div style="text-align:center; padding:2rem; max-width:360px;">
-            <div style="font-size:88px; margin-bottom:0.75rem; animation:bounceIn 0.5s ease-out;">📱💥</div>
-            <div style="font-size:32px; font-weight:800; color:var(--color-neon-pink);
-              text-shadow:0 0 30px var(--color-neon-pink),0 0 60px var(--color-neon-pink);
-              margin-bottom:0.75rem; letter-spacing:3px; animation:neonFlash 0.4s ease-in-out 3;">
-              SoSo！！
-            </div>
-            <div style="font-size:15px; color:var(--color-text-primary); font-weight:700;
-              margin-bottom:0.5rem; line-height:1.7;">
-              スマホの落下や強い衝撃を検知しました。<br>ペナルティ +1杯🍺
-            </div>
-            <div style="font-size:36px; margin:1rem 0;">🍺</div>
-            <button class="primary" id="sosoDrinkBtn"
-              style="width:100%; font-size:18px; margin-top:0.5rem;">
-              飲んだ！🍻
-            </button>
+      if (modal) modal.remove();
+
+      const displayName = playerName || '???';
+      const beerHTML = isMine
+        ? `<div style="font-size:64px; margin:0.75rem 0;">🍺</div>`
+        : '';
+      const btnLabel = isMine ? '飲んだ！🍻' : '飲ませた！🍻';
+
+      modal = document.createElement('div');
+      modal.id = 'sosoModal';
+      modal.style.cssText = [
+        'position:fixed', 'top:0', 'left:0', 'right:0', 'bottom:0',
+        'background:rgba(10,0,20,0.97)', 'z-index:3000',
+        'display:flex', 'align-items:center', 'justify-content:center',
+        'backdrop-filter:blur(12px)'
+      ].join(';');
+      modal.innerHTML = `
+        <div style="text-align:center; padding:2rem; max-width:360px;">
+          <div style="font-size:72px; margin-bottom:0.5rem;">📱💥</div>
+          <div style="font-size:28px; font-weight:800; color:var(--color-neon-pink);
+            text-shadow:0 0 30px var(--color-neon-pink),0 0 60px var(--color-neon-pink);
+            margin-bottom:0.75rem; letter-spacing:3px;">
+            SoSo！！
           </div>
-        `;
-        document.body.appendChild(modal);
-        document.getElementById('sosoDrinkBtn').addEventListener('click', closeSosoModal);
-      }
-      modal.style.display = 'flex';
+          <div style="font-size:14px; color:var(--color-text-secondary); margin-bottom:4px;">
+            ${escapeHtml(displayName)}のスマホから
+          </div>
+          <div style="font-size:15px; color:var(--color-text-primary); font-weight:700;
+            margin-bottom:0.5rem; line-height:1.7;">
+            落下や強い衝撃を検知しました。<br>
+            <span style="color:var(--color-danger);">${escapeHtml(displayName)}</span> ペナルティ +1杯 🍺
+          </div>
+          ${beerHTML}
+          <button class="primary" id="sosoDrinkBtn"
+            style="width:100%; font-size:18px; margin-top:0.5rem;">
+            ${btnLabel}
+          </button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      document.getElementById('sosoDrinkBtn').addEventListener('click', () => {
+        if (isOnlineMode && roomRef) {
+          // sosoEventをnullに → 全員のリスナーが反応して全員閉じる
+          roomRef.child('sosoEvent').remove();
+        } else {
+          closeSosoModal();
+        }
+      });
     }
 
     function closeSosoModal() {
       const modal = document.getElementById('sosoModal');
-      if (modal) modal.style.display = 'none';
+      if (modal) modal.remove();
     }
 
     const GAME_URL = 'https://kom26.github.io/showdown-game/';
