@@ -2220,6 +2220,31 @@
             syncGameState(data); // 最終結果表示前だけsync
             showFinalResults();
           }
+
+          // ===== 離脱・復帰・ペナルティイベント（listenToRoomに統合）=====
+          // 離脱者がいる場合
+          if (data.disconnectedPlayer) {
+            showDisconnectBanner(data.disconnectedPlayer, data, isRoomHost);
+          } else {
+            hideDisconnectBanner();
+          }
+          // 復帰イベント
+          if (data.returnEvent && data.returnEvent.playerName) {
+            showReturnBanner(data.returnEvent.playerName);
+          }
+          // ペナルティイベント
+          if (data.penaltyEvent && data.penaltyEvent.playerName) {
+            showPenaltyModal(data.penaltyEvent);
+          }
+          // 強制退出によるラウンドやり直し
+          if (data.forceRestartEvent && data.forceRestartEvent.timestamp) {
+            const banner = document.getElementById('disconnectBanner');
+            if (banner) banner.remove();
+            document.getElementById('app').style.pointerEvents = 'auto';
+            document.getElementById('app').style.opacity = '1';
+            if (isRoomHost && roomRef) roomRef.child('forceRestartEvent').remove();
+            showCardSelect();
+          }
         }
       });
     }
@@ -2460,7 +2485,9 @@
       // 画面状態を復元
       restoreScreenAfterResume(data);
 
-      // リスナー再登録
+      // メインリスナー再登録（新しい roomRef に対して再登録が必要）
+      listenToRoom();
+      // その他リスナー再登録
       startOnlineSosoListener();
       startVisibilityListener();
       startDisconnectListener();
@@ -2582,38 +2609,32 @@
       }
     }
 
-    // ===== 離脱リスナー（全員側） =====
+    // ===== 離脱リスナー（listenToRoomに統合済み・互換性のため関数は残す）=====
     function startDisconnectListener() {
+      // listenToRoom() に統合済みのため何もしない
+      return;
+
+      // 以下は互換性のため残す（到達しない）
       if (!roomRef || disconnectListener) return;
       disconnectListener = roomRef.on('value', (snap) => {
         const data = snap.val();
         if (!data) return;
-
-        // 離脱者がいる場合
         if (data.disconnectedPlayer) {
           showDisconnectBanner(data.disconnectedPlayer, data, isRoomHost);
         } else {
           hideDisconnectBanner();
         }
-
-        // 復帰イベント
         if (data.returnEvent && data.returnEvent.playerName) {
           showReturnBanner(data.returnEvent.playerName);
         }
-
-        // ペナルティイベント（離脱ペナルティ）
         if (data.penaltyEvent && data.penaltyEvent.type === 'disconnect') {
           showPenaltyModal(data.penaltyEvent);
         }
-
-        // 強制退出によるラウンドやり直し
         if (data.forceRestartEvent && data.forceRestartEvent.timestamp) {
-          // 全員カード選択画面に戻す
           const banner = document.getElementById('disconnectBanner');
           if (banner) banner.remove();
           document.getElementById('app').style.pointerEvents = 'auto';
           document.getElementById('app').style.opacity = '1';
-          // ホストがイベントをクリア
           if (isRoomHost && roomRef) roomRef.child('forceRestartEvent').remove();
           showCardSelect();
         }
