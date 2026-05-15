@@ -2282,6 +2282,7 @@
             setTimeout(() => { roomRef.remove(); }, 800);
           });
         }
+        cancelOnDisconnect();
         roomRef.off();
         stopDiceListeners();
         stopOnlineSosoListener();
@@ -2350,6 +2351,8 @@
       // 離脱検知リスナーを登録
       startVisibilityListener();
       startDisconnectListener();
+      // タスクキル検知用 onDisconnect を仕込む
+      setupOnDisconnect();
       // ルーム復帰用セッション保存
       saveRoomSession();
       // オンラインモードは抽選なしで直接カード選択へ
@@ -2427,6 +2430,10 @@
 
       // ルームに復帰
       dismissResumeBanner();
+      // 既存リスナーを先に解除（roomRefが変わる前に）
+      stopOnlineSosoListener();
+      stopVisibilityListener();
+      stopDisconnectListener();
       currentRoomCode = session.roomCode;
       myPlayerId = session.myPlayerId;
       roomRef = ref;
@@ -2457,6 +2464,8 @@
       startOnlineSosoListener();
       startVisibilityListener();
       startDisconnectListener();
+      // タスクキル検知用 onDisconnect を再設定
+      setupOnDisconnect();
 
       // TOPからの復帰ペナルティ +2杯
       if (isGameActive) {
@@ -2501,6 +2510,21 @@
         isGameActive = true;
         showCardSelect();
       }
+    }
+
+    // ===== onDisconnect 管理 =====
+    function setupOnDisconnect() {
+      if (!roomRef || !myPlayerId) return;
+      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+      if (!myPlayer) return;
+      roomRef.child(`players/${myPlayerId}/disconnected`).onDisconnect().set(true);
+      roomRef.child('disconnectedPlayer').onDisconnect().set(myPlayer.name);
+    }
+
+    function cancelOnDisconnect() {
+      if (!roomRef || !myPlayerId) return;
+      roomRef.child(`players/${myPlayerId}/disconnected`).onDisconnect().cancel();
+      roomRef.child('disconnectedPlayer').onDisconnect().cancel();
     }
 
     function startVisibilityListener() {
@@ -4864,6 +4888,7 @@
     }
 
     function resetGame() {
+      if (isOnlineMode && roomRef) cancelOnDisconnect();
       window.scrollTo(0, 0);
       hideAbortButton();
       
@@ -4966,6 +4991,8 @@
           gameState.guardTargets = {};
           gameState.loneWinnerBonus = {};
           clearRoomSession();
+          // onDisconnect を新ゲーム用に再設定
+          setTimeout(setupOnDisconnect, 500);
 
           // 画面を切り替えてからリスナー抑制を解除
           document.getElementById('finalResults').style.display = 'none';
