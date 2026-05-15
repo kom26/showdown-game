@@ -2223,8 +2223,8 @@
 
           // ===== 離脱・復帰・ペナルティイベント（listenToRoomに統合）=====
           // 離脱者がいる場合
-          if (data.disconnectedPlayer) {
-            showDisconnectBanner(data.disconnectedPlayer, data, isRoomHost);
+          if (data.disconnectedPlayer && data.disconnectedPlayer.name) {
+            showDisconnectBanner(data.disconnectedPlayer.name, data.disconnectedPlayer.reason, data, isRoomHost);
           } else {
             hideDisconnectBanner();
           }
@@ -2503,6 +2503,7 @@
           playerName: myPlayerData.name,
           cups: 2,
           type: 'disconnect',
+          reason: 'taskkill',
           timestamp: Date.now(),
           drankConfirmed: false,
           gaveDrinkConfirmed: false
@@ -2545,7 +2546,7 @@
       const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
       if (!myPlayer) return;
       roomRef.child(`players/${myPlayerId}/disconnected`).onDisconnect().set(true);
-      roomRef.child('disconnectedPlayer').onDisconnect().set(myPlayer.name);
+      roomRef.child('disconnectedPlayer').onDisconnect().set({ name: myPlayer.name, reason: 'taskkill' });
     }
 
     function cancelOnDisconnect() {
@@ -2562,9 +2563,9 @@
         if (!myPlayer) return;
 
         if (document.hidden) {
-          // 離脱: disconnected フラグを立てる
+          // 離脱: disconnected フラグを立てる（background = 画面オフ/バックグラウンド）
           await roomRef.child(`players/${myPlayerId}/disconnected`).set(true);
-          await roomRef.child('disconnectedPlayer').set(myPlayer.name);
+          await roomRef.child('disconnectedPlayer').set({ name: myPlayer.name, reason: 'background' });
           // ラウンドやり直しなし → そのまま待機
         } else {
           // 復帰: disconnected フラグを下ろす
@@ -2579,7 +2580,7 @@
             isRoomHost = true;
             originalHostId = null;
           }
-          // 復帰ペナルティ通知（通常復帰 +1杯）
+          // 復帰ペナルティ通知（通常復帰 = background +1杯）
           if (isGameActive) {
             const currentPenalty = (myPlayer.penaltyCups || 0) + 1;
             await roomRef.child(`players/${myPlayerId}/penaltyCups`).set(currentPenalty);
@@ -2587,6 +2588,7 @@
               playerName: myPlayer.name,
               cups: 1,
               type: 'disconnect',
+              reason: 'background',
               timestamp: Date.now(),
               drankConfirmed: false,
               gaveDrinkConfirmed: false
@@ -2619,8 +2621,8 @@
       disconnectListener = roomRef.on('value', (snap) => {
         const data = snap.val();
         if (!data) return;
-        if (data.disconnectedPlayer) {
-          showDisconnectBanner(data.disconnectedPlayer, data, isRoomHost);
+        if (data.disconnectedPlayer && data.disconnectedPlayer.name) {
+          showDisconnectBanner(data.disconnectedPlayer.name, data.disconnectedPlayer.reason, data, isRoomHost);
         } else {
           hideDisconnectBanner();
         }
@@ -2648,7 +2650,7 @@
       }
     }
 
-    function showDisconnectBanner(playerName, data, iAmHost) {
+    function showDisconnectBanner(playerName, reason, data, iAmHost) {
       let banner = document.getElementById('disconnectBanner');
       if (!banner) {
         banner = document.createElement('div');
@@ -2658,8 +2660,9 @@
       }
       const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
       const isDisconnected = myPlayer && myPlayer.name === playerName;
+      const reasonLabel = reason === 'taskkill' ? '（タスクキル）🚨' : '';
       let html = `
-        <div style="font-size:14px;font-weight:800;color:var(--color-danger);margin-bottom:6px;">📵 ${escapeHtml(playerName)}が離脱しました…待機中</div>
+        <div style="font-size:14px;font-weight:800;color:var(--color-danger);margin-bottom:6px;">📵 ${escapeHtml(playerName)}が離脱${reasonLabel}…待機中</div>
       `;
       if (iAmHost && !isDisconnected) {
         html += `<button onclick="forceRemovePlayer('${escapeHtml(playerName)}')" style="font-size:12px;padding:6px 16px;background:rgba(255,0,102,0.2);color:var(--color-danger);border:2px solid var(--color-danger);border-radius:20px;font-weight:700;">退出させる</button>`;
@@ -5326,7 +5329,9 @@
         : '';
 
       // SoSo: 「○○のスマホから 落下や強い衝撃を検知」
-      // 離脱: 「○○が ゲーム中に離脱」
+      // 離脱 background: 「○○が離脱」
+      // 離脱 taskkill: 「○○が離脱（タスクキル）🚨」
+      const disconnectLabel = ev.reason === 'taskkill' ? '（タスクキル）🚨' : '';
       const fromLine = isSoso
         ? `<div style="font-size:14px; color:var(--color-text-secondary); margin-bottom:4px;">${escapeHtml(displayName)}のスマホから</div>
            <div style="font-size:15px; color:var(--color-text-primary); font-weight:700; margin-bottom:0.5rem; line-height:1.7;">
@@ -5334,7 +5339,7 @@
              <span style="color:var(--color-danger);">${escapeHtml(displayName)}</span> ペナルティ +${cups}杯 🍺
            </div>`
         : `<div style="font-size:15px; color:var(--color-text-primary); font-weight:700; margin-bottom:0.5rem; line-height:1.7;">
-             <span style="color:var(--color-danger);">${escapeHtml(displayName)}</span>がゲーム中に離脱しました。<br>ペナルティ +${cups}杯 🍺
+             <span style="color:var(--color-danger);">${escapeHtml(displayName)}</span>が離脱${disconnectLabel}しました。<br>ペナルティ +${cups}杯 🍺
            </div>`;
 
       const modal = document.createElement('div');
