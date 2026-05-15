@@ -1047,6 +1047,16 @@
         </div>
       </div>
       
+      <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid #ffcc00;">
+        <h3 style="font-size: 16px; color: #ffcc00; margin-bottom: 0.75rem;">🐥 ひよっこペナルティ</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
+          最終ラウンド終了時に<strong style="color: var(--color-text-primary);">GUARDを使い切れていない</strong>場合<br>
+          <strong style="color: var(--color-danger);">+4杯</strong>のペナルティ（神のさいころ対象）<br>
+          GUARDで庇われた場合は庇った人に移動<br>
+          一人勝ちボーナスで打ち消し可能
+        </div>
+      </div>
+
       <div style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 2px solid var(--color-danger);">
         <h3 style="font-size: 16px; color: var(--color-danger); margin-bottom: 0.75rem;">⚡ 最終回戦</h3>
         <div style="font-size: 14px; line-height: 1.8; color: var(--color-text-secondary);">
@@ -3485,6 +3495,21 @@
         if (d.guardTarget) roundGuardTargets[d.player] = d.guardTarget;
       });
 
+      // ===== ひよっこペナルティ（最終ラウンドのみ・GUARD処理前に加算）=====
+      const isFinalRoundForHiyokko = gameState.currentRound === gameState.totalRounds;
+      const hiyokkoPlayers = []; // ひよっこリスト（バナー用）
+      if (isFinalRoundForHiyokko) {
+        gameState.players.forEach(p => {
+          const remaining = getGuardRemaining(p.name);
+          if (remaining > 0) {
+            guardCupsMap[p.name] = (guardCupsMap[p.name] || 0) + 4;
+            hiyokkoPlayers.push(p.name);
+            if (!guardMessages[p.name]) guardMessages[p.name] = [];
+            guardMessages[p.name].push('🐥 私はだれも守れないひよっこ +4杯');
+          }
+        });
+      }
+
       // ===== 相思相愛ペア仮確定 =====
       const sosoSet = new Set();
       const sosoPairs = [];
@@ -3686,6 +3711,18 @@
       container.innerHTML = '';
       
       roundFinalCups = {};
+
+      // ひよっこバナー表示（最終ラウンドのみ）
+      if (hiyokkoPlayers.length > 0) {
+        const hiyokkoBanner = document.createElement('div');
+        hiyokkoBanner.style.cssText = 'background: linear-gradient(135deg, rgba(255,220,0,0.15), rgba(255,160,0,0.15)); border: 2px solid #ffcc00; border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 0.75rem; text-align: center;';
+        hiyokkoBanner.innerHTML = `
+          <div style="font-size:22px; margin-bottom:4px;">🐥</div>
+          <div style="font-size:14px; font-weight:800; color:#ffcc00; text-shadow:0 0 10px #ffcc00;">ひよっこが${hiyokkoPlayers.length}人いました！</div>
+          <div style="font-size:12px; color:var(--color-text-secondary); margin-top:4px;">${hiyokkoPlayers.map(n => escapeHtml(n)).join('・')} +4杯</div>
+        `;
+        container.appendChild(hiyokkoBanner);
+      }
 
       // 相思相愛バナー表示
       if (sosoMessages.length > 0) {
