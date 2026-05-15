@@ -1319,6 +1319,9 @@
     let diceActionsListener = null; // diceActionsのリアルタイムリスナー
     let diceOrderListener = null;   // diceOrderのリアルタイムリスナー
     let sosoEventListener = null;   // SoSo-modeのリアルタイムリスナー
+    let disconnectListener = null;  // 離脱検知リスナー
+    let visibilityHandler = null;   // Page Visibility APIハンドラー
+    let originalHostId = null;      // ホスト移譲前の元ホストID
     let myPlayerId = null;
     let roomRef = null;
     let currentDicePlayer = null; // 現在さいころを選択中のプレイヤー
@@ -1964,10 +1967,14 @@
             name: hostName,
             order: 0,
             losses: 0,
-            hasUsedDoubleDown: false
+            hasUsedDoubleDown: false,
+            penaltyCups: 0,
+            disconnected: false
           }
         },
         status: 'waiting',
+        disconnectedPlayer: null,
+        originalHost: null,
         currentRound: 1,
         currentPlayerIndex: 0,
         roundData: {},
@@ -2052,7 +2059,9 @@
           name: joinerName,
           order: playerCount,
           losses: 0,
-          hasUsedDoubleDown: false
+          hasUsedDoubleDown: false,
+          penaltyCups: 0,
+          disconnected: false
         });
         
         roomRef.child('playerOrder').set([...roomData.playerOrder, myPlayerId]);
@@ -2276,6 +2285,8 @@
         roomRef.off();
         stopDiceListeners();
         stopOnlineSosoListener();
+        stopVisibilityListener();
+        stopDisconnectListener();
       }
 
       _resetOnlineState(deletedByName);
@@ -2335,28 +2346,216 @@
       showAbortButton();
       // SoSo-modeのイベントリスナーを登録
       startOnlineSosoListener();
+      // 離脱検知リスナーを登録
+      startVisibilityListener();
+      startDisconnectListener();
       // オンラインモードは抽選なしで直接カード選択へ
       showCardSelect();
     }
 
+    // ===== 離脱検知 =====
+    function startVisibilityListener() {
+      if (visibilityHandler) return;
+      visibilityHandler = async () => {
+        if (!isOnlineMode || !roomRef || !myPlayerId) return;
+        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+        if (!myPlayer) return;
+
+        if (document.hidden) {
+          // 離脱: disconnected フラグを立てる
+          await roomRef.child(`players/${myPlayerId}/disconnected`).set(true);
+          await roomRef.child('disconnectedPlayer').set(myPlayer.name);
+          // カード選択中なら自分のroundDataを削除してラウンドやり直し
+          if (isGameActive) {
+            const myRoundData = gameState.roundData.find(d => d.player === myPlayer.name);
+            if (myRoundData) {
+              const roundDataArr = gameState.roundData.filter(d => d.player !== myPlayer.name);
+              await roomRef.child('roundData').set(roundDataArr.length > 0 ? roundDataArr : null);
+              await roomRef.child('roundRestartPending').set(true);
+            }
+          }
+        } else {
+          // 復帰: disconnected フラグを下ろす
+          await roomRef.child(`players/${myPlayerId}/disconnected`).set(false);
+          await roomRef.child('disconnectedPlayer').set(null);
+          // ホスト移譲していたら元に戻す
+          const snap = await roomRef.once('value');
+          const data = snap.val();
+          if (data && data.originalHost === myPlayerId) {
+            await roomRef.child('host').set(myPlayerId);
+            await roomRef.child('originalHost').set(null);
+            isRoomHost = true;
+            originalHostId = null;
+          }
+          // 復帰ペナルティ通知
+          if (isGameActive) {
+            const currentPenalty = (myPlayer.penaltyCups || 0) + 2;
+            await roomRef.child(`players/${myPlayerId}/penaltyCups`).set(currentPenalty);
+            await roomRef.child('penaltyEvent').set({
+              playerName: myPlayer.name,
+              cups: 2,
+              type: 'disconnect',
+              timestamp: Date.now(),
+              drankConfirmed: false,
+              gaveDrinkConfirmed: false
+            });
+          }
+          // ラウンドやり直し中なら復帰バナー用フラグ
+          if (data && data.roundRestartPending) {
+            await roomRef.child('returnEvent').set({
+              playerName: myPlayer.name,
+              timestamp: Date.now()
+            });
+          }
+        }
+      };
+      document.addEventListener('visibilitychange', visibilityHandler);
+    }
+
+    function stopVisibilityListener() {
+      if (visibilityHandler) {
+        document.removeEventListener('visibilitychange', visibilityHandler);
+        visibilityHandler = null;
+      }
+    }
+
+    // ===== 離脱リスナー（全員側） =====
+    function startDisconnectListener() {
+      if (!roomRef || disconnectListener) return;
+      disconnectListener = roomRef.on('value', (snap) => {
+        const data = snap.val();
+        if (!data) return;
+
+        // 離脱者がいる場合
+        if (data.disconnectedPlayer) {
+          showDisconnectBanner(data.disconnectedPlayer, data, isRoomHost);
+        } else {
+          hideDisconnectBanner();
+        }
+
+        // 復帰イベント
+        if (data.returnEvent) {
+          showReturnBanner(data.returnEvent.playerName, data);
+        }
+
+        // ペナルティイベント（離脱ペナルティ）
+        if (data.penaltyEvent && data.penaltyEvent.type === 'disconnect') {
+          showPenaltyModal(data.penaltyEvent);
+        }
+      });
+    }
+
+    function stopDisconnectListener() {
+      if (roomRef && disconnectListener) {
+        roomRef.off('value', disconnectListener);
+        disconnectListener = null;
+      }
+    }
+
+    function showDisconnectBanner(playerName, data, iAmHost) {
+      let banner = document.getElementById('disconnectBanner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'disconnectBanner';
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2500;background:rgba(10,0,20,0.95);padding:1.2rem 1rem;text-align:center;border-bottom:2px solid var(--color-danger);backdrop-filter:blur(8px);';
+        document.body.appendChild(banner);
+      }
+      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+      const isDisconnected = myPlayer && myPlayer.name === playerName;
+      let html = `
+        <div style="font-size:14px;font-weight:800;color:var(--color-danger);margin-bottom:6px;">📵 ${escapeHtml(playerName)}が離脱しました…待機中</div>
+      `;
+      if (iAmHost && !isDisconnected) {
+        html += `<button onclick="forceRemovePlayer('${escapeHtml(playerName)}')" style="font-size:12px;padding:6px 16px;background:rgba(255,0,102,0.2);color:var(--color-danger);border:2px solid var(--color-danger);border-radius:20px;font-weight:700;">退出させる</button>`;
+      }
+      banner.innerHTML = html;
+      // ゲーム操作を不能に
+      document.getElementById('app').style.pointerEvents = isDisconnected ? 'auto' : 'none';
+      document.getElementById('app').style.opacity = isDisconnected ? '1' : '0.5';
+    }
+
+    function hideDisconnectBanner() {
+      const banner = document.getElementById('disconnectBanner');
+      if (banner) banner.remove();
+      document.getElementById('app').style.pointerEvents = 'auto';
+      document.getElementById('app').style.opacity = '1';
+    }
+
+    function showReturnBanner(playerName, data) {
+      let banner = document.getElementById('returnBanner');
+      if (banner) banner.remove();
+      banner = document.createElement('div');
+      banner.id = 'returnBanner';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2500;background:rgba(10,0,20,0.95);padding:1.2rem 1rem;text-align:center;border-bottom:2px solid var(--color-success);backdrop-filter:blur(8px);';
+      let html = `<div style="font-size:14px;font-weight:800;color:var(--color-success);margin-bottom:6px;">✅ ${escapeHtml(playerName)}が復帰しました！このラウンドをやり直します</div>`;
+      if (isRoomHost) {
+        html += `<button onclick="restartRound()" style="font-size:12px;padding:6px 16px;background:rgba(0,255,159,0.15);color:var(--color-success);border:2px solid var(--color-success);border-radius:20px;font-weight:700;">ゲーム再開</button>`;
+      }
+      banner.innerHTML = html;
+      document.body.appendChild(banner);
+    }
+
+    async function restartRound() {
+      if (!roomRef) return;
+      await roomRef.child('roundData').set(null);
+      await roomRef.child('roundRestartPending').set(false);
+      await roomRef.child('returnEvent').set(null);
+      const banner = document.getElementById('returnBanner');
+      if (banner) banner.remove();
+      showCardSelect();
+    }
+
+    async function forceRemovePlayer(playerName) {
+      if (!roomRef || !isRoomHost) return;
+      const player = gameState.players.find(p => p.name === playerName);
+      if (!player) return;
+      if (!confirm(`${playerName}を退出させますか？`)) return;
+      await roomRef.child(`players/${player.playerId}`).remove();
+      const newOrder = gameState.playerOrder.filter(id => id !== player.playerId);
+      await roomRef.child('playerOrder').set(newOrder);
+      await roomRef.child('disconnectedPlayer').set(null);
+      await roomRef.child('roundRestartPending').set(false);
+    }
+
+    async function transferHostIfNeeded(disconnectedPlayerId) {
+      if (!roomRef || !isRoomHost) return;
+      const snap = await roomRef.once('value');
+      const data = snap.val();
+      if (!data || data.host !== disconnectedPlayerId) return;
+      // 累計杯数が最少のプレイヤーに移譲
+      let minLosses = Infinity;
+      let newHostId = null;
+      data.playerOrder.forEach(id => {
+        if (id === disconnectedPlayerId) return;
+        const p = data.players[id];
+        const total = (p.losses || 0) + (p.penaltyCups || 0);
+        if (total < minLosses) { minLosses = total; newHostId = id; }
+      });
+      if (newHostId) {
+        await roomRef.child('originalHost').set(disconnectedPlayerId);
+        await roomRef.child('host').set(newHostId);
+        originalHostId = disconnectedPlayerId;
+        if (newHostId === myPlayerId) isRoomHost = true;
+      }
+    }
+
     function startOnlineSosoListener() {
       if (!roomRef || sosoEventListener) return;
-      sosoEventListener = roomRef.child('sosoEvent').on('value', (snap) => {
+      // penaltyEvent（SoSo落下・離脱ペナルティ共通）を監視
+      sosoEventListener = roomRef.child('penaltyEvent').on('value', (snap) => {
         const ev = snap.val();
         if (!ev || !ev.playerName) {
-          // sosoEventがnull（削除された）→ 全員モーダルを閉じる
-          closeSosoModal();
+          // イベントが削除された → 全員モーダルを閉じる
+          closePenaltyModal();
           return;
         }
-        const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
-        const isMine = myPlayer && myPlayer.name === ev.playerName;
-        showSosoModal(ev.playerName, isMine);
+        showPenaltyModal(ev);
       });
     }
 
     function stopOnlineSosoListener() {
       if (roomRef && sosoEventListener) {
-        roomRef.child('sosoEvent').off('value', sosoEventListener);
+        roomRef.child('penaltyEvent').off('value', sosoEventListener);
         sosoEventListener = null;
       }
     }
@@ -2394,6 +2593,8 @@
         gameState.usedCards[player.name] = pd.usedCards || [];
         // guardUsedはFirebaseから取得、なければ初期値
         gameState.guardUsed[player.name] = pd.guardUsed !== undefined ? pd.guardUsed : maxGuard;
+        // penaltyCupsを同期
+        player.penaltyCups = pd.penaltyCups || 0;
       });
 
       // loneWinnerBonusをFirebaseから復元
@@ -4477,7 +4678,12 @@
       container.innerHTML = '';
       
       sorted.forEach(player => {
-        const totalCups = Math.max(0, Math.floor(player.losses));
+        // ペナルティカップ（SoSo落下・離脱）を最終結果のみ加算
+        const penaltyCups = player.penaltyCups || 0;
+        const totalCups = Math.max(0, Math.floor(player.losses) + penaltyCups);
+        const penaltyNote = penaltyCups > 0
+          ? `<div style="font-size:11px;color:var(--color-danger);margin-top:2px;">うち ペナルティ +${penaltyCups}杯</div>`
+          : '';
         const beerIcons = '🍺'.repeat(totalCups);
         const card = document.createElement('div');
         card.className = 'final-card';
@@ -4487,6 +4693,7 @@
             <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">
               累計杯数: ${totalCups}杯
             </div>
+            ${penaltyNote}
           </div>
           <div class="score">${beerIcons}</div>
         `;
@@ -4565,7 +4772,9 @@
             losses: 0,
             hasUsedDoubleDown: false,
             usedCards: [],
-            loneWinnerBonus: false
+            loneWinnerBonus: false,
+            penaltyCups: 0,
+            disconnected: false
           };
         });
 
@@ -4862,81 +5071,131 @@
     function onSosoDrop() {
       if (!isGameActive) return;
       if (isOnlineMode) {
-        // オンライン：Firebaseにsosoイベントを書き込み → 全員のリスナーが反応
         const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
         if (!myPlayer || !roomRef) return;
-        // losses +1 をFirebaseに反映
-        myPlayer.losses = (myPlayer.losses || 0) + 1;
-        roomRef.child(`players/${myPlayerId}/losses`).set(myPlayer.losses);
-        // 全員に通知（timestampで毎回ユニーク）
-        roomRef.child('sosoEvent').set({
+        // penaltyCups に加算（最終結果のみ反映）
+        const currentPenalty = (myPlayer.penaltyCups || 0) + 1;
+        roomRef.child(`players/${myPlayerId}/penaltyCups`).set(currentPenalty);
+        // penaltyEvent で全員に通知（2段階確認）
+        roomRef.child('penaltyEvent').set({
           playerName: myPlayer.name,
-          timestamp: Date.now()
+          cups: 1,
+          type: 'soso',
+          timestamp: Date.now(),
+          drankConfirmed: false,
+          gaveDrinkConfirmed: false
         });
-        // モーダルはリスナー経由で表示されるので直接呼ばない
       } else {
-        // オフライン
+        // オフライン：本人のみモーダル（1ボタン）
         showSosoModal(null, true);
       }
     }
 
-    function showSosoModal(playerName, isMine) {
-      // 既存モーダルがあれば再利用
-      let modal = document.getElementById('sosoModal');
+    // ===== 汎用ペナルティモーダル（SoSo落下・離脱ペナルティ共通）=====
+    // type: 'soso' | 'disconnect'
+    function showPenaltyModal(ev) {
+      let modal = document.getElementById('penaltyModal');
       if (modal) modal.remove();
 
-      const displayName = playerName || '???';
+      const isSoso = ev.type === 'soso';
+      const displayName = ev.playerName || '???';
+      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+      const isMine = myPlayer && myPlayer.name === displayName;
+      const cups = ev.cups || 1;
+
+      const icon = isSoso ? '📱💥' : '📵💀';
+      const title = isSoso ? 'SoSo！！' : '離脱ペナルティ';
+      const titleColor = isSoso ? 'var(--color-neon-pink)' : 'var(--color-danger)';
+      const desc = isSoso
+        ? `落下や強い衝撃を検知しました。`
+        : `ゲーム中に離脱しました。`;
       const beerHTML = isMine
-        ? `<div style="font-size:64px; margin:0.75rem 0;">🍺</div>`
+        ? `<div style="font-size:64px; margin:0.75rem 0;">${'🍺'.repeat(cups)}</div>`
         : '';
-      const btnLabel = isMine ? '飲んだ！🍻' : '飲ませた！🍻';
 
       modal = document.createElement('div');
-      modal.id = 'sosoModal';
+      modal.id = 'penaltyModal';
       modal.style.cssText = [
-        'position:fixed', 'top:0', 'left:0', 'right:0', 'bottom:0',
-        'background:rgba(10,0,20,0.97)', 'z-index:3000',
-        'display:flex', 'align-items:center', 'justify-content:center',
+        'position:fixed','top:0','left:0','right:0','bottom:0',
+        'background:rgba(10,0,20,0.97)','z-index:3000',
+        'display:flex','align-items:center','justify-content:center',
         'backdrop-filter:blur(12px)'
       ].join(';');
       modal.innerHTML = `
         <div style="text-align:center; padding:2rem; max-width:360px;">
-          <div style="font-size:72px; margin-bottom:0.5rem;">📱💥</div>
-          <div style="font-size:28px; font-weight:800; color:var(--color-neon-pink);
-            text-shadow:0 0 30px var(--color-neon-pink),0 0 60px var(--color-neon-pink);
-            margin-bottom:0.75rem; letter-spacing:3px;">
-            SoSo！！
+          <div style="font-size:72px; margin-bottom:0.5rem;">${icon}</div>
+          <div style="font-size:26px; font-weight:800; color:${titleColor};
+            text-shadow:0 0 20px ${titleColor}; margin-bottom:0.75rem; letter-spacing:2px;">
+            ${title}
           </div>
           <div style="font-size:14px; color:var(--color-text-secondary); margin-bottom:4px;">
             ${escapeHtml(displayName)}のスマホから
           </div>
           <div style="font-size:15px; color:var(--color-text-primary); font-weight:700;
             margin-bottom:0.5rem; line-height:1.7;">
-            落下や強い衝撃を検知しました。<br>
-            <span style="color:var(--color-danger);">${escapeHtml(displayName)}</span> ペナルティ +1杯 🍺
+            ${desc}<br>
+            <span style="color:var(--color-danger);">${escapeHtml(displayName)}</span> ペナルティ +${cups}杯 🍺
+          </div>
+          <div style="font-size:11px; color:var(--color-text-secondary); margin-bottom:0.5rem;">
+            ※最終結果に加算されます
           </div>
           ${beerHTML}
-          <button class="primary" id="sosoDrinkBtn"
-            style="width:100%; font-size:18px; margin-top:0.5rem;">
-            ${btnLabel}
-          </button>
+          ${isMine
+            ? `<button class="primary" id="penaltyDrankBtn" style="width:100%; font-size:18px; margin-top:0.5rem; opacity:1;">飲んだ！🍻</button>
+               <div id="penaltyWaitMsg" style="font-size:12px; color:var(--color-text-secondary); margin-top:8px; display:none;">飲ませた！が押されるのを待っています...</div>`
+            : `<button class="primary" id="penaltyGaveBtn" style="width:100%; font-size:18px; margin-top:0.5rem;">飲ませた！🍻</button>
+               <div id="penaltyWaitMsg" style="font-size:12px; color:var(--color-text-secondary); margin-top:8px; display:none;">飲んだ！が押されるのを待っています...</div>`
+          }
         </div>
       `;
       document.body.appendChild(modal);
-      document.getElementById('sosoDrinkBtn').addEventListener('click', () => {
-        if (isOnlineMode && roomRef) {
-          // sosoEventをnullに → 全員のリスナーが反応して全員閉じる
-          roomRef.child('sosoEvent').remove();
+
+      // オンライン：Firebaseで2段階確認
+      if (isOnlineMode && roomRef) {
+        const eventKey = isSoso ? 'sosoEvent' : 'penaltyEvent';
+        if (isMine) {
+          const drankBtn = document.getElementById('penaltyDrankBtn');
+          if (drankBtn) drankBtn.addEventListener('click', async () => {
+            drankBtn.disabled = true;
+            drankBtn.style.opacity = '0.5';
+            document.getElementById('penaltyWaitMsg').style.display = 'block';
+            await roomRef.child(`${eventKey}/drankConfirmed`).set(true);
+          });
         } else {
-          closeSosoModal();
+          const gaveBtn = document.getElementById('penaltyGaveBtn');
+          if (gaveBtn) gaveBtn.addEventListener('click', async () => {
+            gaveBtn.disabled = true;
+            gaveBtn.style.opacity = '0.5';
+            document.getElementById('penaltyWaitMsg').style.display = 'block';
+            await roomRef.child(`${eventKey}/gaveDrinkConfirmed`).set(true);
+          });
         }
-      });
+        // 両方確認されたらFirebaseからイベント削除 → 全員のモーダルが閉じる
+        roomRef.child(eventKey).on('value', (snap) => {
+          const ev2 = snap.val();
+          if (ev2 && ev2.drankConfirmed && ev2.gaveDrinkConfirmed) {
+            roomRef.child(eventKey).remove();
+          }
+        });
+      } else {
+        // オフライン（SoSoのみ）：1ボタンで閉じる
+        const drankBtn = document.getElementById('penaltyDrankBtn');
+        if (drankBtn) drankBtn.addEventListener('click', closePenaltyModal);
+      }
     }
 
-    function closeSosoModal() {
-      const modal = document.getElementById('sosoModal');
+    function closePenaltyModal() {
+      const modal = document.getElementById('penaltyModal');
       if (modal) modal.remove();
     }
+
+    // SoSo落下用（後方互換）
+    function showSosoModal(playerName, isMine) {
+      if (isOnlineMode) return; // オンラインはpenaltyEvent経由
+      showPenaltyModal({ type: 'soso', playerName, cups: 1, drankConfirmed: false, gaveDrinkConfirmed: false });
+    }
+
+    function closeSosoModal() { closePenaltyModal(); }
 
     const GAME_URL = 'https://kom26.github.io/showdown-game/';
 
