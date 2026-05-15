@@ -2458,6 +2458,21 @@
       startVisibilityListener();
       startDisconnectListener();
 
+      // TOPからの復帰ペナルティ +2杯
+      if (isGameActive) {
+        const myPlayerData = data.players[myPlayerId];
+        const currentPenalty = (myPlayerData.penaltyCups || 0) + 2;
+        await ref.child(`players/${myPlayerId}/penaltyCups`).set(currentPenalty);
+        await ref.child('penaltyEvent').set({
+          playerName: myPlayerData.name,
+          cups: 2,
+          type: 'disconnect',
+          timestamp: Date.now(),
+          drankConfirmed: false,
+          gaveDrinkConfirmed: false
+        });
+      }
+
       // セッション更新
       saveRoomSession();
     }
@@ -2513,13 +2528,13 @@
             isRoomHost = true;
             originalHostId = null;
           }
-          // 復帰ペナルティ通知
+          // 復帰ペナルティ通知（通常復帰 +1杯）
           if (isGameActive) {
-            const currentPenalty = (myPlayer.penaltyCups || 0) + 2;
+            const currentPenalty = (myPlayer.penaltyCups || 0) + 1;
             await roomRef.child(`players/${myPlayerId}/penaltyCups`).set(currentPenalty);
             await roomRef.child('penaltyEvent').set({
               playerName: myPlayer.name,
-              cups: 2,
+              cups: 1,
               type: 'disconnect',
               timestamp: Date.now(),
               drankConfirmed: false,
@@ -5306,6 +5321,22 @@
 
       if (isOnlineMode && roomRef) {
         const eventKey = 'penaltyEvent';
+
+        // 両方確認されたら penaltyEvent を削除する監視リスナー（モーダルは再生成しない）
+        const confirmWatcher = roomRef.child(eventKey).on('value', (snap) => {
+          const ev2 = snap.val();
+          if (!ev2) {
+            // 削除された → モーダルを閉じてリスナー解除
+            roomRef.child(eventKey).off('value', confirmWatcher);
+            closePenaltyModal();
+            return;
+          }
+          if (ev2.drankConfirmed && ev2.gaveDrinkConfirmed) {
+            roomRef.child(eventKey).off('value', confirmWatcher);
+            roomRef.child(eventKey).remove();
+          }
+        });
+
         if (isMine) {
           document.getElementById('penaltyDrankBtn').addEventListener('click', async () => {
             document.getElementById('penaltyDrankBtn').disabled = true;
