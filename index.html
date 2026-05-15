@@ -2287,6 +2287,7 @@
         stopOnlineSosoListener();
         stopVisibilityListener();
         stopDisconnectListener();
+        clearRoomSession();
       }
 
       _resetOnlineState(deletedByName);
@@ -2349,11 +2350,150 @@
       // 離脱検知リスナーを登録
       startVisibilityListener();
       startDisconnectListener();
+      // ルーム復帰用セッション保存
+      saveRoomSession();
       // オンラインモードは抽選なしで直接カード選択へ
       showCardSelect();
     }
 
     // ===== 離脱検知 =====
+    // ===== ルーム復帰用 localStorageセッション管理 =====
+    function saveRoomSession() {
+      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+      if (!myPlayer || !currentRoomCode) return;
+      localStorage.setItem('showdown_session', JSON.stringify({
+        roomCode: currentRoomCode,
+        myName: myPlayer.name,
+        myPlayerId: myPlayerId,
+        savedAt: Date.now()
+      }));
+    }
+
+    function clearRoomSession() {
+      localStorage.removeItem('showdown_session');
+    }
+
+    function checkRoomSession() {
+      const raw = localStorage.getItem('showdown_session');
+      if (!raw) return;
+      let session;
+      try { session = JSON.parse(raw); } catch(e) { clearRoomSession(); return; }
+      // 1時間以上前のセッションは無効
+      if (Date.now() - session.savedAt > 60 * 60 * 1000) { clearRoomSession(); return; }
+
+      // 復帰バナーを表示
+      const banner = document.createElement('div');
+      banner.id = 'resumeBanner';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:4000;background:rgba(10,0,20,0.97);padding:1.2rem 1rem;text-align:center;border-bottom:2px solid var(--color-neon-cyan);backdrop-filter:blur(8px);';
+      banner.innerHTML = `
+        <div style="font-size:13px;color:var(--color-neon-cyan);font-weight:800;margin-bottom:8px;">
+          📵 前回のルーム（${escapeHtml(session.roomCode)}）に復帰しますか？
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <button onclick="resumeRoom()" style="padding:8px 20px;font-size:13px;font-weight:800;background:rgba(0,255,255,0.15);color:var(--color-neon-cyan);border:2px solid var(--color-neon-cyan);border-radius:20px;">復帰する</button>
+          <button onclick="dismissResumeBanner()" style="padding:8px 20px;font-size:13px;font-weight:800;background:rgba(255,255,255,0.05);color:var(--color-text-secondary);border:2px solid var(--color-border);border-radius:20px;">キャンセル</button>
+        </div>
+      `;
+      document.body.appendChild(banner);
+    }
+
+    function dismissResumeBanner() {
+      const banner = document.getElementById('resumeBanner');
+      if (banner) banner.remove();
+      clearRoomSession();
+    }
+
+    async function resumeRoom() {
+      const raw = localStorage.getItem('showdown_session');
+      if (!raw) return;
+      let session;
+      try { session = JSON.parse(raw); } catch(e) { clearRoomSession(); return; }
+
+      const banner = document.getElementById('resumeBanner');
+      if (banner) banner.innerHTML = '<div style="color:var(--color-neon-cyan);font-size:13px;">接続中...</div>';
+
+      const db = firebase.database();
+      const ref = db.ref('rooms/' + session.roomCode);
+      const snap = await ref.once('value');
+      const data = snap.val();
+
+      if (!data) {
+        // ルームが存在しない
+        if (banner) banner.innerHTML = '<div style="color:var(--color-danger);font-size:13px;">ルームが見つかりませんでした</div>';
+        setTimeout(() => { if (banner) banner.remove(); }, 2000);
+        clearRoomSession();
+        return;
+      }
+
+      // ルームに復帰
+      dismissResumeBanner();
+      currentRoomCode = session.roomCode;
+      myPlayerId = session.myPlayerId;
+      roomRef = ref;
+      isOnlineMode = true;
+
+      // 自分のプレイヤーデータを確認
+      const myPlayerData = data.players && data.players[myPlayerId];
+      if (!myPlayerData) {
+        // プレイヤーデータが消えていた（強制退出された）
+        alert('ルームから退出させられていました');
+        clearRoomSession();
+        return;
+      }
+
+      isRoomHost = data.host === myPlayerId;
+
+      // disconnectedフラグを解除
+      await ref.child(`players/${myPlayerId}/disconnected`).set(false);
+      await ref.child('disconnectedPlayer').set(null);
+
+      // gameStateを同期
+      syncGameState(data);
+
+      // 画面状態を復元
+      restoreScreenAfterResume(data);
+
+      // リスナー再登録
+      startOnlineSosoListener();
+      startVisibilityListener();
+      startDisconnectListener();
+
+      // セッション更新
+      saveRoomSession();
+    }
+
+    function restoreScreenAfterResume(data) {
+      // 全画面を非表示にしてから適切な画面を表示
+      const screens = ['modeSelect','setup','onlineMenu','waitingRoom','cardSelect','roundResults','finalResults','rulesScreen'];
+      screens.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      showAbortButton();
+
+      const status = data.status;
+      const showingResults = data.showingResults;
+
+      if (status === 'finished') {
+        // ゲーム終了済み
+        showFinalResults();
+      } else if (showingResults) {
+        // 結果表示中（さいころ止めた後も含む）→ 結果画面を最新状態で表示
+        isGameActive = true;
+        showRoundResults();
+      } else {
+        // カード選択中 or さいころ未確定 → ラウンドやり直し
+        isGameActive = true;
+        // returnEventを書き込んで全員に復帰バナーを出す
+        roomRef.child('returnEvent').set({
+          playerName: gameState.players.find(p => p.playerId === myPlayerId)?.name || '',
+          timestamp: Date.now()
+        });
+        roomRef.child('roundRestartPending').set(true);
+        showCardSelect();
+      }
+    }
+
     function startVisibilityListener() {
       if (visibilityHandler) return;
       visibilityHandler = async () => {
@@ -4803,6 +4943,7 @@
           gameState.guardUsed = {};
           gameState.guardTargets = {};
           gameState.loneWinnerBonus = {};
+          clearRoomSession();
 
           // 画面を切り替えてからリスナー抑制を解除
           document.getElementById('finalResults').style.display = 'none';
@@ -5249,6 +5390,9 @@
     }
 
     updatePlayerInputs();
+
+    // ルーム復帰セッション確認（タスクキル後の復帰用）
+    checkRoomSession();
     
     // PWA Service Worker 登録
     if ('serviceWorker' in navigator) {
