@@ -2256,6 +2256,7 @@
               if (window._sakuTimerActive) {
                 window._sakuTimerActive = false;
                 window._sakuTimerTargetId = null;
+                window._sakuRemovedAt = Date.now(); // remove後の古いキャッシュ無視用
                 roomRef.child('sakuTimer').remove();
               }
             }
@@ -2309,7 +2310,9 @@
             const st = data.sakuTimer;
             const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
             console.log('[SAKU] currentTimerId:', currentTimerId, 'lastId:', window._lastSakuTimerId);
-            if (window._lastSakuTimerId !== currentTimerId) {
+            // remove後に届く古いキャッシュ値は無視（removedAt より startedAt が古い場合）
+            const isStaleCache = window._sakuRemovedAt && st.startedAt < window._sakuRemovedAt;
+            if (window._lastSakuTimerId !== currentTimerId && !isStaleCache) {
               window._lastSakuTimerId = currentTimerId;
               startSakuTimer(st.targetPlayerId, Date.now());
             }
@@ -3230,9 +3233,11 @@
       window._lastSakuTimerId = null;
       window._sakuTimerActive = false;
       window._sakuTimerTargetId = null;
+      window._sakuRemovedAt = null;
       window._sakuAutoSelected = false;
       window._sakuTimerActive = false;
       window._sakuTimerTargetId = null;
+      window._sakuRemovedAt = null;
       // sakuAutoSelected Firebase クリア（ホストのみ）
       if (isOnlineMode && isRoomHost && roomRef) {
         roomRef.child('sakuAutoSelected').remove();
