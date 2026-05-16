@@ -2239,27 +2239,26 @@
             const confirmedCount = roundDataArr.length;
 
             if (confirmedCount === totalPlayers - 1) {
-              // 未確定の1人を特定してタイマーをセット
+              // 未確定の1人を特定してタイマーをセット（まだ動いていない場合のみ）
               const confirmedNames = roundDataArr.map(d => d.player);
               const unconfirmed = gameState.players.find(p => !confirmedNames.includes(p.name));
-              if (unconfirmed) {
-                const existingTimer = data.sakuTimer;
-                if (!existingTimer || existingTimer.targetPlayerId !== unconfirmed.playerId) {
-                  roomRef.child('sakuTimer').set({
-                    targetPlayerId: unconfirmed.playerId,
-                    startedAt: Date.now()
-                  });
-                }
-                // タイマーが正しくセット済み → remove しない（returnで以降のremoveを防ぐ）
+              if (unconfirmed && !window._sakuTimerActive) {
+                window._sakuTimerActive = true;
+                window._sakuTimerTargetId = unconfirmed.playerId;
+                const startedAt = Date.now();
+                roomRef.child('sakuTimer').set({
+                  targetPlayerId: unconfirmed.playerId,
+                  startedAt: startedAt
+                });
               }
             } else if (confirmedCount === totalPlayers) {
               // 全員揃った → タイマーをクリア
-              if (data.sakuTimer) {
+              if (window._sakuTimerActive) {
+                window._sakuTimerActive = false;
+                window._sakuTimerTargetId = null;
                 roomRef.child('sakuTimer').remove();
               }
             }
-            // confirmedCount < totalPlayers - 1（まだ早い）かつ sakuTimer がある場合は
-            // タイマーが動いている最中なので remove しない
           }
 
           // 結果表示フラグがtrueで、まだ結果画面じゃない場合は結果画面へ
@@ -3228,7 +3227,11 @@
       // サク負けタイマーリセット
       clearSakuTimer();
       window._lastSakuTimerId = null;
+      window._sakuTimerActive = false;
+      window._sakuTimerTargetId = null;
       window._sakuAutoSelected = false;
+      window._sakuTimerActive = false;
+      window._sakuTimerTargetId = null;
       // sakuAutoSelected Firebase クリア（ホストのみ）
       if (isOnlineMode && isRoomHost && roomRef) {
         roomRef.child('sakuAutoSelected').remove();
