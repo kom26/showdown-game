@@ -2302,6 +2302,14 @@
 
           // ===== サク負け自動選択イベント（全員表示用）=====
           if (data.sakuAutoSelected && data.sakuAutoSelected.playerName) {
+            // onlineCardWaiting が表示されていなければ表示してからメッセージを更新
+            const waitingScreen = document.getElementById('onlineCardWaiting');
+            if (waitingScreen && waitingScreen.style.display !== 'block') {
+              // カード選択画面から選択状況画面に切り替え
+              document.getElementById('cardSelect').style.display = 'none';
+              waitingScreen.style.display = 'block';
+              updateSelectionStatus();
+            }
             const wt = document.getElementById('sakuTimerWaiting');
             if (wt) {
               wt.style.display = 'block';
@@ -3670,7 +3678,11 @@
           window._sakuTriggered = true;
           window._sakuTimerActive = true;
           clearSakuTimer();
-          hideSakuTimerDisplay();
+          // 自動選択時（_sakuAutoSelected）は hideSakuTimerDisplay を呼ばない
+          // → sakuAutoSelected Firebase イベントで全員の表示が切り替わる
+          if (!window._sakuAutoSelected) {
+            hideSakuTimerDisplay();
+          }
           console.log('[SAKU-UI] timer cleared in confirmCard');
         }
 
