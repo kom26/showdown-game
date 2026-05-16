@@ -2294,19 +2294,28 @@
 
           // ===== サク負け自動選択イベント（全員表示用）=====
           if (data.sakuAutoSelected && data.sakuAutoSelected.playerName) {
-            // onlineCardWaiting が表示されていなければ表示してからメッセージを更新
             const waitingScreen = document.getElementById('onlineCardWaiting');
-            if (waitingScreen && waitingScreen.style.display !== 'block') {
-              // カード選択画面から選択状況画面に切り替え
-              document.getElementById('cardSelect').style.display = 'none';
-              waitingScreen.style.display = 'block';
-              updateSelectionStatus();
-            }
             const wt = document.getElementById('sakuTimerWaiting');
-            if (wt) {
-              wt.style.display = 'block';
-              wt.innerHTML = `⚡ サク負け発動！<br>${escapeHtml(data.sakuAutoSelected.playerName)}のカードが自動選択されました`;
-              wt.style.color = 'orange';
+            console.log('[MSG] sakuAutoSelected detected. player:', data.sakuAutoSelected.playerName,
+              '| onlineCardWaiting display:', waitingScreen ? waitingScreen.style.display : 'N/A',
+              '| showingResults:', data.showingResults,
+              '| wt display:', wt ? wt.style.display : 'N/A');
+            // 結果表示中でなければ選択状況画面にメッセージを表示
+            if (!data.showingResults) {
+              if (waitingScreen && waitingScreen.style.display !== 'block') {
+                document.getElementById('cardSelect').style.display = 'none';
+                waitingScreen.style.display = 'block';
+                updateSelectionStatus();
+                console.log('[MSG] onlineCardWaiting forced to block');
+              }
+              if (wt) {
+                wt.style.display = 'block';
+                wt.innerHTML = `⚡ サク負け発動！<br>${escapeHtml(data.sakuAutoSelected.playerName)}のカードが自動選択されました`;
+                wt.style.color = 'orange';
+                console.log('[MSG] waitTimer message set');
+              }
+            } else {
+              console.log('[MSG] skipped - showingResults is true');
             }
           }
 
@@ -3060,6 +3069,8 @@
               guardTargetSelected = null; // GUARDは使わない
               // カード選択画面のメッセージは出さず、そのまま選択状況画面へ遷移
               // Firebase に自動選択イベントを書き込み → 全員の listenToRoom で表示更新
+              console.log('[AUTO] Auto-select triggered! playerName:', targetPlayer.name,
+                '| _sakuAutoSelected will be set to true');
               window._sakuAutoSelected = true;
               if (roomRef) {
                 roomRef.child('sakuAutoSelected').set({
@@ -3490,6 +3501,10 @@
     
     function showOnlineWaitingScreen() {
       window.scrollTo(0, 0);
+      console.log('[WAIT] showOnlineWaitingScreen called.',
+        '| _sakuAutoSelected:', window._sakuAutoSelected,
+        '| _sakuTriggered:', window._sakuTriggered,
+        '| sakuTimerWaiting display:', document.getElementById('sakuTimerWaiting') ? document.getElementById('sakuTimerWaiting').style.display : 'N/A');
       document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('onlineCardWaiting').style.display = 'block';
       updateSelectionStatus();
@@ -3744,11 +3759,16 @@
 
     function showRoundResults() {
       window.scrollTo(0, 0);
+      const owBefore = document.getElementById('onlineCardWaiting');
+      console.log('[RESULT] showRoundResults called.',
+        '| onlineCardWaiting display BEFORE:', owBefore ? owBefore.style.display : 'N/A',
+        '| sakuTimerWaiting display:', document.getElementById('sakuTimerWaiting') ? document.getElementById('sakuTimerWaiting').style.display : 'N/A');
       document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('handover').style.display = 'none';
       document.getElementById('readyToShowResult').style.display = 'none';
       document.getElementById('onlineCardWaiting').style.display = 'none';
       document.getElementById('roundResults').style.display = 'block';
+      console.log('[RESULT] onlineCardWaiting set to none, roundResults set to block');
       
       document.getElementById('resultRoundInfo').textContent = `第${gameState.currentRound}回戦`;
 
