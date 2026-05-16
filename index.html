@@ -1127,7 +1127,7 @@
     
     <div id="onlineCardWaiting" style="display: none;">
       <!-- サク負けタイマー表示（全員用） -->
-      <div id="sakuTimerWaiting" style="display: none; text-align: center; font-size: 14px; font-weight: 800; margin-bottom: 0.75rem; padding: 0.5rem; border-radius: 8px; background: rgba(255,165,0,0.1); border: 1px solid orange;"></div>
+      <div id="sakuTimerWaiting" style="display: none; text-align: center; font-size: 16px; font-weight: 800; margin-bottom: 0.75rem; padding: 0.75rem; border-radius: 8px; background: rgba(255,165,0,0.15); border: 2px solid orange; letter-spacing: 1px;"></div>
       <div style="text-align: center; padding: 2rem 1rem;">
         <h2 style="font-size: 22px; margin-bottom: 1.5rem;">カード選択状況</h2>
         <div id="selectionStatusList" style="margin-bottom: 2rem;">
@@ -1237,6 +1237,11 @@
           <span class="info-value" id="doubleDownValue" style="color: var(--color-accent);">使用可能 ⚡</span>
         </div>
       </div>
+
+      <!-- サク負けタイマー表示（対象者用）→ カードグリッドの上 -->
+      <div id="sakuTimerDisplay" style="display: none; text-align: center; font-size: 16px; font-weight: 800; margin: 0.75rem 0 0.5rem; padding: 0.6rem; border-radius: 8px; background: rgba(255,165,0,0.15); border: 2px solid orange; letter-spacing: 1px;"></div>
+      <!-- サク負け自動選択メッセージ -->
+      <div id="sakuAutoMsg" style="display: none; text-align: center; font-size: 13px; font-weight: 800; color: orange; margin-bottom: 0.4rem;"></div>
       
       <h2 style="margin-bottom: 1rem;">カードを選択</h2>
       <div class="card-grid" id="cardGrid"></div>
@@ -1263,10 +1268,6 @@
         <div id="guardSelectedMsg" style="display: none; font-size: 12px; color: var(--color-neon-cyan); margin-top: 4px; font-weight: 700;"></div>
       </div>
       
-      <!-- サク負けタイマー表示（対象者用） -->
-      <div id="sakuTimerDisplay" style="display: none; text-align: center; font-size: 15px; font-weight: 800; margin-top: 0.75rem; padding: 0.5rem; border-radius: 8px; background: rgba(255,165,0,0.1); border: 1px solid orange;"></div>
-      <!-- サク負け自動選択メッセージ -->
-      <div id="sakuAutoMsg" style="display: none; text-align: center; font-size: 13px; font-weight: 800; color: orange; margin-top: 0.5rem;"></div>
       <button id="confirmBtn" onclick="confirmCard()" style="width: 100%;" disabled>このカードで決定</button>
     </div>
     
@@ -2191,6 +2192,18 @@
           
           if (!isFinalResultsShowing) {
             syncGameState(data);
+          } else if (isCardSelectShowing) {
+            // カード選択中は full sync をスキップするが players だけは更新
+            // （startSakuTimer で targetPlayer を正しく取得するため）
+            if (data.playerOrder && data.players) {
+              gameState.players = data.playerOrder.map(pid => ({
+                name: data.players[pid].name,
+                losses: data.players[pid].losses,
+                hasUsedDoubleDown: data.players[pid].hasUsedDoubleDown,
+                playerId: pid,
+                penaltyCups: data.players[pid].penaltyCups || 0
+              }));
+            }
           }
           
           // 最終結果表示中の場合
@@ -2221,13 +2234,12 @@
           
           // ===== サク負けタイマー起動判定（ホストのみ）=====
           if (isRoomHost && gameState.sakuMode && isGameActive && !data.showingResults) {
-            // カード選択フェーズ中（showingResultsでなければカード選択フェーズ）
             const totalPlayers = gameState.players.length;
             const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
             const confirmedCount = roundDataArr.length;
 
             if (confirmedCount === totalPlayers - 1) {
-              // 未確定の1人を特定
+              // 未確定の1人を特定してタイマーをセット
               const confirmedNames = roundDataArr.map(d => d.player);
               const unconfirmed = gameState.players.find(p => !confirmedNames.includes(p.name));
               if (unconfirmed) {
@@ -2238,10 +2250,16 @@
                     startedAt: Date.now()
                   });
                 }
+                // タイマーが正しくセット済み → remove しない
+              }
+            } else if (confirmedCount < totalPlayers - 1) {
+              // まだ N-1 人未満しか選んでいない → タイマーは不要
+              if (data.sakuTimer) {
+                roomRef.child('sakuTimer').remove();
               }
             } else {
-              // confirmedCount が N-1 でない → タイマークリア
-              if (data.sakuTimer && confirmedCount < totalPlayers - 1) {
+              // confirmedCount === totalPlayers（全員揃った）→ タイマーはクリア
+              if (data.sakuTimer) {
                 roomRef.child('sakuTimer').remove();
               }
             }
@@ -2277,6 +2295,16 @@
           if (data.showingFinalResults && !isFinalResultsShowing) {
             syncGameState(data); // 最終結果表示前だけsync
             showFinalResults();
+          }
+
+          // ===== サク負け自動選択イベント（全員表示用）=====
+          if (data.sakuAutoSelected && data.sakuAutoSelected.playerName) {
+            const wt = document.getElementById('sakuTimerWaiting');
+            if (wt) {
+              wt.style.display = 'block';
+              wt.textContent = `⚡ サク負け発動！${escapeHtml(data.sakuAutoSelected.playerName)}のカードが自動選択されました`;
+              wt.style.color = 'orange';
+            }
           }
 
           // ===== サク負けタイマーイベント =====
@@ -2959,8 +2987,15 @@
     // サク負けタイマー開始（全員側・listenToRoomから呼ぶ）
     function startSakuTimer(targetPlayerId, startedAt) {
       clearSakuTimer();
-      const targetPlayer = gameState.players.find(p => p.playerId === targetPlayerId);
-      if (!targetPlayer) return;
+      // syncGameState がスキップされていても targetPlayer を取得できるよう
+      // gameState.players から探し、なければ Firebase の最新データから補完
+      let targetPlayer = gameState.players.find(p => p.playerId === targetPlayerId);
+      if (!targetPlayer) {
+        // playerOrder が設定されていれば fallback で名前を取得
+        const allPlayers = gameState.players;
+        console.warn('startSakuTimer: targetPlayer not found in gameState', targetPlayerId, allPlayers);
+        return;
+      }
 
       const iAmTarget = myPlayerId === targetPlayerId;
       const SAKU_SECONDS = 6;
@@ -2969,8 +3004,12 @@
       // 初回表示
       const dispTimer = document.getElementById('sakuTimerDisplay');
       const waitTimer = document.getElementById('sakuTimerWaiting');
-      if (dispTimer) { dispTimer.style.display = 'block'; dispTimer.textContent = `⚡ サク負けまで ${SAKU_SECONDS}秒`; dispTimer.style.color = 'orange'; }
-      if (waitTimer) { waitTimer.style.display = 'block'; waitTimer.textContent = `⚡ ${escapeHtml(targetPlayer.name)} サク負けまで ${SAKU_SECONDS}秒`; waitTimer.style.color = 'orange'; }
+      if (dispTimer) { dispTimer.style.display = 'block'; dispTimer.textContent = `⚡ サク負け発動まで ${SAKU_SECONDS}秒`; dispTimer.style.color = 'orange'; }
+      if (waitTimer) {
+        waitTimer.style.display = 'block';
+        waitTimer.textContent = `⚡ ${escapeHtml(targetPlayer.name)}のカード自動選択まで ${SAKU_SECONDS}秒`;
+        waitTimer.style.color = 'orange';
+      }
 
       sakuTimerInterval = setInterval(() => {
         const elapsed = (Date.now() - startedAt) / 1000;
@@ -2981,13 +3020,13 @@
         // 対象者のカード選択画面
         const dt = document.getElementById('sakuTimerDisplay');
         if (dt && dt.style.display !== 'none') {
-          dt.textContent = `⚡ サク負けまで ${remCeil}秒`;
+          dt.textContent = `⚡ サク負け発動まで ${remCeil}秒`;
           dt.style.color = color;
         }
         // 選択状況画面（全員共通）
         const wt = document.getElementById('sakuTimerWaiting');
         if (wt && wt.style.display !== 'none') {
-          wt.textContent = `⚡ ${escapeHtml(targetPlayer.name)} サク負けまで ${remCeil}秒`;
+          wt.textContent = `⚡ ${escapeHtml(targetPlayer.name)}のカード自動選択まで ${remCeil}秒`;
           wt.style.color = color;
         }
 
@@ -3004,19 +3043,14 @@
               selectedCard = result.card;
               isDoubleDownActive = result.useDD;
               guardTargetSelected = null; // GUARDは使わない
-              // カード選択画面にメッセージ
-              const sakuMsg = document.getElementById('sakuAutoMsg');
-              if (sakuMsg) {
-                sakuMsg.style.display = 'block';
-                sakuMsg.textContent = `⚡ サク負け！ ${result.card} を自動選択${result.useDD ? '（DD発動）' : ''}`;
-              }
-              // 選択状況画面のタイマー表示を「自動選択」メッセージに差し替え
+              // カード選択画面のメッセージは出さず、そのまま選択状況画面へ遷移
+              // Firebase に自動選択イベントを書き込み → 全員の listenToRoom で表示更新
               window._sakuAutoSelected = true;
-              const wt = document.getElementById('sakuTimerWaiting');
-              if (wt) {
-                wt.style.display = 'block';
-                wt.textContent = '⚡ サク負け発動！自動選択されました';
-                wt.style.color = 'orange';
+              if (roomRef) {
+                roomRef.child('sakuAutoSelected').set({
+                  playerName: targetPlayer.name,
+                  timestamp: Date.now()
+                });
               }
               confirmCard();
             }
@@ -3200,6 +3234,10 @@
       clearSakuTimer();
       window._lastSakuTimerId = null;
       window._sakuAutoSelected = false;
+      // sakuAutoSelected Firebase クリア（ホストのみ）
+      if (isOnlineMode && isRoomHost && roomRef) {
+        roomRef.child('sakuAutoSelected').remove();
+      }
       const sakuDisp = document.getElementById('sakuTimerDisplay');
       if (sakuDisp) sakuDisp.style.display = 'none';
       const sakuWait = document.getElementById('sakuTimerWaiting');
@@ -4984,19 +5022,18 @@
       gameState.diceUsedThisRound = [];
       gameState.guardTargets = {}; // ラウンドごとにリセット
       // loneWinnerBonus はshowRoundResults()内で更新済みのためここではリセットしない
-      // サク負けタイマーをクリア
-      if (isOnlineMode && isRoomHost && roomRef) roomRef.child('sakuTimer').remove();
       clearSakuTimer();
       window._lastSakuTimerId = null;
       
-      // オンラインモード：Firebaseを更新
+      // オンラインモード：Firebaseを更新（sakuTimerも同時にクリア）
       if (isOnlineMode && roomRef) {
         roomRef.update({
           currentRound: gameState.currentRound,
           currentPlayerIndex: 0,
           roundData: {},
           diceUsedThisRound: [],
-          showingResults: false
+          showingResults: false,
+          sakuTimer: null
         });
       }
       
