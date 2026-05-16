@@ -2912,6 +2912,8 @@
     }
 
     function hideSakuTimerDisplay() {
+      console.log('[SAKU-UI] hideSakuTimerDisplay called from:', new Error().stack.split('
+')[2]?.trim());
       const dt = document.getElementById('sakuTimerDisplay');
       if (dt) dt.style.display = 'none';
       const wt = document.getElementById('sakuTimerWaiting');
@@ -3014,11 +3016,13 @@
       // 初回表示
       const dispTimer = document.getElementById('sakuTimerDisplay');
       const waitTimer = document.getElementById('sakuTimerWaiting');
-      if (dispTimer) { dispTimer.style.display = 'block'; dispTimer.textContent = `⚡ サク負け発動まで ${SAKU_SECONDS}秒`; dispTimer.style.color = 'orange'; }
+      console.log('[SAKU-UI] startSakuTimer. iAmTarget:', iAmTarget, 'dispTimer exists:', !!dispTimer, 'waitTimer exists:', !!waitTimer);
+      if (dispTimer) { dispTimer.style.display = 'block'; dispTimer.textContent = `⚡ サク負け発動まで ${SAKU_SECONDS}秒`; dispTimer.style.color = 'orange'; console.log('[SAKU-UI] dispTimer set to block'); }
       if (waitTimer) {
         waitTimer.style.display = 'block';
         waitTimer.textContent = `⚡ ${escapeHtml(targetPlayer.name)}のカード自動選択まで ${SAKU_SECONDS}秒`;
         waitTimer.style.color = 'orange';
+        console.log('[SAKU-UI] waitTimer set to block');
       }
 
       sakuTimerInterval = setInterval(() => {
@@ -3479,10 +3483,12 @@
       document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('onlineCardWaiting').style.display = 'block';
       updateSelectionStatus();
-      // サク負けタイマーが動いていれば表示を復元
-      if (sakuTimerInterval && window._lastSakuTimerId) {
+      // サク負けタイマーが動いていて、かつ自分が選択済みでない場合のみ表示
+      console.log('[SAKU-UI] showOnlineWaitingScreen. sakuTimerInterval:', !!sakuTimerInterval, '_lastSakuTimerId:', window._lastSakuTimerId, '_sakuTriggered:', window._sakuTriggered);
+      if (sakuTimerInterval && window._lastSakuTimerId && !window._sakuTriggered) {
         const wt = document.getElementById('sakuTimerWaiting');
         if (wt) wt.style.display = 'block';
+        console.log('[SAKU-UI] waitTimer restored in showOnlineWaitingScreen');
       }
     }
     
@@ -3638,14 +3644,18 @@
           updates[`players/${myPlayer.playerId}/guardUsed`] = remaining - 1;
         }
         
-        roomRef.update(updates).then(() => {
-          console.log('Card selection saved successfully');
-          // 自分で選択した場合もサク負けタイマーをクリア・自動選択と再起動を防ぐ
+        // 自分で選択した瞬間にタイマーをクリア（非同期前に実行）
+        console.log('[SAKU-UI] confirmCard. sakuTimerInterval:', !!sakuTimerInterval, '_lastSakuTimerId:', window._lastSakuTimerId);
+        if (sakuTimerInterval || window._lastSakuTimerId) {
           window._sakuTriggered = true;
-          window._sakuTimerActive = true; // ホスト側で再度 sakuTimer.set() させない
+          window._sakuTimerActive = true;
           clearSakuTimer();
           hideSakuTimerDisplay();
-          // _lastSakuTimerId はリセットしない（リセットすると次の発火でstartSakuTimerが再呼ばれる）
+          console.log('[SAKU-UI] timer cleared in confirmCard');
+        }
+
+        roomRef.update(updates).then(() => {
+          console.log('Card selection saved successfully');
         }).catch((error) => {
           console.error('Error saving card selection:', error);
         });
