@@ -2286,11 +2286,12 @@
           // ===== サク負けタイマーイベント =====
           if (gameState.sakuMode && data.sakuTimer && data.sakuTimer.targetPlayerId) {
             const st = data.sakuTimer;
-            // タイマーIDが変わったときだけ再起動
+            // タイマーIDが変わったときだけ再起動（startedAtはサーバー側の値だがタイマー基準はローカル受信時刻）
             const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
             if (window._lastSakuTimerId !== currentTimerId) {
               window._lastSakuTimerId = currentTimerId;
-              startSakuTimer(st.targetPlayerId, st.startedAt);
+              // 受信した瞬間をタイマー開始基準にする（通信遅延の影響を排除）
+              startSakuTimer(st.targetPlayerId, Date.now());
             }
           } else if (!data.sakuTimer || !data.sakuTimer.targetPlayerId) {
             // タイマーがクリアされた
@@ -2977,15 +2978,14 @@
         }
       };
 
-      // 即座に残り秒数を計算して表示
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      const remaining = Math.max(0, SAKU_SECONDS - elapsed);
-      setCountdownDisplay(remaining);
+      // 即座に残り秒数を計算して表示（受信直後なのでほぼ6秒）
+      setCountdownDisplay(SAKU_SECONDS);
 
       sakuTimerInterval = setInterval(() => {
-        const elapsed2 = Math.floor((Date.now() - startedAt) / 1000);
+        const elapsed2 = (Date.now() - startedAt) / 1000;
         const rem = Math.max(0, SAKU_SECONDS - elapsed2);
-        setCountdownDisplay(rem);
+        // 表示は切り捨て（Math.ceil で見た目上の秒数を1多めに）
+        setCountdownDisplay(Math.ceil(rem));
 
         if (rem <= 0) {
           clearSakuTimer();
