@@ -2305,12 +2305,24 @@
             }
           }
 
+          // ===== 全員揃ったらサク負けタイマーをクリア（全員実行）=====
+          if (gameState.sakuMode && window._lastSakuTimerId) {
+            const totalPlayers = gameState.players.length;
+            const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
+            const confirmedCount = roundDataArr.length;
+            if (confirmedCount >= totalPlayers) {
+              clearSakuTimer();
+              hideSakuTimerDisplay();
+              window._lastSakuTimerId = null;
+              window._sakuTimerActive = false;
+              window._sakuRemovedAt = null;
+            }
+          }
+
           // ===== サク負けタイマーイベント =====
-          console.log('[SAKU] sakuMode:', gameState.sakuMode, 'sakuTimer:', data.sakuTimer, 'isGameActive:', isGameActive);
           if (gameState.sakuMode && data.sakuTimer && data.sakuTimer.targetPlayerId) {
             const st = data.sakuTimer;
             const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
-            console.log('[SAKU] currentTimerId:', currentTimerId, 'lastId:', window._lastSakuTimerId);
             if (window._lastSakuTimerId !== currentTimerId) {
               window._lastSakuTimerId = currentTimerId;
               startSakuTimer(st.targetPlayerId, Date.now());
@@ -2995,7 +3007,6 @@
       const iAmTarget = myPlayerId === targetPlayerId;
       const SAKU_SECONDS = 6;
       let triggered = false; // 自動選択の二重発動防止
-      console.log('[SAKU] startSakuTimer called. iAmTarget:', iAmTarget, 'myPlayerId:', myPlayerId, 'targetPlayerId:', targetPlayerId);
 
       // 初回表示
       const dispTimer = document.getElementById('sakuTimerDisplay');
@@ -3026,8 +3037,9 @@
           wt.style.color = color;
         }
 
-        if (rem <= 0 && !triggered) {
+        if (rem <= 0 && !triggered && !window._sakuTriggered) {
           triggered = true;
+          window._sakuTriggered = true;
           clearSakuTimer();
           hideSakuTimerDisplay();
 
@@ -3232,6 +3244,7 @@
       window._sakuTimerTargetId = null;
       window._sakuRemovedAt = null;
       window._sakuAutoSelected = false;
+      window._sakuTriggered = false;
       // sakuAutoSelected Firebase クリア（ホストのみ）
       if (isOnlineMode && isRoomHost && roomRef) {
         roomRef.child('sakuAutoSelected').remove();
@@ -3624,6 +3637,14 @@
         
         roomRef.update(updates).then(() => {
           console.log('Card selection saved successfully');
+          // 自分で選択した場合もサク負けタイマーをクリア・自動選択を防ぐ
+          window._sakuTriggered = true;
+          if (sakuTimerInterval) {
+            clearSakuTimer();
+            hideSakuTimerDisplay();
+            window._lastSakuTimerId = null;
+            window._sakuTimerActive = false;
+          }
         }).catch((error) => {
           console.error('Error saving card selection:', error);
         });
