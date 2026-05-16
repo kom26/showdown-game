@@ -2912,8 +2912,7 @@
     }
 
     function hideSakuTimerDisplay() {
-      console.log('[SAKU-UI] hideSakuTimerDisplay called from:', new Error().stack.split('
-')[2]?.trim());
+      console.log('[SAKU-UI] hideSakuTimerDisplay called');
       const dt = document.getElementById('sakuTimerDisplay');
       if (dt) dt.style.display = 'none';
       const wt = document.getElementById('sakuTimerWaiting');
