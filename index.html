@@ -2250,19 +2250,16 @@
                     startedAt: Date.now()
                   });
                 }
-                // タイマーが正しくセット済み → remove しない
+                // タイマーが正しくセット済み → remove しない（returnで以降のremoveを防ぐ）
               }
-            } else if (confirmedCount < totalPlayers - 1) {
-              // まだ N-1 人未満しか選んでいない → タイマーは不要
-              if (data.sakuTimer) {
-                roomRef.child('sakuTimer').remove();
-              }
-            } else {
-              // confirmedCount === totalPlayers（全員揃った）→ タイマーはクリア
+            } else if (confirmedCount === totalPlayers) {
+              // 全員揃った → タイマーをクリア
               if (data.sakuTimer) {
                 roomRef.child('sakuTimer').remove();
               }
             }
+            // confirmedCount < totalPlayers - 1（まだ早い）かつ sakuTimer がある場合は
+            // タイマーが動いている最中なので remove しない
           }
 
           // 結果表示フラグがtrueで、まだ結果画面じゃない場合は結果画面へ
