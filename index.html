@@ -2256,7 +2256,8 @@
               if (window._sakuTimerActive) {
                 window._sakuTimerActive = false;
                 window._sakuTimerTargetId = null;
-                window._sakuRemovedAt = Date.now(); // remove後の古いキャッシュ無視用
+                clearSakuTimer();
+                hideSakuTimerDisplay();
                 roomRef.child('sakuTimer').remove();
               }
             }
@@ -2318,11 +2319,8 @@
             // _lastSakuTimerId はリセットしない
             // → remove後の古いキャッシュが再送されても同じIDで無視される
             // → showCardSelect / nextRound でリセットされるので次ラウンドは正常動作
+            // タイマーのintervalだけ止める（表示はタイムアップ/全員揃った時のみ消す）
             clearSakuTimer();
-            if (!window._sakuAutoSelected) {
-              const wt = document.getElementById('sakuTimerWaiting');
-              if (wt) wt.style.display = 'none';
-            }
           }
 
           // ===== 離脱・復帰・ペナルティイベント（listenToRoomに統合）=====
@@ -2896,7 +2894,10 @@
         clearInterval(sakuTimerInterval);
         sakuTimerInterval = null;
       }
-      // タイマー表示を非表示に
+      // 表示の制御は呼び出し元で行う
+    }
+
+    function hideSakuTimerDisplay() {
       const dt = document.getElementById('sakuTimerDisplay');
       if (dt) dt.style.display = 'none';
       const wt = document.getElementById('sakuTimerWaiting');
@@ -3029,9 +3030,7 @@
         if (rem <= 0 && !triggered) {
           triggered = true;
           clearSakuTimer();
-          // タイマー表示を消す
-          if (dt) dt.style.display = 'none';
-          if (wt) wt.style.display = 'none';
+          hideSakuTimerDisplay();
 
           if (iAmTarget) {
             const result = calcSakuBestCard();
@@ -3228,14 +3227,12 @@
     function showCardSelect() {
       // サク負けタイマーリセット
       clearSakuTimer();
+      hideSakuTimerDisplay();
       window._lastSakuTimerId = null;
       window._sakuTimerActive = false;
       window._sakuTimerTargetId = null;
       window._sakuRemovedAt = null;
       window._sakuAutoSelected = false;
-      window._sakuTimerActive = false;
-      window._sakuTimerTargetId = null;
-      window._sakuRemovedAt = null;
       // sakuAutoSelected Firebase クリア（ホストのみ）
       if (isOnlineMode && isRoomHost && roomRef) {
         roomRef.child('sakuAutoSelected').remove();
@@ -5025,6 +5022,7 @@
       gameState.guardTargets = {}; // ラウンドごとにリセット
       // loneWinnerBonus はshowRoundResults()内で更新済みのためここではリセットしない
       clearSakuTimer();
+      hideSakuTimerDisplay();
       window._lastSakuTimerId = null;
       
       // オンラインモード：Firebaseを更新（sakuTimerも同時にクリア）
