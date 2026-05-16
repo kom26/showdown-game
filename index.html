@@ -3645,7 +3645,7 @@
           window._sakuTimerActive = true; // ホスト側で再度 sakuTimer.set() させない
           clearSakuTimer();
           hideSakuTimerDisplay();
-          window._lastSakuTimerId = null;
+          // _lastSakuTimerId はリセットしない（リセットすると次の発火でstartSakuTimerが再呼ばれる）
         }).catch((error) => {
           console.error('Error saving card selection:', error);
         });
