@@ -2240,17 +2240,21 @@
             console.log('[SAKU3] host check: confirmed:', confirmedCount, 'total:', totalPlayers, '_sakuTimerActive:', window._sakuTimerActive);
 
             if (confirmedCount === totalPlayers - 1) {
-              // 未確定の1人を特定してタイマーをセット（まだ動いていない場合のみ）
+              // 未確定の1人を特定してタイマーをセット
               const confirmedNames = roundDataArr.map(d => d.player);
               const unconfirmed = gameState.players.find(p => !confirmedNames.includes(p.name));
-              if (unconfirmed && !window._sakuTimerActive) {
-                window._sakuTimerActive = true;
-                window._sakuTimerTargetId = unconfirmed.playerId;
-                const startedAt = Date.now();
-                roomRef.child('sakuTimer').set({
-                  targetPlayerId: unconfirmed.playerId,
-                  startedAt: startedAt
-                });
+              if (unconfirmed) {
+                // 対象者が変わった or まだタイマーが動いていない場合にset
+                const targetChanged = window._sakuTimerTargetId !== unconfirmed.playerId;
+                if (!window._sakuTimerActive || targetChanged) {
+                  window._sakuTimerActive = true;
+                  window._sakuTimerTargetId = unconfirmed.playerId;
+                  const startedAt = Date.now();
+                  roomRef.child('sakuTimer').set({
+                    targetPlayerId: unconfirmed.playerId,
+                    startedAt: startedAt
+                  });
+                }
               }
             } else if (confirmedCount === totalPlayers) {
               // 全員揃った → タイマーをクリア
