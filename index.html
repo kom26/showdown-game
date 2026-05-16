@@ -3020,7 +3020,7 @@
       // 初回表示
       const dispTimer = document.getElementById('sakuTimerDisplay');
       const waitTimer = document.getElementById('sakuTimerWaiting');
-      if (dispTimer) { dispTimer.style.display = 'block'; dispTimer.textContent = `⚡ サク負け発動まで ${SAKU_SECONDS}秒`; dispTimer.style.color = 'orange';
+      if (dispTimer) { dispTimer.style.display = 'block'; dispTimer.textContent = `⚡ サク負け発動まで ${SAKU_SECONDS}秒`; dispTimer.style.color = 'orange'; }
       if (waitTimer) {
         waitTimer.style.display = 'block';
         waitTimer.textContent = `⚡ ${escapeHtml(targetPlayer.name)}のカード自動選択まで ${SAKU_SECONDS}秒`;
