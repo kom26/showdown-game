@@ -829,6 +829,15 @@
           デフォルト: ×0(50%) / ×2(40%) / ×3(10%)
         </div>
       </div>
+      <!-- サク負けモード設定 -->
+      <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 0.75rem;">
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--color-text-primary);">⚡ サク負けモード</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 2px;">最後の1人が6秒以内に選択しないと自動選択</div>
+        </div>
+        <button id="sakuModeToggleBtn" onclick="toggleSakuMode()" style="min-width: 60px; padding: 6px 12px; font-size: 12px; font-weight: 800; border-radius: 20px; border: 2px solid #555; background: #333; color: #888; letter-spacing: 1px; transition: all 0.3s;">OFF</button>
+      </div>
+
       <button id="createRoomBtn" class="primary" onclick="createRoom()" style="width: 100%; margin-bottom: 0.75rem;">ルームを作成</button>
       <button onclick="backToOnlineMenu()" style="width: 100%; background: rgba(255, 255, 255, 0.1);">← 戻る</button>
     </div>
@@ -1117,6 +1126,8 @@
     </div>
     
     <div id="onlineCardWaiting" style="display: none;">
+      <!-- サク負けタイマー表示（全員用） -->
+      <div id="sakuTimerWaiting" style="display: none; text-align: center; font-size: 14px; font-weight: 800; margin-bottom: 0.75rem; padding: 0.5rem; border-radius: 8px; background: rgba(255,165,0,0.1); border: 1px solid orange;"></div>
       <div style="text-align: center; padding: 2rem 1rem;">
         <h2 style="font-size: 22px; margin-bottom: 1.5rem;">カード選択状況</h2>
         <div id="selectionStatusList" style="margin-bottom: 2rem;">
@@ -1252,6 +1263,10 @@
         <div id="guardSelectedMsg" style="display: none; font-size: 12px; color: var(--color-neon-cyan); margin-top: 4px; font-weight: 700;"></div>
       </div>
       
+      <!-- サク負けタイマー表示（対象者用） -->
+      <div id="sakuTimerDisplay" style="display: none; text-align: center; font-size: 15px; font-weight: 800; margin-top: 0.75rem; padding: 0.5rem; border-radius: 8px; background: rgba(255,165,0,0.1); border: 1px solid orange;"></div>
+      <!-- サク負け自動選択メッセージ -->
+      <div id="sakuAutoMsg" style="display: none; text-align: center; font-size: 13px; font-weight: 800; color: orange; margin-top: 0.5rem;"></div>
       <button id="confirmBtn" onclick="confirmCard()" style="width: 100%;" disabled>このカードで決定</button>
     </div>
     
@@ -1332,6 +1347,8 @@
     let disconnectListener = null;  // 離脱検知リスナー
     let visibilityHandler = null;   // Page Visibility APIハンドラー
     let originalHostId = null;      // ホスト移譲前の元ホストID
+    let sakuModeEnabled = false;    // サク負けモードON/OFF（ルーム作成時設定）
+    let sakuTimerInterval = null;   // サク負けカウントダウンタイマー
     let myPlayerId = null;
     let roomRef = null;
     let currentDicePlayer = null; // 現在さいころを選択中のプレイヤー
@@ -1364,7 +1381,8 @@
       diceRates: { zero: 50, double: 40, triple: 10 }, // さいころ倍率確率（%）
       guardUsed: {},    // { "たかし": 残り回数 }
       guardTargets: {}, // { "たかし": "みか" } 今ラウンドの指名
-      loneWinnerBonus: {} // { "たかし": 3 } 次ラウンドに持ち越す一人勝ちボーナス（杯数）
+      loneWinnerBonus: {}, // { "たかし": 3 } 次ラウンドに持ち越す一人勝ちボーナス（杯数）
+      sakuMode: false    // サク負けモード
     };
     
     const ADMIN_SEQ = [1, 1, 1, 1, 5, 2];
@@ -1985,6 +2003,8 @@
         status: 'waiting',
         disconnectedPlayer: null,
         originalHost: null,
+        sakuMode: sakuModeEnabled,
+        sakuTimer: null,
         currentRound: 1,
         currentPlayerIndex: 0,
         roundData: {},
@@ -2199,6 +2219,38 @@
             updateDiceActionStatus();
           }
           
+          // ===== サク負けタイマー起動判定（ホストのみ）=====
+          if (isRoomHost && gameState.sakuMode && isGameActive) {
+            const cardSelectShowing = document.getElementById('cardSelect').style.display === 'block'
+              || document.getElementById('onlineCardWaiting').style.display === 'block';
+            if (cardSelectShowing) {
+              const totalPlayers = gameState.players.length;
+              const confirmedCount = (data.roundData ? Object.values(data.roundData).length : 0);
+              if (confirmedCount === totalPlayers - 1) {
+                // 未確定の1人を特定
+                const confirmedNames = data.roundData
+                  ? Object.values(data.roundData).map(d => d.player)
+                  : [];
+                const unconfirmed = gameState.players.find(p => !confirmedNames.includes(p.name));
+                if (unconfirmed) {
+                  // まだタイマーが動いていないときだけ書き込む
+                  const existingTimer = data.sakuTimer;
+                  if (!existingTimer || existingTimer.targetPlayerId !== unconfirmed.playerId) {
+                    roomRef.child('sakuTimer').set({
+                      targetPlayerId: unconfirmed.playerId,
+                      startedAt: Date.now()
+                    });
+                  }
+                }
+              } else {
+                // 確定人数がN-1でない（全員確定 or まだ少ない）→ タイマークリア
+                if (data.sakuTimer) {
+                  roomRef.child('sakuTimer').remove();
+                }
+              }
+            }
+          }
+
           // 結果表示フラグがtrueで、まだ結果画面じゃない場合は結果画面へ
           if (data.showingResults && document.getElementById('roundResults').style.display !== 'block') {
             showRoundResults();
@@ -2229,6 +2281,23 @@
           if (data.showingFinalResults && !isFinalResultsShowing) {
             syncGameState(data); // 最終結果表示前だけsync
             showFinalResults();
+          }
+
+          // ===== サク負けタイマーイベント =====
+          if (gameState.sakuMode && data.sakuTimer && data.sakuTimer.targetPlayerId) {
+            const st = data.sakuTimer;
+            // タイマーIDが変わったときだけ再起動
+            const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
+            if (window._lastSakuTimerId !== currentTimerId) {
+              window._lastSakuTimerId = currentTimerId;
+              startSakuTimer(st.targetPlayerId, st.startedAt);
+            }
+          } else if (!data.sakuTimer || !data.sakuTimer.targetPlayerId) {
+            // タイマーがクリアされた
+            if (window._lastSakuTimerId) {
+              window._lastSakuTimerId = null;
+              clearSakuTimer();
+            }
           }
 
           // ===== 離脱・復帰・ペナルティイベント（listenToRoomに統合）=====
@@ -2780,6 +2849,167 @@
       }
     }
     
+    // ===== サク負けモード =====
+    function toggleSakuMode() {
+      sakuModeEnabled = !sakuModeEnabled;
+      const btn = document.getElementById('sakuModeToggleBtn');
+      if (sakuModeEnabled) {
+        btn.textContent = 'ON';
+        btn.style.background = 'rgba(255,165,0,0.3)';
+        btn.style.borderColor = 'orange';
+        btn.style.color = 'orange';
+      } else {
+        btn.textContent = 'OFF';
+        btn.style.background = '#333';
+        btn.style.borderColor = '#555';
+        btn.style.color = '#888';
+      }
+    }
+
+    function clearSakuTimer() {
+      if (sakuTimerInterval) {
+        clearInterval(sakuTimerInterval);
+        sakuTimerInterval = null;
+      }
+    }
+
+    // サク負け自動選択ロジック
+    function calcSakuBestCard() {
+      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+      if (!myPlayer) return null;
+
+      const usedCards = gameState.usedCards[myPlayer.name] || [];
+      const totalRounds = gameState.totalRounds;
+      const availableCards = Array.from({ length: totalRounds }, (_, i) => i + 1)
+        .filter(c => !usedCards.includes(c));
+
+      // 他全員の確定カード
+      const othersCards = gameState.roundData
+        .filter(d => d.player !== myPlayer.name)
+        .map(d => ({ card: d.card, isDD: d.isDoubleDown }));
+
+      const isFinalRound = gameState.currentRound === totalRounds;
+      const hasDD = !myPlayer.hasUsedDoubleDown;
+
+      // 各組み合わせの杯数を計算
+      let worstCups = -1;
+      let bestCard = availableCards[availableCards.length - 1]; // デフォルト最大カード
+      let bestUseDD = false;
+
+      const ddOptions = hasDD ? [false, true] : [false];
+
+      availableCards.forEach(card => {
+        ddOptions.forEach(useDD => {
+          // 全員のカードリスト（自分含む）
+          const allCards = [...othersCards.map(o => o.card), card];
+          const minCard = Math.min(...allCards);
+          const maxCardNum = totalRounds;
+          const hasCard1 = allCards.includes(1);
+          const hasCardMax = allCards.includes(maxCardNum);
+          const isReverse = hasCard1 && hasCardMax;
+
+          // 自分が負けかどうか
+          let iAmLoser;
+          if (isReverse) {
+            iAmLoser = card === maxCardNum;
+          } else {
+            iAmLoser = card === minCard;
+          }
+
+          let myCups = 0;
+          if (iAmLoser) {
+            myCups = 1;
+            // DD倍率（自分がDDを使うか、相手がDDを使っているか）
+            const anyOtherDD = othersCards.some(o => o.isDD);
+            if (useDD || anyOtherDD) myCups *= 2;
+            if (isFinalRound) myCups *= 2;
+          } else if (useDD) {
+            // 勝ちでDD → 相手の杯数が増えるが自分は0杯（自分にとってはペナルティなし）
+            // DDは負けているときのみ発動を優先
+            myCups = 0;
+          }
+
+          // 最も杯数が多い組み合わせを選ぶ（サク負けの目的）
+          if (myCups > worstCups ||
+              (myCups === worstCups && card > bestCard) ||
+              (myCups === worstCups && card === bestCard && useDD && !bestUseDD)) {
+            worstCups = myCups;
+            bestCard = card;
+            bestUseDD = useDD && iAmLoser; // 負けるときのみDD発動
+          }
+        });
+      });
+
+      // 負けパターンなし（worstCups === 0）→ 最大カード・DDなし
+      if (worstCups === 0) {
+        bestCard = availableCards[availableCards.length - 1];
+        bestUseDD = false;
+      }
+
+      return { card: bestCard, useDD: bestUseDD };
+    }
+
+    // サク負けタイマー開始（全員側・listenToRoomから呼ぶ）
+    function startSakuTimer(targetPlayerId, startedAt) {
+      clearSakuTimer();
+      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+      const targetPlayer = gameState.players.find(p => p.playerId === targetPlayerId);
+      if (!targetPlayer) return;
+
+      const iAmTarget = myPlayerId === targetPlayerId;
+      const SAKU_SECONDS = 6;
+
+      // カウントダウン表示要素を設定
+      const setCountdownDisplay = (remaining) => {
+        // カード選択画面（対象者用）
+        const cardSelectTimer = document.getElementById('sakuTimerDisplay');
+        if (cardSelectTimer) {
+          cardSelectTimer.style.display = 'block';
+          cardSelectTimer.textContent = `⚡ サク負けまで ${remaining}秒`;
+          cardSelectTimer.style.color = remaining <= 3 ? 'var(--color-danger)' : 'orange';
+        }
+        // 選択状況画面（全員用）
+        const waitingTimer = document.getElementById('sakuTimerWaiting');
+        if (waitingTimer) {
+          waitingTimer.style.display = 'block';
+          waitingTimer.textContent = `⚡ ${escapeHtml(targetPlayer.name)} サク負けまで ${remaining}秒`;
+          waitingTimer.style.color = remaining <= 3 ? 'var(--color-danger)' : 'orange';
+        }
+      };
+
+      // 即座に残り秒数を計算して表示
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      const remaining = Math.max(0, SAKU_SECONDS - elapsed);
+      setCountdownDisplay(remaining);
+
+      sakuTimerInterval = setInterval(() => {
+        const elapsed2 = Math.floor((Date.now() - startedAt) / 1000);
+        const rem = Math.max(0, SAKU_SECONDS - elapsed2);
+        setCountdownDisplay(rem);
+
+        if (rem <= 0) {
+          clearSakuTimer();
+          if (iAmTarget) {
+            // 自動選択実行
+            const result = calcSakuBestCard();
+            if (result) {
+              selectedCard = result.card;
+              isDoubleDownActive = result.useDD;
+              guardTargetSelected = null; // GUARDは使わない
+              // 「サク負け自動選択」表示
+              const sakuMsg = document.getElementById('sakuAutoMsg');
+              if (sakuMsg) {
+                sakuMsg.style.display = 'block';
+                sakuMsg.textContent = `⚡ サク負け！ ${result.card} を自動選択${result.useDD ? '（DD発動）' : ''}`;
+              }
+              // confirmCard と同じ処理でFirebaseに書き込み
+              confirmCard();
+            }
+          }
+        }
+      }, 500);
+    }
+
     function syncGameState(data) {
       gameState.totalRounds = data.totalRounds;
       gameState.currentRound = data.currentRound;
@@ -2792,6 +3022,8 @@
       if (data.host && data.players && data.players[data.host]) {
         hostPlayerName = data.players[data.host].name || '';
       }
+      // サク負けモードを同期
+      gameState.sakuMode = data.sakuMode || false;
       
       gameState.players = data.playerOrder.map(playerId => {
         const p = data.players[playerId];
@@ -2949,6 +3181,15 @@
     }
 
     function showCardSelect() {
+      // サク負けタイマーリセット
+      clearSakuTimer();
+      window._lastSakuTimerId = null;
+      const sakuDisp = document.getElementById('sakuTimerDisplay');
+      if (sakuDisp) sakuDisp.style.display = 'none';
+      const sakuWait = document.getElementById('sakuTimerWaiting');
+      if (sakuWait) sakuWait.style.display = 'none';
+      const sakuMsg = document.getElementById('sakuAutoMsg');
+      if (sakuMsg) sakuMsg.style.display = 'none';
       window.scrollTo(0, 0);
       document.getElementById('setup').style.display = 'none';
       document.getElementById('lottery').style.display = 'none';
@@ -4314,32 +4555,13 @@
     
     function initializeDiceOrder() {
       if (!isOnlineMode || !roomRef) return;
-      // 負けたプレイヤーのリストを作成（天地逆転を考慮）
-      // ※losers確定後もログ出力
+      // 結果画面の表示順（カード小→大）でcups>0の全員をアクション対象に
       const sorted = [...gameState.roundData].sort((a, b) => a.card - b.card);
-      const maxCardNumber = gameState.totalRounds;
-      const hasCard1 = gameState.roundData.some(d => d.card === 1);
-      const hasCardMax = gameState.roundData.some(d => d.card === maxCardNumber);
-      const reverseRule = hasCard1 && hasCardMax;
-      
-      let losers;
-      if (reverseRule) {
-        losers = gameState.roundData.filter(d => d.card === maxCardNumber).map(d => d.player);
-      } else {
-        const minCard = sorted[0].card;
-        losers = gameState.roundData.filter(d => d.card === minCard).map(d => d.player);
-      }
-      
-      // 免除者（0杯）をlosersから除外
-      losers = losers.filter(playerName => (roundFinalCups[playerName] || 0) > 0);
 
-      // 庇って杯数を引き受けた人（WIN側）をアクション対象に追加
-      gameState.roundData.forEach(d => {
-        const isBaseLoser = reverseRule ? d.card === maxCardNumber : d.card === sorted[0].card;
-        if (!isBaseLoser && (roundFinalCups[d.player] || 0) > 0 && !losers.includes(d.player)) {
-          losers.push(d.player);
-        }
-      });
+      // cups>0の人を表示順（sorted順）で並べる
+      const losers = sorted
+        .map(d => d.player)
+        .filter(playerName => (roundFinalCups[playerName] || 0) > 0);
 
       if (losers.length === 0) {
         // 杯数がある人がいない場合は次のラウンドへ
@@ -4741,6 +4963,10 @@
       gameState.diceUsedThisRound = [];
       gameState.guardTargets = {}; // ラウンドごとにリセット
       // loneWinnerBonus はshowRoundResults()内で更新済みのためここではリセットしない
+      // サク負けタイマーをクリア
+      if (isOnlineMode && isRoomHost && roomRef) roomRef.child('sakuTimer').remove();
+      clearSakuTimer();
+      window._lastSakuTimerId = null;
       
       // オンラインモード：Firebaseを更新
       if (isOnlineMode && roomRef) {
