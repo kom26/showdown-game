@@ -2299,7 +2299,7 @@
             const wt = document.getElementById('sakuTimerWaiting');
             if (wt) {
               wt.style.display = 'block';
-              wt.textContent = `⚡ サク負け発動！${escapeHtml(data.sakuAutoSelected.playerName)}のカードが自動選択されました`;
+              wt.innerHTML = `⚡ サク負け発動！<br>${escapeHtml(data.sakuAutoSelected.playerName)}のカードが自動選択されました`;
               wt.style.color = 'orange';
             }
           }
@@ -2310,21 +2310,18 @@
             const st = data.sakuTimer;
             const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
             console.log('[SAKU] currentTimerId:', currentTimerId, 'lastId:', window._lastSakuTimerId);
-            // remove後に届く古いキャッシュ値は無視（removedAt より startedAt が古い場合）
-            const isStaleCache = window._sakuRemovedAt && st.startedAt < window._sakuRemovedAt;
-            if (window._lastSakuTimerId !== currentTimerId && !isStaleCache) {
+            if (window._lastSakuTimerId !== currentTimerId) {
               window._lastSakuTimerId = currentTimerId;
               startSakuTimer(st.targetPlayerId, Date.now());
             }
           } else if (!data.sakuTimer || !data.sakuTimer.targetPlayerId) {
-            // _sakuTimerActive=true（ホストがsetした直後のFirebase一時undefined）は無視
-            if (window._lastSakuTimerId && !window._sakuTimerActive) {
-              window._lastSakuTimerId = null;
-              clearSakuTimer();
-              if (!window._sakuAutoSelected) {
-                const wt = document.getElementById('sakuTimerWaiting');
-                if (wt) wt.style.display = 'none';
-              }
+            // _lastSakuTimerId はリセットしない
+            // → remove後の古いキャッシュが再送されても同じIDで無視される
+            // → showCardSelect / nextRound でリセットされるので次ラウンドは正常動作
+            clearSakuTimer();
+            if (!window._sakuAutoSelected) {
+              const wt = document.getElementById('sakuTimerWaiting');
+              if (wt) wt.style.display = 'none';
             }
           }
 
@@ -2998,6 +2995,7 @@
       const iAmTarget = myPlayerId === targetPlayerId;
       const SAKU_SECONDS = 6;
       let triggered = false; // 自動選択の二重発動防止
+      console.log('[SAKU] startSakuTimer called. iAmTarget:', iAmTarget, 'myPlayerId:', myPlayerId, 'targetPlayerId:', targetPlayerId);
 
       // 初回表示
       const dispTimer = document.getElementById('sakuTimerDisplay');
