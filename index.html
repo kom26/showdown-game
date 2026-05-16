@@ -2220,33 +2220,29 @@
           }
           
           // ===== サク負けタイマー起動判定（ホストのみ）=====
-          if (isRoomHost && gameState.sakuMode && isGameActive) {
-            const cardSelectShowing = document.getElementById('cardSelect').style.display === 'block'
-              || document.getElementById('onlineCardWaiting').style.display === 'block';
-            if (cardSelectShowing) {
-              const totalPlayers = gameState.players.length;
-              const confirmedCount = (data.roundData ? Object.values(data.roundData).length : 0);
-              if (confirmedCount === totalPlayers - 1) {
-                // 未確定の1人を特定
-                const confirmedNames = data.roundData
-                  ? Object.values(data.roundData).map(d => d.player)
-                  : [];
-                const unconfirmed = gameState.players.find(p => !confirmedNames.includes(p.name));
-                if (unconfirmed) {
-                  // まだタイマーが動いていないときだけ書き込む
-                  const existingTimer = data.sakuTimer;
-                  if (!existingTimer || existingTimer.targetPlayerId !== unconfirmed.playerId) {
-                    roomRef.child('sakuTimer').set({
-                      targetPlayerId: unconfirmed.playerId,
-                      startedAt: Date.now()
-                    });
-                  }
+          if (isRoomHost && gameState.sakuMode && isGameActive && !data.showingResults) {
+            // カード選択フェーズ中（showingResultsでなければカード選択フェーズ）
+            const totalPlayers = gameState.players.length;
+            const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
+            const confirmedCount = roundDataArr.length;
+
+            if (confirmedCount === totalPlayers - 1) {
+              // 未確定の1人を特定
+              const confirmedNames = roundDataArr.map(d => d.player);
+              const unconfirmed = gameState.players.find(p => !confirmedNames.includes(p.name));
+              if (unconfirmed) {
+                const existingTimer = data.sakuTimer;
+                if (!existingTimer || existingTimer.targetPlayerId !== unconfirmed.playerId) {
+                  roomRef.child('sakuTimer').set({
+                    targetPlayerId: unconfirmed.playerId,
+                    startedAt: Date.now()
+                  });
                 }
-              } else {
-                // 確定人数がN-1でない（全員確定 or まだ少ない）→ タイマークリア
-                if (data.sakuTimer) {
-                  roomRef.child('sakuTimer').remove();
-                }
+              }
+            } else {
+              // confirmedCount が N-1 でない → タイマークリア
+              if (data.sakuTimer && confirmedCount < totalPlayers - 1) {
+                roomRef.child('sakuTimer').remove();
               }
             }
           }
@@ -2298,6 +2294,11 @@
             if (window._lastSakuTimerId) {
               window._lastSakuTimerId = null;
               clearSakuTimer();
+              // 自動選択メッセージは残す（_sakuAutoSelected フラグがある場合）
+              if (!window._sakuAutoSelected) {
+                const wt = document.getElementById('sakuTimerWaiting');
+                if (wt) wt.style.display = 'none';
+              }
             }
           }
 
@@ -3003,10 +3004,19 @@
               selectedCard = result.card;
               isDoubleDownActive = result.useDD;
               guardTargetSelected = null; // GUARDは使わない
+              // カード選択画面にメッセージ
               const sakuMsg = document.getElementById('sakuAutoMsg');
               if (sakuMsg) {
                 sakuMsg.style.display = 'block';
                 sakuMsg.textContent = `⚡ サク負け！ ${result.card} を自動選択${result.useDD ? '（DD発動）' : ''}`;
+              }
+              // 選択状況画面のタイマー表示を「自動選択」メッセージに差し替え
+              window._sakuAutoSelected = true;
+              const wt = document.getElementById('sakuTimerWaiting');
+              if (wt) {
+                wt.style.display = 'block';
+                wt.textContent = '⚡ サク負け発動！自動選択されました';
+                wt.style.color = 'orange';
               }
               confirmCard();
             }
@@ -3189,6 +3199,7 @@
       // サク負けタイマーリセット
       clearSakuTimer();
       window._lastSakuTimerId = null;
+      window._sakuAutoSelected = false;
       const sakuDisp = document.getElementById('sakuTimerDisplay');
       if (sakuDisp) sakuDisp.style.display = 'none';
       const sakuWait = document.getElementById('sakuTimerWaiting');
@@ -3416,6 +3427,11 @@
       document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('onlineCardWaiting').style.display = 'block';
       updateSelectionStatus();
+      // サク負けタイマーが動いていれば表示を復元
+      if (sakuTimerInterval && window._lastSakuTimerId) {
+        const wt = document.getElementById('sakuTimerWaiting');
+        if (wt) wt.style.display = 'block';
+      }
     }
     
     function updateSelectionStatus() {
