@@ -2314,7 +2314,8 @@
               startSakuTimer(st.targetPlayerId, Date.now());
             }
           } else if (!data.sakuTimer || !data.sakuTimer.targetPlayerId) {
-            if (window._lastSakuTimerId) {
+            // _sakuTimerActive=true（ホストがsetした直後のFirebase一時undefined）は無視
+            if (window._lastSakuTimerId && !window._sakuTimerActive) {
               window._lastSakuTimerId = null;
               clearSakuTimer();
               if (!window._sakuAutoSelected) {
