@@ -2325,7 +2325,8 @@
           if (gameState.sakuMode && data.sakuTimer && data.sakuTimer.targetPlayerId) {
             const st = data.sakuTimer;
             const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
-            if (window._lastSakuTimerId !== currentTimerId) {
+            console.log('[SAKU] timer event. currentId:', currentTimerId, 'lastId:', window._lastSakuTimerId, '_sakuTriggered:', window._sakuTriggered);
+            if (window._lastSakuTimerId !== currentTimerId && !window._sakuTriggered) {
               window._lastSakuTimerId = currentTimerId;
               startSakuTimer(st.targetPlayerId, Date.now());
             }
@@ -3639,14 +3640,12 @@
         
         roomRef.update(updates).then(() => {
           console.log('Card selection saved successfully');
-          // 自分で選択した場合もサク負けタイマーをクリア・自動選択を防ぐ
+          // 自分で選択した場合もサク負けタイマーをクリア・自動選択と再起動を防ぐ
           window._sakuTriggered = true;
-          if (sakuTimerInterval) {
-            clearSakuTimer();
-            hideSakuTimerDisplay();
-            window._lastSakuTimerId = null;
-            window._sakuTimerActive = false;
-          }
+          window._sakuTimerActive = true; // ホスト側で再度 sakuTimer.set() させない
+          clearSakuTimer();
+          hideSakuTimerDisplay();
+          window._lastSakuTimerId = null;
         }).catch((error) => {
           console.error('Error saving card selection:', error);
         });
