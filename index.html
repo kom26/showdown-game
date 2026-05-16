@@ -3245,7 +3245,8 @@
       // サク負けタイマーリセット
       clearSakuTimer();
       hideSakuTimerDisplay();
-      window._lastSakuTimerId = null;
+      // _lastSakuTimerId はリセットしない（古いキャッシュの再起動を防ぐため）
+      // 新しいラウンドの sakuTimer は新しい startedAt を持つので別IDになり自動起動される
       window._sakuTimerActive = false;
       window._sakuTimerTargetId = null;
       window._sakuRemovedAt = null;
@@ -5053,7 +5054,7 @@
       // loneWinnerBonus はshowRoundResults()内で更新済みのためここではリセットしない
       clearSakuTimer();
       hideSakuTimerDisplay();
-      window._lastSakuTimerId = null;
+      // _lastSakuTimerId はリセットしない（古いキャッシュの再起動を防ぐため）
       
       // オンラインモード：Firebaseを更新（sakuTimerも同時にクリア）
       if (isOnlineMode && roomRef) {
