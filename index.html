@@ -2308,21 +2308,19 @@
           }
 
           // ===== サク負けタイマーイベント =====
+          console.log('[SAKU] sakuMode:', gameState.sakuMode, 'sakuTimer:', data.sakuTimer, 'isGameActive:', isGameActive);
           if (gameState.sakuMode && data.sakuTimer && data.sakuTimer.targetPlayerId) {
             const st = data.sakuTimer;
-            // タイマーIDが変わったときだけ再起動（startedAtはサーバー側の値だがタイマー基準はローカル受信時刻）
             const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
+            console.log('[SAKU] currentTimerId:', currentTimerId, 'lastId:', window._lastSakuTimerId);
             if (window._lastSakuTimerId !== currentTimerId) {
               window._lastSakuTimerId = currentTimerId;
-              // 受信した瞬間をタイマー開始基準にする（通信遅延の影響を排除）
               startSakuTimer(st.targetPlayerId, Date.now());
             }
           } else if (!data.sakuTimer || !data.sakuTimer.targetPlayerId) {
-            // タイマーがクリアされた
             if (window._lastSakuTimerId) {
               window._lastSakuTimerId = null;
               clearSakuTimer();
-              // 自動選択メッセージは残す（_sakuAutoSelected フラグがある場合）
               if (!window._sakuAutoSelected) {
                 const wt = document.getElementById('sakuTimerWaiting');
                 if (wt) wt.style.display = 'none';
