@@ -3489,12 +3489,26 @@
       document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('onlineCardWaiting').style.display = 'block';
       updateSelectionStatus();
-      // サク負けタイマーが動いていて、かつ自分が選択済みでない場合のみ表示
+      // サク負けタイマーが動いていて、かつ自分が選択済みでない場合のみカウント表示
       console.log('[SAKU-UI] showOnlineWaitingScreen. sakuTimerInterval:', !!sakuTimerInterval, '_lastSakuTimerId:', window._lastSakuTimerId, '_sakuTriggered:', window._sakuTriggered);
       if (sakuTimerInterval && window._lastSakuTimerId && !window._sakuTriggered) {
         const wt = document.getElementById('sakuTimerWaiting');
         if (wt) wt.style.display = 'block';
         console.log('[SAKU-UI] waitTimer restored in showOnlineWaitingScreen');
+      }
+      // 自動選択済みの場合は「サク負け発動」メッセージを表示
+      if (window._sakuTriggered && window._lastSakuTimerId && isOnlineMode && roomRef) {
+        roomRef.child('sakuAutoSelected').once('value').then(snap => {
+          const ev = snap.val();
+          if (ev && ev.playerName) {
+            const wt = document.getElementById('sakuTimerWaiting');
+            if (wt) {
+              wt.style.display = 'block';
+              wt.innerHTML = `⚡ サク負け発動！<br>${escapeHtml(ev.playerName)}のカードが自動選択されました`;
+              wt.style.color = 'orange';
+            }
+          }
+        });
       }
     }
     
