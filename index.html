@@ -2237,6 +2237,7 @@
             const totalPlayers = gameState.players.length;
             const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
             const confirmedCount = roundDataArr.length;
+            console.log('[SAKU3] host check: confirmed:', confirmedCount, 'total:', totalPlayers, '_sakuTimerActive:', window._sakuTimerActive);
 
             if (confirmedCount === totalPlayers - 1) {
               // 未確定の1人を特定してタイマーをセット（まだ動いていない場合のみ）
@@ -2306,6 +2307,7 @@
           }
 
           // ===== 全員揃ったらサク負けタイマーをクリア（全員実行）=====
+          console.log('[SAKU2] sakuMode:', gameState.sakuMode, 'roundData count:', data.roundData ? Object.values(data.roundData).length : 0, 'players:', gameState.players.length);
           if (gameState.sakuMode && window._lastSakuTimerId) {
             const totalPlayers = gameState.players.length;
             const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
