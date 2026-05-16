@@ -2316,11 +2316,10 @@
               startSakuTimer(st.targetPlayerId, Date.now());
             }
           } else if (!data.sakuTimer || !data.sakuTimer.targetPlayerId) {
-            // _lastSakuTimerId はリセットしない
-            // → remove後の古いキャッシュが再送されても同じIDで無視される
-            // → showCardSelect / nextRound でリセットされるので次ラウンドは正常動作
-            // タイマーのintervalだけ止める（表示はタイムアップ/全員揃った時のみ消す）
-            clearSakuTimer();
+            // _lastSakuTimerId が設定済み = タイマー動作中 → 何もしない
+            // （Firebase の一時的な undefined はタイマーに影響させない）
+            // _lastSakuTimerId が null = タイマーなし → 何もしない
+            // タイマーのクリアは全員揃った / showCardSelect / nextRound のみで行う
           }
 
           // ===== 離脱・復帰・ペナルティイベント（listenToRoomに統合）=====
