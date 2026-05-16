@@ -2326,7 +2326,9 @@
             const st = data.sakuTimer;
             const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
             console.log('[SAKU] timer event. currentId:', currentTimerId, 'lastId:', window._lastSakuTimerId, '_sakuTriggered:', window._sakuTriggered);
-            if (window._lastSakuTimerId !== currentTimerId && !window._sakuTriggered) {
+            if (window._lastSakuTimerId !== currentTimerId) {
+              // 新しいタイマーIDが来たら _sakuTriggered をリセット（前ラウンドの状態をクリア）
+              window._sakuTriggered = false;
               window._lastSakuTimerId = currentTimerId;
               startSakuTimer(st.targetPlayerId, Date.now());
             }
