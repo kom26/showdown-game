@@ -2338,11 +2338,13 @@
             const st = data.sakuTimer;
             const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
             console.log('[SAKU] timer event. currentId:', currentTimerId, 'lastId:', window._lastSakuTimerId, '_sakuTriggered:', window._sakuTriggered);
-            if (window._lastSakuTimerId !== currentTimerId) {
-              // 新しいタイマーIDが来たら _sakuTriggered をリセット（前ラウンドの状態をクリア）
-              window._sakuTriggered = false;
+            if (window._lastSakuTimerId !== currentTimerId && !window._sakuTriggered) {
+              // 新しいタイマーIDが来たら起動（_sakuTriggered が false の場合のみ）
               window._lastSakuTimerId = currentTimerId;
               startSakuTimer(st.targetPlayerId, Date.now());
+            } else if (window._lastSakuTimerId !== currentTimerId && window._sakuTriggered) {
+              // 新しいIDだが _sakuTriggered=true → lastId だけ更新してタイマーは起動しない
+              window._lastSakuTimerId = currentTimerId;
             }
           } else if (!data.sakuTimer || !data.sakuTimer.targetPlayerId) {
             // _lastSakuTimerId が設定済み = タイマー動作中 → 何もしない
