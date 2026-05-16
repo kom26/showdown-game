@@ -2872,6 +2872,11 @@
         clearInterval(sakuTimerInterval);
         sakuTimerInterval = null;
       }
+      // タイマー表示を非表示に
+      const dt = document.getElementById('sakuTimerDisplay');
+      if (dt) dt.style.display = 'none';
+      const wt = document.getElementById('sakuTimerWaiting');
+      if (wt) wt.style.display = 'none';
     }
 
     // サク負け自動選択ロジック
@@ -2953,61 +2958,61 @@
     // サク負けタイマー開始（全員側・listenToRoomから呼ぶ）
     function startSakuTimer(targetPlayerId, startedAt) {
       clearSakuTimer();
-      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
       const targetPlayer = gameState.players.find(p => p.playerId === targetPlayerId);
       if (!targetPlayer) return;
 
       const iAmTarget = myPlayerId === targetPlayerId;
       const SAKU_SECONDS = 6;
+      let triggered = false; // 自動選択の二重発動防止
 
-      // カウントダウン表示要素を設定
-      const setCountdownDisplay = (remaining) => {
-        // カード選択画面（対象者用）
-        const cardSelectTimer = document.getElementById('sakuTimerDisplay');
-        if (cardSelectTimer) {
-          cardSelectTimer.style.display = 'block';
-          cardSelectTimer.textContent = `⚡ サク負けまで ${remaining}秒`;
-          cardSelectTimer.style.color = remaining <= 3 ? 'var(--color-danger)' : 'orange';
-        }
-        // 選択状況画面（全員用）
-        const waitingTimer = document.getElementById('sakuTimerWaiting');
-        if (waitingTimer) {
-          waitingTimer.style.display = 'block';
-          waitingTimer.textContent = `⚡ ${escapeHtml(targetPlayer.name)} サク負けまで ${remaining}秒`;
-          waitingTimer.style.color = remaining <= 3 ? 'var(--color-danger)' : 'orange';
-        }
-      };
-
-      // 即座に残り秒数を計算して表示（受信直後なのでほぼ6秒）
-      setCountdownDisplay(SAKU_SECONDS);
+      // 初回表示
+      const dispTimer = document.getElementById('sakuTimerDisplay');
+      const waitTimer = document.getElementById('sakuTimerWaiting');
+      if (dispTimer) { dispTimer.style.display = 'block'; dispTimer.textContent = `⚡ サク負けまで ${SAKU_SECONDS}秒`; dispTimer.style.color = 'orange'; }
+      if (waitTimer) { waitTimer.style.display = 'block'; waitTimer.textContent = `⚡ ${escapeHtml(targetPlayer.name)} サク負けまで ${SAKU_SECONDS}秒`; waitTimer.style.color = 'orange'; }
 
       sakuTimerInterval = setInterval(() => {
-        const elapsed2 = (Date.now() - startedAt) / 1000;
-        const rem = Math.max(0, SAKU_SECONDS - elapsed2);
-        // 表示は切り捨て（Math.ceil で見た目上の秒数を1多めに）
-        setCountdownDisplay(Math.ceil(rem));
+        const elapsed = (Date.now() - startedAt) / 1000;
+        const rem = Math.max(0, SAKU_SECONDS - elapsed);
+        const remCeil = Math.ceil(rem);
+        const color = remCeil <= 3 ? 'var(--color-danger)' : 'orange';
 
-        if (rem <= 0) {
+        // 対象者のカード選択画面
+        const dt = document.getElementById('sakuTimerDisplay');
+        if (dt && dt.style.display !== 'none') {
+          dt.textContent = `⚡ サク負けまで ${remCeil}秒`;
+          dt.style.color = color;
+        }
+        // 選択状況画面（全員共通）
+        const wt = document.getElementById('sakuTimerWaiting');
+        if (wt && wt.style.display !== 'none') {
+          wt.textContent = `⚡ ${escapeHtml(targetPlayer.name)} サク負けまで ${remCeil}秒`;
+          wt.style.color = color;
+        }
+
+        if (rem <= 0 && !triggered) {
+          triggered = true;
           clearSakuTimer();
+          // タイマー表示を消す
+          if (dt) dt.style.display = 'none';
+          if (wt) wt.style.display = 'none';
+
           if (iAmTarget) {
-            // 自動選択実行
             const result = calcSakuBestCard();
             if (result) {
               selectedCard = result.card;
               isDoubleDownActive = result.useDD;
               guardTargetSelected = null; // GUARDは使わない
-              // 「サク負け自動選択」表示
               const sakuMsg = document.getElementById('sakuAutoMsg');
               if (sakuMsg) {
                 sakuMsg.style.display = 'block';
                 sakuMsg.textContent = `⚡ サク負け！ ${result.card} を自動選択${result.useDD ? '（DD発動）' : ''}`;
               }
-              // confirmCard と同じ処理でFirebaseに書き込み
               confirmCard();
             }
           }
         }
-      }, 500);
+      }, 200);
     }
 
     function syncGameState(data) {
