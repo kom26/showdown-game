@@ -6187,14 +6187,7 @@
       gate.id = 'pwaGate';
       gate.style.cssText = 'position:fixed;inset:0;background:var(--color-bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;overflow-y:auto;';
 
-      // manifestからPWAアイコンを取得
-      let iconHTML = '';
-      try {
-        const manifestLink = document.querySelector('link[rel="manifest"]');
-        const manifestData = JSON.parse(atob(manifestLink.href.split(',')[1]));
-        const iconSrc = manifestData.icons[0].src;
-        iconHTML = `<img src="${iconSrc}" style="width:88px;height:88px;border-radius:20px;margin-bottom:1rem;box-shadow:0 0 24px rgba(255,20,147,0.5);">`;
-      } catch(e) {}
+      const iconHTML = `<img src="ogp.png" style="width:88px;height:88px;border-radius:20px;margin-bottom:1rem;box-shadow:0 0 24px rgba(255,20,147,0.5);object-fit:cover;">`;
 
       gate.innerHTML = `
         <div style="width:100%;max-width:400px;text-align:center;">
