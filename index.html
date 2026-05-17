@@ -2370,8 +2370,22 @@
 
         // ホスト側ローカル変数も同期（Firebase上の値を正とする）
         sakuModeEnabled = data.sakuMode || false;
+        const prevPenalty = penaltyModeEnabled;
         penaltyModeEnabled = data.penaltyMode !== false;
         updateWaitingRoomModes(sakuModeEnabled, penaltyModeEnabled);
+
+        // ペナルティモード変化に応じてSosoを制御
+        if (!penaltyModeEnabled && sosoModeEnabled) {
+          // ペナルティOFF → Soso停止・Firebase上のsosoOkも消す
+          sosoModeEnabled = false;
+          stopSosoDetection();
+          if (roomRef && myPlayerId) roomRef.child('players/' + myPlayerId + '/sosoOk').set(false);
+        } else if (penaltyModeEnabled && !prevPenalty && sosoPermissionGranted && !sosoModeEnabled) {
+          // ペナルティONに戻った & 許可済み → 自動でSoso再開
+          sosoModeEnabled = true;
+          startSosoDetection();
+          if (roomRef && myPlayerId) roomRef.child('players/' + myPlayerId + '/sosoOk').set(true);
+        }
         
         // 開始ボタンの表示制御
         const startBtn = document.getElementById('startOnlineGameBtn');
@@ -2641,9 +2655,12 @@
           const sosoOkBadge = '<span style="color:var(--color-success);font-size:11px;font-weight:700;background:rgba(0,255,159,0.15);border:1px solid var(--color-success);border-radius:10px;padding:1px 7px;letter-spacing:0.5px;">Soso OK ✓</span>';
           const sosoOnStyle = 'min-width:72px;padding:3px 10px;font-size:11px;font-weight:800;border-radius:20px;border:2px solid var(--color-success);background:rgba(0,255,159,0.2);color:var(--color-success);cursor:pointer;letter-spacing:1px;box-shadow:0 0 8px rgba(0,255,159,0.4);transition:all 0.3s;';
           const sosoOffStyle = 'min-width:72px;padding:3px 10px;font-size:11px;font-weight:800;border-radius:20px;border:2px solid #555;background:#333;color:#888;cursor:pointer;letter-spacing:1px;box-shadow:none;transition:all 0.3s;';
-          const sosoToggle = playerId === myPlayerId
-            ? `<button onclick="toggleSosoInWaiting()" style="${player.sosoOk ? sosoOnStyle : sosoOffStyle}">${player.sosoOk ? 'Soso-ON' : 'Soso-OFF'}</button>`
-            : (player.sosoOk ? sosoOkBadge : '');
+          let sosoToggle = '';
+          if (penaltyModeEnabled) {
+            sosoToggle = playerId === myPlayerId
+              ? `<button onclick="toggleSosoInWaiting()" style="${player.sosoOk ? sosoOnStyle : sosoOffStyle}">${player.sosoOk ? 'Soso-ON' : 'Soso-OFF'}</button>`
+              : (player.sosoOk ? sosoOkBadge : '');
+          }
           div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:0.75rem;margin-bottom:0.5rem;background:rgba(168,85,247,0.2);border-radius:8px;border:2px solid var(--color-neon-purple);';
           div.innerHTML = `
             <span>
@@ -5882,39 +5899,33 @@
 
     // ===== SoSo-mode =====
     let sosoModeEnabled = false;
+    let sosoPermissionGranted = false;
     let sosoFallDetecting = false;
     let sosoFallTimer = null;
     let sosoMotionHandler = null;
 
     function toggleSosoInWaiting() {
       if (sosoModeEnabled) {
-        // OFFにする
         sosoModeEnabled = false;
         stopSosoDetection();
         updateSosoBtn();
-        if (roomRef && myPlayerId) {
-          roomRef.child('players/' + myPlayerId + '/sosoOk').set(false);
-        }
+        if (roomRef && myPlayerId) roomRef.child('players/' + myPlayerId + '/sosoOk').set(false);
         return;
       }
-      // ONにする
       const enable = () => {
+        sosoPermissionGranted = true;
         sosoModeEnabled = true;
         startSosoDetection();
         updateSosoBtn();
-        if (roomRef && myPlayerId) {
-          roomRef.child('players/' + myPlayerId + '/sosoOk').set(true);
-        }
+        if (roomRef && myPlayerId) roomRef.child('players/' + myPlayerId + '/sosoOk').set(true);
       };
       if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         DeviceMotionEvent.requestPermission().then(state => {
-          if (state === 'granted') {
-            enable();
-          } else {
-            alert('モーションの許可が拒否されています。\niPhone：設定 → Safari → モーションと操作のアクセス をオンにしてください。');
-          }
+          if (state === 'granted') { enable(); }
+          else { alert('モーションの許可が拒否されています。\niPhone：設定 → Safari → モーションと操作のアクセス をオンにしてください。'); }
         }).catch(() => {});
       } else {
+        sosoPermissionGranted = true;
         enable();
       }
     }
