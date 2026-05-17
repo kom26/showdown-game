@@ -663,6 +663,28 @@
       font-weight: 500;
       text-shadow: 0 0 10px var(--color-neon-cyan);
     }
+    .pwa-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+      font-size: 14px;
+      color: var(--color-text-primary);
+      line-height: 1.5;
+    }
+    .pwa-step-num {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--color-neon-purple);
+      color: white;
+      font-weight: 800;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
   </style>
 </head>
 <body>
@@ -6109,6 +6131,75 @@
         });
       });
     }
+
+    // ===== PWAゲート（スマホでホーム画面未追加の場合にインストール案内を表示）=====
+    function checkPWAGate() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+      if (isStandalone) return;
+
+      const ua = navigator.userAgent;
+      const isIOS = /iPhone|iPad|iPod/.test(ua);
+      const isAndroid = /Android/.test(ua);
+      if (!isIOS && !isAndroid) return; // PCはそのまま通す
+
+      const isSafariIOS = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
+      const isChromeIOS = isIOS && /CriOS/.test(ua);
+      const isChromeAndroid = isAndroid && /Chrome/.test(ua) && !/EdgA|OPR/.test(ua);
+      if (!isSafariIOS && !isChromeIOS && !isChromeAndroid) return; // その他ブラウザはPC扱い
+
+      document.getElementById('app').style.display = 'none';
+
+      let browserLabel, steps;
+      if (isSafariIOS) {
+        browserLabel = 'Safari（iPhone / iPad）';
+        steps = [
+          '画面下部の <strong>共有ボタン（□↑）</strong> をタップ',
+          '<strong>「ホーム画面に追加」</strong> をタップ',
+          '右上の <strong>「追加」</strong> をタップ',
+          'ホーム画面のアイコンから起動！'
+        ];
+      } else if (isChromeIOS) {
+        browserLabel = 'Chrome（iPhone / iPad）';
+        steps = [
+          '画面右上の <strong>共有ボタン（□↑）</strong> をタップ',
+          '<strong>「ホーム画面に追加」</strong> をタップ',
+          '<strong>「追加」</strong> をタップ',
+          'ホーム画面のアイコンから起動！'
+        ];
+      } else {
+        browserLabel = 'Chrome（Android）';
+        steps = [
+          '右上の <strong>「⋮」メニュー</strong> をタップ',
+          '<strong>「ホーム画面に追加」</strong> または <strong>「アプリをインストール」</strong> をタップ',
+          '<strong>「インストール」</strong> をタップ',
+          'ホーム画面のアイコンから起動！'
+        ];
+      }
+
+      const stepsHTML = steps.map((s, i) => `
+        <div class="pwa-step">
+          <div class="pwa-step-num">${i + 1}</div>
+          <div>${s}</div>
+        </div>`).join('');
+
+      const gate = document.createElement('div');
+      gate.id = 'pwaGate';
+      gate.style.cssText = 'position:fixed;inset:0;background:var(--color-bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;overflow-y:auto;';
+      gate.innerHTML = `
+        <div style="width:100%;max-width:400px;text-align:center;">
+          <div style="font-size:56px;margin-bottom:0.75rem;">🏠</div>
+          <h1 style="font-size:26px;font-weight:800;margin-bottom:0.4rem;color:var(--color-neon-pink);letter-spacing:2px;">SHOWDOWN</h1>
+          <p style="font-size:14px;color:var(--color-text-secondary);margin-bottom:1.75rem;line-height:1.6;">快適に遊ぶために<br>ホーム画面への追加が必要です</p>
+          <div style="background:rgba(168,85,247,0.15);border:2px solid var(--color-neon-purple);border-radius:16px;padding:1.5rem;margin-bottom:1.25rem;text-align:left;">
+            <div style="font-size:12px;font-weight:700;color:var(--color-neon-purple);margin-bottom:1rem;letter-spacing:1px;">📱 ${browserLabel}</div>
+            ${stepsHTML}
+          </div>
+          <p style="font-size:12px;color:var(--color-text-secondary);line-height:1.6;">追加後はホーム画面のアイコンから起動してください</p>
+        </div>`;
+      document.body.insertBefore(gate, document.body.firstChild);
+    }
+    checkPWAGate();
   </script>
 </body>
 </html>
