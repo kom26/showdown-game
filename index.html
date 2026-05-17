@@ -1983,6 +1983,7 @@
       myPlayerId = generatePlayerId();
       hostPlayerName = hostName; // ホスト名を保持
       
+      console.log('Creating room:', { roomCode: currentRoomCode, hostName, myPlayerId });
       
       roomRef = database.ref(`rooms/${currentRoomCode}`);
       
@@ -2013,8 +2014,10 @@
         diceUsedThisRound: []
       };
       
+      console.log('Room data to save:', roomData);
       
       roomRef.set(roomData).then(() => {
+        console.log('Room created successfully!');
         document.getElementById('createRoom').style.display = 'none';
         document.getElementById('waitingRoom').style.display = 'block';
         document.getElementById('displayRoomCode').textContent = currentRoomCode;
@@ -2047,10 +2050,12 @@
       isRoomHost = false;
       myPlayerId = generatePlayerId();
       
+      console.log('Connecting to room:', currentRoomCode);
       
       roomRef = database.ref(`rooms/${currentRoomCode}`);
       
       roomRef.once('value').then((snapshot) => {
+        console.log('Room snapshot received:', snapshot.exists());
         
         if (!snapshot.exists()) {
           alert('ルームが見つかりません');
@@ -2079,6 +2084,7 @@
           return;
         }
         
+        console.log('Adding player to room...');
         
         roomRef.child('players').child(myPlayerId).set({
           name: joinerName,
@@ -2091,6 +2097,7 @@
         
         roomRef.child('playerOrder').set([...roomData.playerOrder, myPlayerId]);
         
+        console.log('Player added, showing waiting room');
         
         document.getElementById('joinRoom').style.display = 'none';
         document.getElementById('waitingRoom').style.display = 'block';
@@ -2230,6 +2237,7 @@
             const totalPlayers = gameState.players.length;
             const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
             const confirmedCount = roundDataArr.length;
+            console.log('[SAKU3] host check: confirmed:', confirmedCount, 'total:', totalPlayers, '_sakuTimerActive:', window._sakuTimerActive);
 
             if (confirmedCount === totalPlayers - 1) {
               // 未確定の1人を特定してタイマーをセット
@@ -2294,39 +2302,23 @@
 
           // ===== サク負け自動選択イベント（全員表示用）=====
           if (data.sakuAutoSelected && data.sakuAutoSelected.playerName) {
-            const waitingScreen = document.getElementById('onlineCardWaiting');
             const wt = document.getElementById('sakuTimerWaiting');
-            console.log('[MSG] sakuAutoSelected detected. player:', data.sakuAutoSelected.playerName,
-              '| onlineCardWaiting display:', waitingScreen ? waitingScreen.style.display : 'N/A',
-              '| showingResults:', data.showingResults,
-              '| wt display:', wt ? wt.style.display : 'N/A');
-            // 結果表示中でなければ選択状況画面にメッセージを表示
-            if (!data.showingResults) {
-              if (waitingScreen && waitingScreen.style.display !== 'block') {
-                document.getElementById('cardSelect').style.display = 'none';
-                waitingScreen.style.display = 'block';
-                updateSelectionStatus();
-                console.log('[MSG] onlineCardWaiting forced to block');
-              }
-              if (wt) {
-                wt.style.display = 'block';
-                wt.innerHTML = `⚡ サク負け発動！<br>${escapeHtml(data.sakuAutoSelected.playerName)}のカードが自動選択されました`;
-                wt.style.color = 'orange';
-                console.log('[MSG] waitTimer message set');
-              }
-            } else {
-              console.log('[MSG] skipped - showingResults is true');
+            if (wt) {
+              wt.style.display = 'block';
+              wt.innerHTML = `⚡ サク負け発動！<br>${escapeHtml(data.sakuAutoSelected.playerName)}のカードが自動選択されました`;
+              wt.style.color = 'orange';
             }
           }
 
           // ===== 全員揃ったらサク負けタイマーをクリア（全員実行）=====
+          console.log('[SAKU2] sakuMode:', gameState.sakuMode, 'roundData count:', data.roundData ? Object.values(data.roundData).length : 0, 'players:', gameState.players.length);
           if (gameState.sakuMode && window._lastSakuTimerId) {
             const totalPlayers = gameState.players.length;
             const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
             const confirmedCount = roundDataArr.length;
             if (confirmedCount >= totalPlayers) {
               clearSakuTimer();
-              hideSakuTimerDisplay();
+              if (!data.sakuAutoSelected) hideSakuTimerDisplay();
               // _lastSakuTimerId はリセットしない（古いキャッシュの再起動を防ぐため）
               window._sakuTimerActive = false;
               window._sakuRemovedAt = null;
@@ -2337,13 +2329,12 @@
           if (gameState.sakuMode && data.sakuTimer && data.sakuTimer.targetPlayerId) {
             const st = data.sakuTimer;
             const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
-            if (window._lastSakuTimerId !== currentTimerId && !window._sakuTriggered) {
-              // 新しいタイマーIDが来たら起動（_sakuTriggered が false の場合のみ）
+            console.log('[SAKU] timer event. currentId:', currentTimerId, 'lastId:', window._lastSakuTimerId, '_sakuTriggered:', window._sakuTriggered);
+            if (window._lastSakuTimerId !== currentTimerId) {
+              // 新しいタイマーIDが来たら _sakuTriggered をリセット（前ラウンドの状態をクリア）
+              window._sakuTriggered = false;
               window._lastSakuTimerId = currentTimerId;
               startSakuTimer(st.targetPlayerId, Date.now());
-            } else if (window._lastSakuTimerId !== currentTimerId && window._sakuTriggered) {
-              // 新しいIDだが _sakuTriggered=true → lastId だけ更新してタイマーは起動しない
-              window._lastSakuTimerId = currentTimerId;
             }
           } else if (!data.sakuTimer || !data.sakuTimer.targetPlayerId) {
             // _lastSakuTimerId が設定済み = タイマー動作中 → 何もしない
@@ -2927,6 +2918,7 @@
     }
 
     function hideSakuTimerDisplay() {
+      console.log('[SAKU-UI] hideSakuTimerDisplay called');
       const dt = document.getElementById('sakuTimerDisplay');
       if (dt) dt.style.display = 'none';
       const wt = document.getElementById('sakuTimerWaiting');
@@ -3029,11 +3021,13 @@
       // 初回表示
       const dispTimer = document.getElementById('sakuTimerDisplay');
       const waitTimer = document.getElementById('sakuTimerWaiting');
-      if (dispTimer) { dispTimer.style.display = 'block'; dispTimer.textContent = `⚡ サク負け発動まで ${SAKU_SECONDS}秒`; dispTimer.style.color = 'orange'; }
+      console.log('[SAKU-UI] startSakuTimer. iAmTarget:', iAmTarget, 'dispTimer exists:', !!dispTimer, 'waitTimer exists:', !!waitTimer);
+      if (dispTimer) { dispTimer.style.display = 'block'; dispTimer.textContent = `⚡ サク負け発動まで ${SAKU_SECONDS}秒`; dispTimer.style.color = 'orange'; console.log('[SAKU-UI] dispTimer set to block'); }
       if (waitTimer) {
         waitTimer.style.display = 'block';
         waitTimer.textContent = `⚡ ${escapeHtml(targetPlayer.name)}のカード自動選択まで ${SAKU_SECONDS}秒`;
         waitTimer.style.color = 'orange';
+        console.log('[SAKU-UI] waitTimer set to block');
       }
 
       sakuTimerInterval = setInterval(() => {
@@ -3069,21 +3063,12 @@
               guardTargetSelected = null; // GUARDは使わない
               // カード選択画面のメッセージは出さず、そのまま選択状況画面へ遷移
               // Firebase に自動選択イベントを書き込み → 全員の listenToRoom で表示更新
-              console.log('[AUTO] Auto-select triggered! playerName:', targetPlayer.name,
-                '| _sakuAutoSelected will be set to true');
               window._sakuAutoSelected = true;
               if (roomRef) {
                 roomRef.child('sakuAutoSelected').set({
                   playerName: targetPlayer.name,
                   timestamp: Date.now()
                 });
-              }
-              // 対象者の waitTimer を即座に「サク負け発動」表示に切り替え
-              const wtNow = document.getElementById('sakuTimerWaiting');
-              if (wtNow) {
-                wtNow.style.display = 'block';
-                wtNow.innerHTML = `⚡ サク負け発動！<br>${escapeHtml(targetPlayer.name)}のカードが自動選択されました`;
-                wtNow.style.color = 'orange';
               }
               confirmCard();
             }
@@ -3501,29 +3486,44 @@
     
     function showOnlineWaitingScreen() {
       window.scrollTo(0, 0);
-      console.log('[WAIT] showOnlineWaitingScreen called.',
-        '| _sakuAutoSelected:', window._sakuAutoSelected,
-        '| _sakuTriggered:', window._sakuTriggered,
-        '| sakuTimerWaiting display:', document.getElementById('sakuTimerWaiting') ? document.getElementById('sakuTimerWaiting').style.display : 'N/A');
       document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('onlineCardWaiting').style.display = 'block';
       updateSelectionStatus();
       // サク負けタイマーが動いていて、かつ自分が選択済みでない場合のみカウント表示
+      console.log('[SAKU-UI] showOnlineWaitingScreen. sakuTimerInterval:', !!sakuTimerInterval, '_lastSakuTimerId:', window._lastSakuTimerId, '_sakuTriggered:', window._sakuTriggered);
       if (sakuTimerInterval && window._lastSakuTimerId && !window._sakuTriggered) {
         const wt = document.getElementById('sakuTimerWaiting');
         if (wt) wt.style.display = 'block';
+        console.log('[SAKU-UI] waitTimer restored in showOnlineWaitingScreen');
       }
-      // 自動選択済みの場合はdisplay制御をsakuAutoSelectedイベントに任せる（非同期処理は削除）
+      // 自動選択済みの場合は「サク負け発動」メッセージを表示
+      if (window._sakuTriggered && window._lastSakuTimerId && isOnlineMode && roomRef) {
+        roomRef.child('sakuAutoSelected').once('value').then(snap => {
+          const ev = snap.val();
+          if (ev && ev.playerName) {
+            const wt = document.getElementById('sakuTimerWaiting');
+            if (wt) {
+              wt.style.display = 'block';
+              wt.innerHTML = `⚡ サク負け発動！<br>${escapeHtml(ev.playerName)}のカードが自動選択されました`;
+              wt.style.color = 'orange';
+            }
+          }
+        });
+      }
     }
     
     function updateSelectionStatus() {
       const container = document.getElementById('selectionStatusList');
       container.innerHTML = '';
       
+      console.log('updateSelectionStatus called');
+      console.log('gameState.roundData:', gameState.roundData);
+      console.log('gameState.players:', gameState.players);
       
       const selectedCount = gameState.roundData.length;
       const totalCount = gameState.players.length;
       
+      console.log(`Selected: ${selectedCount}/${totalCount}`);
       
       gameState.players.forEach(player => {
         const hasSelected = gameState.roundData.some(d => d.player === player.name);
@@ -3552,6 +3552,7 @@
       
       // 全員選択完了したらボタンを表示(オーナーのみ)
       if (selectedCount === totalCount) {
+        console.log('All players selected!');
         if (isRoomHost) {
           document.getElementById('showResultBtn').style.display = 'block';
           document.getElementById('waitingForHostMessage').style.display = 'none';
@@ -3563,6 +3564,7 @@
         }
         document.getElementById('waitingMessage').style.display = 'none';
       } else {
+        console.log('Still waiting...');
         document.getElementById('showResultBtn').style.display = 'none';
         document.getElementById('waitingMessage').style.display = 'block';
         document.getElementById('waitingForHostMessage').style.display = 'none';
@@ -3663,18 +3665,17 @@
         }
         
         // 自分で選択した瞬間にタイマーをクリア（非同期前に実行）
+        console.log('[SAKU-UI] confirmCard. sakuTimerInterval:', !!sakuTimerInterval, '_lastSakuTimerId:', window._lastSakuTimerId);
         if (sakuTimerInterval || window._lastSakuTimerId) {
           window._sakuTriggered = true;
           window._sakuTimerActive = true;
           clearSakuTimer();
-          // 自動選択時（_sakuAutoSelected）は hideSakuTimerDisplay を呼ばない
-          // → sakuAutoSelected Firebase イベントで全員の表示が切り替わる
-          if (!window._sakuAutoSelected) {
-            hideSakuTimerDisplay();
-          }
+          hideSakuTimerDisplay();
+          console.log('[SAKU-UI] timer cleared in confirmCard');
         }
 
         roomRef.update(updates).then(() => {
+          console.log('Card selection saved successfully');
         }).catch((error) => {
           console.error('Error saving card selection:', error);
         });
@@ -3759,16 +3760,11 @@
 
     function showRoundResults() {
       window.scrollTo(0, 0);
-      const owBefore = document.getElementById('onlineCardWaiting');
-      console.log('[RESULT] showRoundResults called.',
-        '| onlineCardWaiting display BEFORE:', owBefore ? owBefore.style.display : 'N/A',
-        '| sakuTimerWaiting display:', document.getElementById('sakuTimerWaiting') ? document.getElementById('sakuTimerWaiting').style.display : 'N/A');
       document.getElementById('cardSelect').style.display = 'none';
       document.getElementById('handover').style.display = 'none';
       document.getElementById('readyToShowResult').style.display = 'none';
       document.getElementById('onlineCardWaiting').style.display = 'none';
       document.getElementById('roundResults').style.display = 'block';
-      console.log('[RESULT] onlineCardWaiting set to none, roundResults set to block');
       
       document.getElementById('resultRoundInfo').textContent = `第${gameState.currentRound}回戦`;
 
