@@ -2361,9 +2361,11 @@
           }
 
           // ===== 離脱・復帰・ペナルティイベント（listenToRoomに統合）=====
-          // 離脱者がいる場合
+          // 離脱者がいる場合（ペナルティモーダル表示中は無視して、閉じた後に検知）
           if (gameState.penaltyMode && data.disconnectedPlayer && data.disconnectedPlayer.name) {
-            showDisconnectBanner(data.disconnectedPlayer.name, data.disconnectedPlayer.reason, data, isRoomHost);
+            if (!_penaltyModalShown) {
+              showDisconnectBanner(data.disconnectedPlayer.name, data.disconnectedPlayer.reason, data, isRoomHost);
+            }
           } else {
             hideDisconnectBanner();
           }
@@ -5864,6 +5866,15 @@
       const modal = document.getElementById('penaltyModal');
       if (modal) modal.remove();
       _penaltyModalShown = false;
+      // モーダルが閉じた後、別の離脱者がいれば改めて検知
+      if (isOnlineMode && roomRef && gameState.penaltyMode) {
+        roomRef.once('value').then(snap => {
+          const d = snap.val();
+          if (d && d.disconnectedPlayer && d.disconnectedPlayer.name) {
+            showDisconnectBanner(d.disconnectedPlayer.name, d.disconnectedPlayer.reason, d, isRoomHost);
+          }
+        });
+      }
     }
 
     // SoSo落下用（後方互換）
