@@ -856,6 +856,8 @@
         <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前（7文字まで）</label>
         <input type="text" id="joinerName" placeholder="名前を入力" maxlength="7" style="width: 100%;">
       </div>
+      <button id="joinByLocationBtn" onclick="joinRoomByLocation()" style="width: 100%; margin-bottom: 0.75rem; background: linear-gradient(135deg, #00d4ff 0%, #a855f7 100%); border: none; font-size: 16px; font-weight: 800;">📍 位置情報からルームに参加</button>
+      <div style="text-align: center; color: var(--color-text-secondary); font-size: 12px; margin-bottom: 0.75rem; letter-spacing: 2px;">── または ──</div>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ルームコード（4桁）</label>
         <input type="number" id="roomCodeInput" placeholder="1234" min="1000" max="9999" style="width: 100%; font-size: 24px; text-align: center; letter-spacing: 8px; -moz-appearance: textfield; background: var(--color-surface); color: var(--color-text-primary); border: 2px solid var(--color-border); border-radius: 12px;" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
@@ -1951,7 +1953,97 @@
       document.getElementById('joinRoom').style.display = 'none';
       document.getElementById('onlineMenu').style.display = 'block';
     }
-    
+
+    // ===== 位置情報からルームに参加 =====
+    function calcDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const toRad = d => d * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function joinRoomByLocation() {
+      const joinerName = document.getElementById('joinerName').value.trim();
+      if (!joinerName) { alert('先に名前を入力してください'); return; }
+      if (!navigator.geolocation) { alert('このブラウザは位置情報に対応していません'); return; }
+
+      const btn = document.getElementById('joinByLocationBtn');
+      btn.disabled = true;
+      btn.textContent = '📍 位置情報取得中...';
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const myLat = pos.coords.latitude;
+          const myLon = pos.coords.longitude;
+          try {
+            const snap = await database.ref('rooms').once('value');
+            const allRooms = snap.val() || {};
+            const nearby = [];
+            for (const [code, room] of Object.entries(allRooms)) {
+              if (room.status !== 'waiting') continue;
+              if (!room.location) continue;
+              const playerCount = room.players ? Object.keys(room.players).length : 0;
+              if (playerCount >= 6) continue;
+              const dist = calcDistance(myLat, myLon, room.location.lat, room.location.lon);
+              if (dist <= 100) {
+                nearby.push({ code, dist: Math.round(dist), players: playerCount, totalRounds: room.totalRounds });
+              }
+            }
+            nearby.sort((a, b) => a.dist - b.dist);
+            showNearbyRoomsModal(nearby, joinerName);
+          } catch (e) {
+            alert('ルームの検索に失敗しました');
+          } finally {
+            btn.disabled = false;
+            btn.textContent = '📍 位置情報からルームに参加';
+          }
+        },
+        (err) => {
+          btn.disabled = false;
+          btn.textContent = '📍 位置情報からルームに参加';
+          alert(err.code === 1 ? '位置情報の使用を許可してください' : '位置情報の取得に失敗しました');
+        },
+        { timeout: 10000, maximumAge: 0, enableHighAccuracy: true }
+      );
+    }
+
+    function showNearbyRoomsModal(rooms, joinerName) {
+      const existing = document.getElementById('nearbyRoomsModal');
+      if (existing) existing.remove();
+
+      const modal = document.createElement('div');
+      modal.id = 'nearbyRoomsModal';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(10,0,20,0.92);display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+      let listHTML = rooms.length === 0
+        ? '<p style="text-align:center;color:var(--color-text-secondary);padding:2rem 0;">近く（100m以内）にルームが見つかりませんでした</p>'
+        : rooms.map(r => `
+            <div style="background:rgba(168,85,247,0.15);border:2px solid var(--color-neon-purple);border-radius:12px;padding:1rem;margin-bottom:0.75rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+              <div>
+                <div style="font-weight:800;font-size:20px;letter-spacing:4px;color:var(--color-neon-pink);">${escapeHtml(r.code)}</div>
+                <div style="font-size:12px;color:var(--color-text-secondary);margin-top:4px;">📍 ${r.dist}m先 ／ ${r.players}人参加中 ／ ${r.totalRounds}回戦</div>
+              </div>
+              <button onclick="joinFromNearby('${escapeHtml(r.code)}','${escapeHtml(joinerName)}')" class="primary" style="padding:0.5rem 1.2rem;font-size:14px;white-space:nowrap;flex-shrink:0;">参加</button>
+            </div>`).join('');
+
+      modal.innerHTML = `
+        <div style="background:var(--color-bg);border:2px solid var(--color-neon-purple);border-radius:20px;padding:1.5rem;width:100%;max-width:420px;max-height:80vh;overflow-y:auto;">
+          <h2 style="text-align:center;margin-bottom:1.25rem;">📍 近くのルーム</h2>
+          ${listHTML}
+          <button onclick="document.getElementById('nearbyRoomsModal').remove()" style="width:100%;background:rgba(255,255,255,0.1);margin-top:0.5rem;">閉じる</button>
+        </div>`;
+      document.body.appendChild(modal);
+    }
+
+    function joinFromNearby(roomCode, joinerName) {
+      document.getElementById('nearbyRoomsModal').remove();
+      document.getElementById('joinerName').value = joinerName;
+      document.getElementById('roomCodeInput').value = roomCode;
+      joinRoom();
+    }
+
     const ONLINE_NAME_KEY = 'showdown_online_name';
 
     function saveOnlineName(name) {
@@ -2026,18 +2118,33 @@
       };
       
       console.log('Room data to save:', roomData);
-      
-      roomRef.set(roomData).then(() => {
-        console.log('Room created successfully!');
-        document.getElementById('createRoom').style.display = 'none';
-        document.getElementById('waitingRoom').style.display = 'block';
-        document.getElementById('displayRoomCode').textContent = currentRoomCode;
-        updateWaitingRoomDiceDisplay(diceRates); // 待機室の倍率表示を即反映
-        listenToRoom();
-      }).catch((error) => {
-        console.error('Error creating room:', error);
-        alert('ルーム作成エラー: ' + error.message);
-      });
+
+      const doCreateRoom = () => {
+        roomRef.set(roomData).then(() => {
+          console.log('Room created successfully!');
+          document.getElementById('createRoom').style.display = 'none';
+          document.getElementById('waitingRoom').style.display = 'block';
+          document.getElementById('displayRoomCode').textContent = currentRoomCode;
+          updateWaitingRoomDiceDisplay(diceRates);
+          listenToRoom();
+        }).catch((error) => {
+          console.error('Error creating room:', error);
+          alert('ルーム作成エラー: ' + error.message);
+        });
+      };
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            roomData.location = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            doCreateRoom();
+          },
+          () => { doCreateRoom(); }, // 拒否・失敗時はlocationなしで作成
+          { timeout: 5000, maximumAge: 0, enableHighAccuracy: true }
+        );
+      } else {
+        doCreateRoom();
+      }
     }
     
     function joinRoom() {
