@@ -1977,13 +1977,9 @@
     function toggleWaitingMode(mode) {
       if (!isRoomHost || !roomRef) return;
       if (mode === 'saku') {
-        const next = !sakuModeEnabled;
-        sakuModeEnabled = next;
-        roomRef.child('sakuMode').set(next);
+        roomRef.child('sakuMode').set(!sakuModeEnabled);
       } else if (mode === 'penalty') {
-        const next = !penaltyModeEnabled;
-        penaltyModeEnabled = next;
-        roomRef.child('penaltyMode').set(next);
+        roomRef.child('penaltyMode').set(!penaltyModeEnabled);
       }
     }
 
