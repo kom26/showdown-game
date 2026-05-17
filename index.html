@@ -2695,13 +2695,21 @@
         if (!myPlayer) return;
 
         if (!gameState.penaltyMode) {
-          // ペナルティOFF：画面ロックから復帰した時だけ最新状態に同期
-          if (!document.hidden && isGameActive && roomRef) {
+          if (document.hidden) {
+            // ロック時：現在のラウンド状態を保存
+            visibilityHandler._lockRound = gameState.currentRound;
+            visibilityHandler._lockShowingResults = document.getElementById('roundResults').style.display === 'block';
+          } else if (isGameActive && roomRef) {
+            // 復帰時：Firebaseから最新状態を取得して変化があれば画面を復元
             const snap = await roomRef.once('value');
             const snapData = snap.val();
             if (snapData) {
               syncGameState(snapData);
-              restoreScreenAfterResume(snapData);
+              const roundChanged = snapData.currentRound !== visibilityHandler._lockRound;
+              const resultsChanged = !!snapData.showingResults !== !!visibilityHandler._lockShowingResults;
+              if (roundChanged || resultsChanged || snapData.showingFinalResults) {
+                restoreScreenAfterResume(snapData);
+              }
             }
           }
           return;
