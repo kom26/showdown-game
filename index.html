@@ -713,8 +713,8 @@
         ゲームを中止してTOPに戻りますか？
       </div>
 
-      <!-- SoSo-mode トグル -->
-      <div style="margin-bottom: 1rem; background: rgba(26,10,40,0.8); border-radius: 12px; padding: 0.85rem 1rem; border: 2px solid var(--color-neon-purple);">
+      <!-- SoSo-mode トグル（オフラインのみ） -->
+      <div id="sosoToggleSection" style="margin-bottom: 1rem; background: rgba(26,10,40,0.8); border-radius: 12px; padding: 0.85rem 1rem; border: 2px solid var(--color-neon-purple);">
         <div style="font-size: 11px; color: var(--color-neon-purple); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.5rem; text-shadow: 0 0 8px var(--color-neon-purple);">🤫 Secret Mode</div>
         <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
           <div>
@@ -917,6 +917,17 @@
       <div style="margin-bottom: 1.5rem;">
         <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 0.75rem;">参加プレイヤー</div>
         <div id="playerList" style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; border: 2px solid var(--color-border);">
+        </div>
+      </div>
+      <!-- Sosoモード許可ボタン -->
+      <div id="sosoPermissionArea" style="margin-bottom: 1.5rem; background: rgba(26,10,40,0.7); border: 2px solid var(--color-border); border-radius: 12px; padding: 0.85rem 1rem;">
+        <div style="font-size: 11px; color: var(--color-neon-purple); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.5rem; text-shadow: 0 0 8px var(--color-neon-purple);">🤫 Secret Mode</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--color-text-primary);">SoSo-mode</div>
+            <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 2px;">スマホを落としたら1杯</div>
+          </div>
+          <button id="sosoPermissionBtn" onclick="requestSosoInWaiting()" style="min-width: 80px; padding: 6px 12px; font-size: 12px; font-weight: 800; border-radius: 20px; border: 2px solid #555; background: #333; color: #888; letter-spacing: 1px; transition: all 0.3s;">許可する</button>
         </div>
       </div>
       <button id="startOnlineGameBtn" class="primary" onclick="startOnlineGame()" style="width: 100%; display: none; margin-bottom: 0.75rem;">ゲーム開始</button>
@@ -1532,6 +1543,8 @@
         if (topOnlyBtn) topOnlyBtn.style.display = 'none';
         if (menuText) menuText.style.display = 'block';
       }
+      const sosoSection = document.getElementById('sosoToggleSection');
+      if (sosoSection) sosoSection.style.display = isOnlineMode ? 'none' : 'block';
       menuEl.classList.add('show');
     }
 
@@ -2165,6 +2178,7 @@
           document.getElementById('createRoom').style.display = 'none';
           document.getElementById('waitingRoom').style.display = 'block';
           document.getElementById('displayRoomCode').textContent = currentRoomCode;
+          resetSosoPermissionBtn();
           updateWaitingRoomDiceDisplay(diceRates);
           listenToRoom();
         }).catch((error) => {
@@ -2260,7 +2274,8 @@
         document.getElementById('joinRoom').style.display = 'none';
         document.getElementById('waitingRoom').style.display = 'block';
         document.getElementById('displayRoomCode').textContent = currentRoomCode;
-        
+        resetSosoPermissionBtn();
+
         listenToRoom();
       }).catch((error) => {
         console.error('Error joining room:', error);
@@ -2569,6 +2584,7 @@
           div.innerHTML = `
             <span style="font-weight: 700;">${index + 1}. ${escapeHtml(player.name)}</span>
             ${playerId === myPlayerId ? '<span style="color: var(--color-success); margin-left: 0.5rem;">（あなた）</span>' : ''}
+            ${player.sosoOk ? '<span style="color: var(--color-success); font-size: 11px; font-weight: 700; margin-left: 0.5rem; background: rgba(0,255,159,0.15); border: 1px solid var(--color-success); border-radius: 10px; padding: 1px 7px; letter-spacing: 0.5px;">Soso OK ✓</span>' : ''}
           `;
           container.appendChild(div);
         });
@@ -3084,14 +3100,18 @@
       const btn = document.getElementById('penaltyModeToggleBtn');
       if (penaltyModeEnabled) {
         btn.textContent = 'ON';
-        btn.style.background = 'rgba(255,50,50,0.2)';
-        btn.style.borderColor = 'var(--color-danger)';
-        btn.style.color = 'var(--color-danger)';
+        btn.style.background = 'rgba(0,255,159,0.2)';
+        btn.style.borderColor = 'var(--color-success)';
+        btn.style.color = 'var(--color-success)';
+        btn.style.boxShadow = '0 0 10px rgba(0,255,159,0.4)';
+        // ペナルティON時はSosoも強制ON
+        if (!sosoModeEnabled) toggleSosoMode();
       } else {
         btn.textContent = 'OFF';
         btn.style.background = '#333';
         btn.style.borderColor = '#555';
         btn.style.color = '#888';
+        btn.style.boxShadow = 'none';
       }
     }
 
@@ -3101,14 +3121,16 @@
       const btn = document.getElementById('sakuModeToggleBtn');
       if (sakuModeEnabled) {
         btn.textContent = 'ON';
-        btn.style.background = 'rgba(255,165,0,0.3)';
-        btn.style.borderColor = 'orange';
-        btn.style.color = 'orange';
+        btn.style.background = 'rgba(0,255,159,0.2)';
+        btn.style.borderColor = 'var(--color-success)';
+        btn.style.color = 'var(--color-success)';
+        btn.style.boxShadow = '0 0 10px rgba(0,255,159,0.4)';
       } else {
         btn.textContent = 'OFF';
         btn.style.background = '#333';
         btn.style.borderColor = '#555';
         btn.style.color = '#888';
+        btn.style.boxShadow = 'none';
       }
     }
 
@@ -5799,6 +5821,44 @@
     let sosoFallDetecting = false;
     let sosoFallTimer = null;
     let sosoMotionHandler = null;
+
+    function resetSosoPermissionBtn() {
+      const btn = document.getElementById('sosoPermissionBtn');
+      if (!btn) return;
+      btn.textContent = '許可する';
+      btn.style.background = '#333';
+      btn.style.borderColor = '#555';
+      btn.style.color = '#888';
+      btn.style.boxShadow = 'none';
+      btn.disabled = false;
+    }
+
+    function requestSosoInWaiting() {
+      const btn = document.getElementById('sosoPermissionBtn');
+      const enable = () => {
+        sosoModeEnabled = true;
+        startSosoDetection();
+        updateSosoBtn();
+        if (btn) {
+          btn.textContent = 'Soso ON ✓';
+          btn.style.background = 'rgba(0,255,159,0.2)';
+          btn.style.borderColor = 'var(--color-success)';
+          btn.style.color = 'var(--color-success)';
+          btn.style.boxShadow = '0 0 10px rgba(0,255,159,0.4)';
+          btn.disabled = true;
+        }
+        if (roomRef && myPlayerId) {
+          roomRef.child('players/' + myPlayerId + '/sosoOk').set(true);
+        }
+      };
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission().then(state => {
+          if (state === 'granted') enable();
+        }).catch(() => {});
+      } else {
+        enable();
+      }
+    }
 
     function updateSosoBtn() {
       const btn = document.getElementById('sosoToggleBtn');
