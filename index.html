@@ -1985,6 +1985,7 @@
               if (room.status !== 'waiting') continue;
               if (room.deletedBy) continue;
               if (!room.location) continue;
+              if (room.createdAt && Date.now() - room.createdAt > 5 * 60 * 1000) continue;
               const playerCount = room.players ? Object.keys(room.players).length : 0;
               if (playerCount >= 6) continue;
               const dist = calcDistance(myLat, myLon, room.location.lat, room.location.lon);
@@ -2137,6 +2138,8 @@
       const doCreateRoom = () => {
         roomRef.set(roomData).then(() => {
           console.log('Room created successfully!');
+          // 待機中にタスクキル/クラッシュしたらルームを自動削除
+          roomRef.onDisconnect().remove();
           document.getElementById('createRoom').style.display = 'none';
           document.getElementById('waitingRoom').style.display = 'block';
           document.getElementById('displayRoomCode').textContent = currentRoomCode;
@@ -2626,7 +2629,8 @@
     
     function startOnlineGame() {
       if (!isRoomHost) return;
-      
+      // ゲーム開始時に待機室用のonDisconnectをキャンセル（以降はペナルティ仕組みへ切り替え）
+      roomRef.onDisconnect().cancel();
       roomRef.child('status').set('playing');
     }
     
