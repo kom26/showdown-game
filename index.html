@@ -1983,6 +1983,7 @@
             const nearby = [];
             for (const [code, room] of Object.entries(allRooms)) {
               if (room.status !== 'waiting') continue;
+              if (room.deletedBy) continue;
               if (!room.location) continue;
               const playerCount = room.players ? Object.keys(room.players).length : 0;
               if (playerCount >= 6) continue;
