@@ -2231,8 +2231,17 @@
           // カード選択画面が表示されている場合は更新
           if (isCardSelectShowing) {
             updateCardSelect();
+            // サク負けタイマー：ターゲット本人がカード選択中の場合はここで即時反映
+            if (gameState.sakuMode && data.sakuTimer && data.sakuTimer.targetPlayerId === myPlayerId) {
+              const ct = `${myPlayerId}_${gameState.currentRound}`;
+              if (window._lastSakuTimerId !== ct) {
+                window._sakuTriggered = false;
+                window._lastSakuTimerId = ct;
+                startSakuTimer(myPlayerId, Date.now());
+              }
+            }
           }
-          
+
           // オンライン待機画面が表示されている場合は選択状況を更新
           if (document.getElementById('onlineCardWaiting').style.display === 'block') {
             updateSelectionStatus();
@@ -3320,8 +3329,7 @@
       // サク負けタイマーリセット
       clearSakuTimer();
       hideSakuTimerDisplay();
-      // _lastSakuTimerId はリセットしない（古いキャッシュの再起動を防ぐため）
-      // 新しいラウンドの sakuTimer は新しい startedAt を持つので別IDになり自動起動される
+      window._lastSakuTimerId = null;
       window._sakuTimerActive = false;
       window._sakuTimerTargetId = null;
       window._sakuRemovedAt = null;
