@@ -2318,7 +2318,7 @@
             const confirmedCount = roundDataArr.length;
             if (confirmedCount >= totalPlayers) {
               clearSakuTimer();
-              hideSakuTimerDisplay();
+              if (!data.sakuAutoSelected) hideSakuTimerDisplay();
               // _lastSakuTimerId はリセットしない（古いキャッシュの再起動を防ぐため）
               window._sakuTimerActive = false;
               window._sakuRemovedAt = null;
