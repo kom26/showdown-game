@@ -2437,17 +2437,17 @@
           return;
         }
         
-        updatePlayerList(data.players);
-
         if (data.diceRates) {
           updateWaitingRoomDiceDisplay(data.diceRates);
         }
 
-        // ホスト側ローカル変数も同期（Firebase上の値を正とする）
+        // ローカル変数をFirebaseの値に先に同期してからUIを更新
         sakuModeEnabled = data.sakuMode || false;
         const prevPenalty = penaltyModeEnabled;
         penaltyModeEnabled = data.penaltyMode !== false;
         updateWaitingRoomModes(sakuModeEnabled, penaltyModeEnabled);
+
+        updatePlayerList(data.players);
 
         // ペナルティモード変化に応じてSosoを制御
         if (!penaltyModeEnabled && sosoModeEnabled) {
