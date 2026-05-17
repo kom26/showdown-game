@@ -2250,20 +2250,18 @@
             const confirmedCount = roundDataArr.length;
 
             if (confirmedCount === totalPlayers - 1) {
-              // 未確定の1人を特定してタイマーをセット
+              // 未確定の1人を特定してタイマーをセット（ターゲット本人以外が書き込む）
               const confirmedNames = roundDataArr.map(d => d.player);
               const unconfirmed = gameState.players.find(p => !confirmedNames.includes(p.name));
-              if (unconfirmed) {
+              if (unconfirmed && myPlayerId !== unconfirmed.playerId) {
                 const targetChanged = window._sakuTimerTargetId !== unconfirmed.playerId;
                 // Firebaseにまだ対象者のタイマーがない場合のみセット（重複防止）
                 const timerAlreadySet = data.sakuTimer && data.sakuTimer.targetPlayerId === unconfirmed.playerId;
                 if (!timerAlreadySet && (!window._sakuTimerActive || targetChanged)) {
                   window._sakuTimerActive = true;
                   window._sakuTimerTargetId = unconfirmed.playerId;
-                  const startedAt = Date.now();
                   roomRef.child('sakuTimer').set({
-                    targetPlayerId: unconfirmed.playerId,
-                    startedAt: startedAt
+                    targetPlayerId: unconfirmed.playerId
                   });
                 }
               }
@@ -2339,8 +2337,7 @@
           // ===== サク負けタイマーイベント =====
           if (gameState.sakuMode && data.sakuTimer && data.sakuTimer.targetPlayerId) {
             const st = data.sakuTimer;
-            const currentTimerId = `${st.targetPlayerId}_${st.startedAt}`;
-            console.log('[SAKU] timer event. currentId:', currentTimerId, 'lastId:', window._lastSakuTimerId, '_sakuTriggered:', window._sakuTriggered);
+            const currentTimerId = `${st.targetPlayerId}_${gameState.currentRound}`;
             if (window._lastSakuTimerId !== currentTimerId) {
               // 新しいタイマーIDが来たら _sakuTriggered をリセット（前ラウンドの状態をクリア）
               window._sakuTriggered = false;
