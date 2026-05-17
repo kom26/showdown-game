@@ -2356,7 +2356,7 @@
 
           // ===== 離脱・復帰・ペナルティイベント（listenToRoomに統合）=====
           // 離脱者がいる場合
-          if (data.disconnectedPlayer && data.disconnectedPlayer.name) {
+          if (gameState.penaltyMode && data.disconnectedPlayer && data.disconnectedPlayer.name) {
             showDisconnectBanner(data.disconnectedPlayer.name, data.disconnectedPlayer.reason, data, isRoomHost);
           } else {
             hideDisconnectBanner();
@@ -2509,8 +2509,6 @@
       // 離脱検知リスナーを登録
       startVisibilityListener();
       startDisconnectListener();
-      // タスクキル検知用 onDisconnect を仕込む
-      setupOnDisconnect();
       // ルーム復帰用セッション保存
       saveRoomSession();
       // オンラインモードは抽選なしで直接カード選択へ
@@ -3123,6 +3121,8 @@
       gameState.sakuMode = data.sakuMode || false;
       // ペナルティモードを同期（未設定の場合はデフォルトON）
       gameState.penaltyMode = data.penaltyMode !== false;
+      // penaltyMode が確定してから onDisconnect を設定
+      if (isOnlineMode && isGameActive) setupOnDisconnect();
       
       gameState.players = data.playerOrder.map(playerId => {
         const p = data.players[playerId];
