@@ -2243,21 +2243,21 @@
             updateDiceActionStatus();
           }
           
-          // ===== サク負けタイマー起動判定（ホストのみ）=====
-          if (isRoomHost && gameState.sakuMode && isGameActive && !data.showingResults) {
+          // ===== サク負けタイマー起動判定（全員）=====
+          if (isOnlineMode && gameState.sakuMode && isGameActive && !data.showingResults) {
             const totalPlayers = gameState.players.length;
             const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
             const confirmedCount = roundDataArr.length;
-            console.log('[SAKU3] host check: confirmed:', confirmedCount, 'total:', totalPlayers, '_sakuTimerActive:', window._sakuTimerActive);
 
             if (confirmedCount === totalPlayers - 1) {
               // 未確定の1人を特定してタイマーをセット
               const confirmedNames = roundDataArr.map(d => d.player);
               const unconfirmed = gameState.players.find(p => !confirmedNames.includes(p.name));
               if (unconfirmed) {
-                // 対象者が変わった or まだタイマーが動いていない場合にset
                 const targetChanged = window._sakuTimerTargetId !== unconfirmed.playerId;
-                if (!window._sakuTimerActive || targetChanged) {
+                // Firebaseにまだ対象者のタイマーがない場合のみセット（重複防止）
+                const timerAlreadySet = data.sakuTimer && data.sakuTimer.targetPlayerId === unconfirmed.playerId;
+                if (!timerAlreadySet && (!window._sakuTimerActive || targetChanged)) {
                   window._sakuTimerActive = true;
                   window._sakuTimerTargetId = unconfirmed.playerId;
                   const startedAt = Date.now();
@@ -2274,7 +2274,7 @@
                 window._sakuTimerTargetId = null;
                 clearSakuTimer();
                 hideSakuTimerDisplay();
-                roomRef.child('sakuTimer').remove();
+                if (isRoomHost) roomRef.child('sakuTimer').remove();
               }
             }
           }
@@ -2973,8 +2973,8 @@
     }
 
     // サク負け自動選択ロジック
-    function calcSakuBestCard() {
-      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+    function calcSakuBestCard(targetId = myPlayerId) {
+      const myPlayer = gameState.players.find(p => p.playerId === targetId);
       if (!myPlayer) return null;
 
       const usedCards = gameState.usedCards[myPlayer.name] || [];
@@ -3103,13 +3103,11 @@
           hideSakuTimerDisplay();
 
           if (iAmTarget) {
-            const result = calcSakuBestCard();
+            const result = calcSakuBestCard(myPlayerId);
             if (result) {
               selectedCard = result.card;
               isDoubleDownActive = result.useDD;
-              guardTargetSelected = null; // GUARDは使わない
-              // カード選択画面のメッセージは出さず、そのまま選択状況画面へ遷移
-              // Firebase に自動選択イベントを書き込み → 全員の listenToRoom で表示更新
+              guardTargetSelected = null;
               window._sakuAutoSelected = true;
               if (roomRef) {
                 roomRef.child('sakuAutoSelected').set({
@@ -3118,6 +3116,29 @@
                 });
               }
               confirmCard();
+            }
+          } else {
+            // 代理実行：ターゲットが離脱中の場合、他のプレイヤーが代わりに書き込む
+            const result = calcSakuBestCard(targetPlayerId);
+            if (result && roomRef) {
+              const targetUsedCards = [...(gameState.usedCards[targetPlayer.name] || []), result.card];
+              const proxyUpdates = {
+                [`roundData/${targetPlayerId}`]: {
+                  player: targetPlayer.name,
+                  card: result.card,
+                  isDoubleDown: result.useDD,
+                  guardTarget: null
+                },
+                [`players/${targetPlayerId}/usedCards`]: targetUsedCards,
+                'sakuAutoSelected': {
+                  playerName: targetPlayer.name,
+                  timestamp: Date.now()
+                }
+              };
+              if (result.useDD || (gameState.currentRound === gameState.totalRounds && !targetPlayer.hasUsedDoubleDown)) {
+                proxyUpdates[`players/${targetPlayerId}/hasUsedDoubleDown`] = true;
+              }
+              roomRef.update(proxyUpdates);
             }
           }
         }
