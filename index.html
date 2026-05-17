@@ -2361,8 +2361,8 @@
           } else {
             hideDisconnectBanner();
           }
-          // 復帰イベント
-          if (data.returnEvent && data.returnEvent.playerName) {
+          // 復帰イベント（ペナルティモードONの時のみ表示）
+          if (gameState.penaltyMode && data.returnEvent && data.returnEvent.playerName) {
             showReturnBanner(data.returnEvent.playerName);
           }
           // ペナルティイベント
@@ -2647,7 +2647,7 @@
 
     function restoreScreenAfterResume(data) {
       // 全画面を非表示にしてから適切な画面を表示
-      const screens = ['modeSelect','setup','onlineMenu','waitingRoom','cardSelect','roundResults','finalResults','rulesScreen'];
+      const screens = ['modeSelect','setup','onlineMenu','waitingRoom','cardSelect','onlineCardWaiting','roundResults','finalResults','rulesScreen'];
       screens.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
@@ -2694,7 +2694,18 @@
         const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
         if (!myPlayer) return;
 
-        if (!gameState.penaltyMode) return;
+        if (!gameState.penaltyMode) {
+          // ペナルティOFF：画面ロックから復帰した時だけ最新状態に同期
+          if (!document.hidden && isGameActive && roomRef) {
+            const snap = await roomRef.once('value');
+            const snapData = snap.val();
+            if (snapData) {
+              syncGameState(snapData);
+              restoreScreenAfterResume(snapData);
+            }
+          }
+          return;
+        }
         if (document.hidden) {
           // 離脱: disconnected フラグを立てる（background = 画面オフ/バックグラウンド）
           await roomRef.child(`players/${myPlayerId}/disconnected`).set(true);
