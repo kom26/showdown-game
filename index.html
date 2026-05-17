@@ -6186,10 +6186,20 @@
       const gate = document.createElement('div');
       gate.id = 'pwaGate';
       gate.style.cssText = 'position:fixed;inset:0;background:var(--color-bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;overflow-y:auto;';
+
+      // manifestからPWAアイコンを取得
+      let iconHTML = '';
+      try {
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        const manifestData = JSON.parse(atob(manifestLink.href.split(',')[1]));
+        const iconSrc = manifestData.icons[0].src;
+        iconHTML = `<img src="${iconSrc}" style="width:88px;height:88px;border-radius:20px;margin-bottom:1rem;box-shadow:0 0 24px rgba(255,20,147,0.5);">`;
+      } catch(e) {}
+
       gate.innerHTML = `
         <div style="width:100%;max-width:400px;text-align:center;">
-          <div style="font-size:56px;margin-bottom:0.75rem;">🏠</div>
-          <h1 style="font-size:26px;font-weight:800;margin-bottom:0.4rem;color:var(--color-neon-pink);letter-spacing:2px;">SHOWDOWN</h1>
+          ${iconHTML}
+          <div class="logo" style="cursor:default;margin-bottom:0.5rem;">SHOWDOWN</div>
           <p style="font-size:14px;color:var(--color-text-secondary);margin-bottom:1.75rem;line-height:1.6;">快適に遊ぶために<br>ホーム画面への追加が必要です</p>
           <div style="background:rgba(168,85,247,0.15);border:2px solid var(--color-neon-purple);border-radius:16px;padding:1.5rem;margin-bottom:1.25rem;text-align:left;">
             <div style="font-size:12px;font-weight:700;color:var(--color-neon-purple);margin-bottom:1rem;letter-spacing:1px;">📱 ${browserLabel}</div>
