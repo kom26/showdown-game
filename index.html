@@ -1988,11 +1988,17 @@
               if (playerCount >= 6) continue;
               const dist = calcDistance(myLat, myLon, room.location.lat, room.location.lon);
               if (dist <= 100) {
-                nearby.push({ code, dist: Math.round(dist), players: playerCount, totalRounds: room.totalRounds });
+                const hostName = (room.host && room.players && room.players[room.host])
+                  ? room.players[room.host].name : '不明';
+                nearby.push({ code, dist: Math.round(dist), players: playerCount, totalRounds: room.totalRounds, hostName, createdAt: room.createdAt || null });
               }
             }
             nearby.sort((a, b) => a.dist - b.dist);
-            showNearbyRoomsModal(nearby, joinerName);
+            if (nearby.length === 1) {
+              joinFromNearby(nearby[0].code, joinerName);
+            } else {
+              showNearbyRoomsModal(nearby, joinerName);
+            }
           } catch (e) {
             alert('ルームの検索に失敗しました');
           } finally {
@@ -2017,13 +2023,19 @@
       modal.id = 'nearbyRoomsModal';
       modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(10,0,20,0.92);display:flex;align-items:center;justify-content:center;padding:1rem;';
 
+      const fmtAge = ts => {
+        if (!ts) return '';
+        const mins = Math.floor((Date.now() - ts) / 60000);
+        return mins < 1 ? 'たった今' : `${mins}分前`;
+      };
       let listHTML = rooms.length === 0
         ? '<p style="text-align:center;color:var(--color-text-secondary);padding:2rem 0;">近く（100m以内）にルームが見つかりませんでした</p>'
         : rooms.map(r => `
             <div style="background:rgba(168,85,247,0.15);border:2px solid var(--color-neon-purple);border-radius:12px;padding:1rem;margin-bottom:0.75rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
               <div>
                 <div style="font-weight:800;font-size:20px;letter-spacing:4px;color:var(--color-neon-pink);">${escapeHtml(r.code)}</div>
-                <div style="font-size:12px;color:var(--color-text-secondary);margin-top:4px;">📍 ${r.dist}m先 ／ ${r.players}人参加中 ／ ${r.totalRounds}回戦</div>
+                <div style="font-size:12px;color:var(--color-text-secondary);margin-top:4px;">👤 ${escapeHtml(r.hostName)} ／ ${r.players}人参加中 ／ ${r.totalRounds}回戦</div>
+                <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px;">📍 ${r.dist}m先${r.createdAt ? ' ／ ' + fmtAge(r.createdAt) : ''}</div>
               </div>
               <button onclick="joinFromNearby('${escapeHtml(r.code)}','${escapeHtml(joinerName)}')" class="primary" style="padding:0.5rem 1.2rem;font-size:14px;white-space:nowrap;flex-shrink:0;">参加</button>
             </div>`).join('');
@@ -2038,7 +2050,8 @@
     }
 
     function joinFromNearby(roomCode, joinerName) {
-      document.getElementById('nearbyRoomsModal').remove();
+      const modal = document.getElementById('nearbyRoomsModal');
+      if (modal) modal.remove();
       document.getElementById('joinerName').value = joinerName;
       document.getElementById('roomCodeInput').value = roomCode;
       joinRoom();
@@ -2114,7 +2127,8 @@
         roundData: {},
         playerOrder: [myPlayerId],
         usedCards: {},
-        diceUsedThisRound: []
+        diceUsedThisRound: [],
+        createdAt: Date.now()
       };
       
       console.log('Room data to save:', roomData);
