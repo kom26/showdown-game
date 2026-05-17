@@ -889,41 +889,54 @@
     </div>
     
     <div id="waitingRoom" style="display: none;">
-      <h2 style="margin-bottom: 1rem;">待機中...</h2>
-      <div style="background: rgba(168, 85, 247, 0.2); border: 3px solid var(--color-neon-purple); border-radius: 16px; padding: 2rem 1rem; margin-bottom: 1.5rem; text-align: center;">
-        <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 0.5rem;">ルームコード</div>
-        <div id="displayRoomCode" style="font-size: 48px; font-weight: 800; letter-spacing: 12px; color: var(--color-neon-pink); text-shadow: 0 0 20px var(--color-neon-pink);">----</div>
+      <h2 style="margin-bottom: 0.75rem;">待機中...</h2>
+
+      <!-- ルームコード（コンパクト） -->
+      <div style="background:rgba(168,85,247,0.15);border:2px solid var(--color-neon-purple);border-radius:12px;padding:0.6rem 1rem;margin-bottom:1rem;text-align:center;">
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:0.2rem;letter-spacing:1px;">ROOM CODE</div>
+        <div id="displayRoomCode" style="font-size:34px;font-weight:800;letter-spacing:10px;color:var(--color-neon-pink);text-shadow:0 0 16px var(--color-neon-pink);">----</div>
       </div>
-      <!-- さいころ倍率表示（待機室・変更不可） -->
-      <div id="waitingDiceRatesBox" style="background: rgba(26,10,40,0.7); border: 2px solid var(--color-neon-purple); border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 1.5rem;">
-        <div style="font-size: 11px; color: var(--color-neon-purple); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.5rem; text-shadow: 0 0 8px var(--color-neon-purple);">🎲 神のさいころ 倍率</div>
-        <div style="display: flex; justify-content: space-around; text-align: center;">
-          <div>
-            <div style="font-size: 18px; font-weight: 800; color: var(--color-success);" id="waitingRate0">50%</div>
-            <div style="font-size: 11px; color: var(--color-text-secondary);">× 0</div>
+
+      <!-- 神のさいころ倍率（見やすく） -->
+      <div id="waitingDiceRatesBox" style="background:rgba(26,10,40,0.7);border:2px solid var(--color-neon-purple);border-radius:12px;padding:0.7rem 1rem;margin-bottom:1rem;">
+        <div style="font-size:11px;color:var(--color-neon-purple);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:0.6rem;text-shadow:0 0 8px var(--color-neon-purple);">🎲 神のさいころ 倍率</div>
+        <div style="display:flex;gap:0.5rem;">
+          <div style="flex:1;background:rgba(0,255,159,0.08);border:1px solid var(--color-success);border-radius:8px;padding:0.4rem 0;text-align:center;">
+            <div style="font-size:15px;font-weight:800;color:var(--color-success);">× 0</div>
+            <div id="waitingRate0" style="font-size:13px;font-weight:700;color:var(--color-success);">50%</div>
           </div>
-          <div style="font-size: 20px; color: var(--color-border); align-self: center;">/</div>
-          <div>
-            <div style="font-size: 18px; font-weight: 800; color: var(--color-neon-cyan);" id="waitingRate2">40%</div>
-            <div style="font-size: 11px; color: var(--color-text-secondary);">× 2</div>
+          <div style="flex:1;background:rgba(0,212,255,0.08);border:1px solid var(--color-neon-cyan);border-radius:8px;padding:0.4rem 0;text-align:center;">
+            <div style="font-size:15px;font-weight:800;color:var(--color-neon-cyan);">× 2</div>
+            <div id="waitingRate2" style="font-size:13px;font-weight:700;color:var(--color-neon-cyan);">40%</div>
           </div>
-          <div style="font-size: 20px; color: var(--color-border); align-self: center;">/</div>
-          <div>
-            <div style="font-size: 18px; font-weight: 800; color: var(--color-danger);" id="waitingRate3">10%</div>
-            <div style="font-size: 11px; color: var(--color-text-secondary);">× 3</div>
+          <div style="flex:1;background:rgba(255,50,50,0.08);border:1px solid var(--color-danger);border-radius:8px;padding:0.4rem 0;text-align:center;">
+            <div style="font-size:15px;font-weight:800;color:var(--color-danger);">× 3</div>
+            <div id="waitingRate3" style="font-size:13px;font-weight:700;color:var(--color-danger);">10%</div>
           </div>
         </div>
       </div>
-      <div style="margin-bottom: 1.5rem;">
-        <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 0.75rem;">参加プレイヤー</div>
-        <div id="playerList" style="background: rgba(26, 10, 40, 0.6); border-radius: 12px; padding: 1rem; border: 2px solid var(--color-border);">
+
+      <!-- サク負け / ペナルティモード -->
+      <div style="display:flex;gap:0.75rem;margin-bottom:1rem;">
+        <div style="flex:1;background:rgba(26,10,40,0.7);border:2px solid var(--color-border);border-radius:12px;padding:0.65rem 0.75rem;text-align:center;">
+          <div style="font-size:11px;color:var(--color-text-secondary);font-weight:600;margin-bottom:0.4rem;">サク負けモード</div>
+          <button id="waitingSakuBtn" onclick="toggleWaitingMode('saku')" style="min-width:64px;padding:4px 10px;font-size:12px;font-weight:800;border-radius:20px;border:2px solid #555;background:#333;color:#888;letter-spacing:1px;box-shadow:none;transition:all 0.3s;">OFF</button>
+        </div>
+        <div style="flex:1;background:rgba(26,10,40,0.7);border:2px solid var(--color-border);border-radius:12px;padding:0.65rem 0.75rem;text-align:center;">
+          <div style="font-size:11px;color:var(--color-text-secondary);font-weight:600;margin-bottom:0.4rem;">ペナルティモード</div>
+          <button id="waitingPenaltyBtn" onclick="toggleWaitingMode('penalty')" style="min-width:64px;padding:4px 10px;font-size:12px;font-weight:800;border-radius:20px;border:2px solid var(--color-success);background:rgba(0,255,159,0.2);color:var(--color-success);letter-spacing:1px;box-shadow:0 0 10px rgba(0,255,159,0.4);transition:all 0.3s;">ON</button>
         </div>
       </div>
-      <button id="startOnlineGameBtn" class="primary" onclick="startOnlineGame()" style="width: 100%; display: none; margin-bottom: 0.75rem;">ゲーム開始</button>
-      <div id="waitingForGameStart" style="font-size: 14px; color: var(--color-neon-cyan); text-align: center; margin-bottom: 0.75rem; display: none;">
+
+      <div style="margin-bottom:1.25rem;">
+        <div style="font-size:14px;color:var(--color-text-secondary);margin-bottom:0.75rem;">参加プレイヤー</div>
+        <div id="playerList" style="background:rgba(26,10,40,0.6);border-radius:12px;padding:1rem;border:2px solid var(--color-border);"></div>
+      </div>
+      <button id="startOnlineGameBtn" class="primary" onclick="startOnlineGame()" style="width:100%;display:none;margin-bottom:0.75rem;">ゲーム開始</button>
+      <div id="waitingForGameStart" style="font-size:14px;color:var(--color-neon-cyan);text-align:center;margin-bottom:0.75rem;display:none;">
         がゲームを開始します...
       </div>
-      <button onclick="leaveRoom()" style="width: 100%; background: rgba(255, 0, 102, 0.2); border: 2px solid var(--color-danger);">ルームを退出</button>
+      <button onclick="leaveRoom()" style="width:100%;background:rgba(255,0,102,0.2);border:2px solid var(--color-danger);">ルームを退出</button>
     </div>
     
     <div id="setup" style="display: none;">
@@ -1920,6 +1933,60 @@
       if (e3) e3.textContent = r.triple + '%';
     }
 
+    function updateWaitingRoomModes(sakuMode, penaltyMode) {
+      const sakuBtn = document.getElementById('waitingSakuBtn');
+      const penaltyBtn = document.getElementById('waitingPenaltyBtn');
+      if (sakuBtn) {
+        if (sakuMode) {
+          sakuBtn.textContent = 'ON';
+          sakuBtn.style.background = 'rgba(0,255,159,0.2)';
+          sakuBtn.style.borderColor = 'var(--color-success)';
+          sakuBtn.style.color = 'var(--color-success)';
+          sakuBtn.style.boxShadow = '0 0 10px rgba(0,255,159,0.4)';
+        } else {
+          sakuBtn.textContent = 'OFF';
+          sakuBtn.style.background = '#333';
+          sakuBtn.style.borderColor = '#555';
+          sakuBtn.style.color = '#888';
+          sakuBtn.style.boxShadow = 'none';
+        }
+        sakuBtn.disabled = !isRoomHost;
+        sakuBtn.style.opacity = isRoomHost ? '1' : '0.6';
+        sakuBtn.style.cursor = isRoomHost ? 'pointer' : 'default';
+      }
+      if (penaltyBtn) {
+        if (penaltyMode) {
+          penaltyBtn.textContent = 'ON';
+          penaltyBtn.style.background = 'rgba(0,255,159,0.2)';
+          penaltyBtn.style.borderColor = 'var(--color-success)';
+          penaltyBtn.style.color = 'var(--color-success)';
+          penaltyBtn.style.boxShadow = '0 0 10px rgba(0,255,159,0.4)';
+        } else {
+          penaltyBtn.textContent = 'OFF';
+          penaltyBtn.style.background = '#333';
+          penaltyBtn.style.borderColor = '#555';
+          penaltyBtn.style.color = '#888';
+          penaltyBtn.style.boxShadow = 'none';
+        }
+        penaltyBtn.disabled = !isRoomHost;
+        penaltyBtn.style.opacity = isRoomHost ? '1' : '0.6';
+        penaltyBtn.style.cursor = isRoomHost ? 'pointer' : 'default';
+      }
+    }
+
+    function toggleWaitingMode(mode) {
+      if (!isRoomHost || !roomRef) return;
+      if (mode === 'saku') {
+        const next = !sakuModeEnabled;
+        sakuModeEnabled = next;
+        roomRef.child('sakuMode').set(next);
+      } else if (mode === 'penalty') {
+        const next = !penaltyModeEnabled;
+        penaltyModeEnabled = next;
+        roomRef.child('penaltyMode').set(next);
+      }
+    }
+
     function updatePlayerInputs() {
       const count = parseInt(document.getElementById('playerCount').value);
       const container = document.getElementById('playerInputs');
@@ -2296,11 +2363,15 @@
         }
         
         updatePlayerList(data.players);
-        
-        // さいころ倍率を待機室に反映（参加者がルームデータを受信したタイミングで更新）
+
         if (data.diceRates) {
           updateWaitingRoomDiceDisplay(data.diceRates);
         }
+
+        // ホスト側ローカル変数も同期（Firebase上の値を正とする）
+        sakuModeEnabled = data.sakuMode || false;
+        penaltyModeEnabled = data.penaltyMode !== false;
+        updateWaitingRoomModes(sakuModeEnabled, penaltyModeEnabled);
         
         // 開始ボタンの表示制御
         const startBtn = document.getElementById('startOnlineGameBtn');
