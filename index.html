@@ -2696,6 +2696,7 @@
         const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
         if (!myPlayer) return;
 
+        if (!gameState.penaltyMode) return;
         if (document.hidden) {
           // 離脱: disconnected フラグを立てる（background = 画面オフ/バックグラウンド）
           await roomRef.child(`players/${myPlayerId}/disconnected`).set(true);
