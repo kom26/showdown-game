@@ -736,6 +736,9 @@
       <button id="abortMenuTopOnlyBtn" onclick="closeAbortMenu()" style="width: 100%; font-size: 16px; display: none;">
         TOPに戻る
       </button>
+      <button id="abortMenuResetBtn" onclick="confirmResetApp()" style="width: 100%; font-size: 13px; margin-top: 0.5rem; background: rgba(255,80,0,0.15); color: #ff8040; border: 2px solid rgba(255,80,0,0.4); display: none;">
+        🗑️ データをリセットして再読込
+      </button>
     </div>
   </div>
   
@@ -1600,16 +1603,19 @@
       const abortBtn = document.getElementById('abortMenuAbortBtn');
       const topOnlyBtn = document.getElementById('abortMenuTopOnlyBtn');
       const menuText = document.getElementById('abortMenuText');
+      const resetBtn = document.getElementById('abortMenuResetBtn');
       if (fromTop) {
         if (backBtn) backBtn.style.display = 'none';
         if (abortBtn) abortBtn.style.display = 'none';
         if (topOnlyBtn) topOnlyBtn.style.display = 'block';
         if (menuText) menuText.style.display = 'none';
+        if (resetBtn) resetBtn.style.display = 'block';
       } else {
         if (backBtn) backBtn.style.display = 'block';
         if (abortBtn) abortBtn.style.display = 'block';
         if (topOnlyBtn) topOnlyBtn.style.display = 'none';
         if (menuText) menuText.style.display = 'block';
+        if (resetBtn) resetBtn.style.display = 'none';
       }
       const sosoSection = document.getElementById('sosoToggleSection');
       if (sosoSection) sosoSection.style.display = isOnlineMode ? 'none' : 'block';
@@ -1618,6 +1624,13 @@
 
     function closeAbortMenu() {
       document.getElementById('abortMenu').classList.remove('show');
+    }
+
+    function confirmResetApp() {
+      if (!confirm('保存データ（名前・セッション）を削除してアプリを再読込します。\nよろしいですか？')) return;
+      sessionStorage.setItem('requestLocationOnLoad', '1');
+      localStorage.clear();
+      window.location.reload(true);
     }
 
     function confirmAbortFromMenu() {
@@ -6715,7 +6728,15 @@
 
     // ルーム復帰セッション確認（タスクキル後の復帰用）
     checkRoomSession();
-    
+
+    // リセット後リロード時に位置情報ダイアログを再表示
+    if (sessionStorage.getItem('requestLocationOnLoad')) {
+      sessionStorage.removeItem('requestLocationOnLoad');
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(() => {}, () => {}, { timeout: 5000 });
+      }
+    }
+
     // PWA Service Worker 登録
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
