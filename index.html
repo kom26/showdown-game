@@ -2182,12 +2182,25 @@
       const btn = document.getElementById('joinByLocationBtn');
       if (!btn) return;
       if (state === 'denied') {
-        btn.disabled = true;
-        btn.innerHTML = '📍 位置情報が無効です<br><small style="font-size:11px;font-weight:500;opacity:0.8;">設定から位置情報を許可してください</small>';
+        btn.disabled = false;
+        btn.onclick = openLocationHelp;
+        btn.style.background = 'rgba(255,80,0,0.15)';
+        btn.style.color = '#ff8040';
+        btn.style.border = '2px solid rgba(255,80,0,0.4)';
+        btn.innerHTML = '📍 位置情報が無効です<br><small style="font-size:11px;font-weight:500;opacity:0.8;">タップして許可方法を確認 →</small>';
       } else {
         btn.disabled = false;
+        btn.onclick = joinRoomByLocation;
+        btn.style.background = 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)';
+        btn.style.color = '';
+        btn.style.border = 'none';
         btn.innerHTML = '📍 位置情報からルームに参加';
       }
+    }
+
+    function openLocationHelp() {
+      const url = new URL('./location-help.html', window.location.href).href;
+      window.open(url, '_blank');
     }
 
     function checkForUpdate() {

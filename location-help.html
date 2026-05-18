@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0014">
+  <title>位置情報の許可方法 | SHOWDOWN</title>
+  <style>
+    :root {
+      --color-bg: #0a0014;
+      --color-surface: #12002a;
+      --color-border: rgba(255,255,255,0.12);
+      --color-text-primary: #f0e6ff;
+      --color-text-secondary: #a89bc0;
+      --color-neon-cyan: #00d4ff;
+      --color-neon-purple: #a855f7;
+      --color-neon-pink: #ff0066;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem 3rem;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .header-icon { font-size: 48px; margin-bottom: 0.5rem; }
+    .header-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, var(--color-neon-cyan), var(--color-neon-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      margin-top: 0.4rem;
+      line-height: 1.6;
+    }
+    .card {
+      background: var(--color-surface);
+      border: 1.5px solid var(--color-border);
+      border-radius: 16px;
+      padding: 1.25rem 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .card-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .card-label.ios { color: var(--color-neon-cyan); }
+    .card-label.android { color: #34c759; }
+    .card-label.other { color: var(--color-neon-purple); }
+    .card-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 1rem;
+    }
+    .steps { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+    .step {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      margin-top: 1px;
+    }
+    .ios .step-num { background: rgba(0,212,255,0.2); color: var(--color-neon-cyan); }
+    .android .step-num { background: rgba(52,199,89,0.2); color: #34c759; }
+    .other .step-num { background: rgba(168,85,247,0.2); color: var(--color-neon-purple); }
+    .step-text {
+      font-size: 14px;
+      color: var(--color-text-primary);
+      line-height: 1.6;
+    }
+    .step-text em {
+      font-style: normal;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .note {
+      margin-top: 0.9rem;
+      padding: 0.65rem 0.85rem;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      border-left: 3px solid var(--color-border);
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      line-height: 1.6;
+    }
+    .back-btn {
+      display: block;
+      width: 100%;
+      max-width: 480px;
+      margin: 1.5rem auto 0;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-align: center;
+      background: linear-gradient(135deg, var(--color-neon-cyan) 0%, var(--color-neon-purple) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-icon">📍</div>
+    <div class="header-title">位置情報の許可方法</div>
+    <div class="header-sub">このページで設定を変更してから<br>SHOWDOWNに戻ってください</div>
+  </div>
+
+  <!-- iPhone / Safari -->
+  <div class="card">
+    <div class="card-label ios">🍎 iPhone・iPad（Safari）</div>
+    <div class="card-title">アドレスバーから設定する</div>
+    <ol class="steps ios">
+      <li class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Safariのアドレスバー左端の <em>ぁあ</em> または <em>⬜=</em> アイコンをタップ</div>
+      </li>
+      <li class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><em>Webサイトの設定</em> をタップ</div>
+      </li>
+      <li class="step">
+        <div class="step-num">3</div>
+        <div class="step-text"><em>位置情報</em> をタップして <em>許可</em> に変更</div>
+      </li>
+      <li class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">下の「SHOWDOWNに戻る」ボタンをタップ</div>
+      </li>
+    </ol>
+    <div class="note">⚠️ iPhoneのホーム画面から起動したSHOWDOWN（PWA）では位置情報の設定を変更できません。必ずSafariで開いて操作してください。</div>
+  </div>
+
+  <!-- Android / Chrome -->
+  <div class="card">
+    <div class="card-label android">🤖 Android（Chrome）</div>
+    <div class="card-title">アドレスバーから設定する</div>
+    <ol class="steps android">
+      <li class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Chromeのアドレスバー左端の <em>🔒</em> または <em>ⓘ</em> アイコンをタップ</div>
+      </li>
+      <li class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><em>権限</em> をタップ</div>
+      </li>
+      <li class="step">
+        <div class="step-num">3</div>
+        <div class="step-text"><em>位置情報</em> を <em>許可</em> に変更</div>
+      </li>
+      <li class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">下の「SHOWDOWNに戻る」ボタンをタップ</div>
+      </li>
+    </ol>
+  </div>
+
+  <!-- その他 -->
+  <div class="card">
+    <div class="card-label other">💻 その他のブラウザ</div>
+    <div class="card-title">設定が見つからない場合</div>
+    <ol class="steps other">
+      <li class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">ブラウザの <em>アドレスバー</em> または <em>URLバー</em> の横にある鍵・情報アイコンをタップ</div>
+      </li>
+      <li class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><em>サイトの設定</em> / <em>権限</em> / <em>Webサイトの設定</em> から位置情報を <em>許可</em> に変更</div>
+      </li>
+      <li class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">下の「SHOWDOWNに戻る」ボタンをタップ</div>
+      </li>
+    </ol>
+  </div>
+
+  <button class="back-btn" onclick="goBack()">← SHOWDOWNに戻る</button>
+
+  <script>
+    function goBack() {
+      if (window.opener) {
+        window.close();
+      } else {
+        history.back();
+      }
+    }
+  </script>
+</body>
+</html>
