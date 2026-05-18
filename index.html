@@ -1412,7 +1412,9 @@
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
-    
+
+    const APP_VERSION = '20260518';
+
     // Online Mode Variables
     let isOnlineMode = false;
     let currentRoomCode = null;
@@ -1487,7 +1489,21 @@
     // ブラウザバック対策
     // ブラウザ設定から戻ってきたときに位置情報の許可状態を再チェック
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) initLocationPermission();
+      if (!document.hidden) {
+        checkForUpdate();
+        const btn = document.getElementById('joinByLocationBtn');
+        if (btn && btn.disabled) {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              () => updateLocationBtnState('granted'),
+              (err) => { if (err.code !== 1) updateLocationBtnState('granted'); },
+              { timeout: 100, maximumAge: 300000 }
+            );
+          }
+        } else {
+          initLocationPermission();
+        }
+      }
     });
 
     window.addEventListener('load', function() {
@@ -2159,6 +2175,32 @@
         btn.disabled = false;
         btn.innerHTML = '📍 位置情報からルームに参加';
       }
+    }
+
+    function checkForUpdate() {
+      fetch(window.location.href, { cache: 'no-store', headers: { Accept: 'text/html' } })
+        .then(r => r.text())
+        .then(html => {
+          const m = html.match(/APP_VERSION\s*=\s*'([^']+)'/);
+          if (m && m[1] !== APP_VERSION) showUpdateBanner();
+        })
+        .catch(() => {});
+    }
+
+    function showUpdateBanner() {
+      if (document.getElementById('updateBanner')) return;
+      const el = document.createElement('div');
+      el.id = 'updateBanner';
+      el.style.cssText = [
+        'position:fixed', 'bottom:20px', 'left:50%', 'transform:translateX(-50%)',
+        'background:#222', 'color:#fff', 'padding:12px 24px', 'border-radius:999px',
+        'z-index:9999', 'font-size:14px', 'font-weight:600',
+        'box-shadow:0 4px 16px rgba(0,0,0,0.4)', 'cursor:pointer',
+        'white-space:nowrap', 'letter-spacing:.02em'
+      ].join(';');
+      el.textContent = '🔄 新しいバージョンが利用可能 — タップして更新';
+      el.onclick = () => window.location.reload(true);
+      document.body.appendChild(el);
     }
 
     async function initLocationPermission() {
