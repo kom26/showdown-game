@@ -4138,6 +4138,8 @@
         const higherCards = myCards.filter(c => c > X);
         if (higherCards.length > 0) {
           chosen = higherCards[0]; // 一人勝ち（2人でも勝ちは勝ち）
+        } else if (myCards.includes(1) && X === maxCard) {
+          chosen = 1; // 1を出して天地逆転 → maxCard持ち全員が負ける → 一人勝ち
         } else if (isMultiplayer && myCards.includes(X)) {
           chosen = X; // 全員一致で0杯（3人以上のみ）
         }
