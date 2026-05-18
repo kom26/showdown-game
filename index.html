@@ -1494,18 +1494,7 @@
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         checkForUpdate();
-        const btn = document.getElementById('joinByLocationBtn');
-        if (btn && btn.disabled) {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              () => updateLocationBtnState('granted'),
-              (err) => { if (err.code !== 1) initLocationPermission(); },
-              { timeout: 3000, maximumAge: 300000 }
-            );
-          }
-        } else {
-          initLocationPermission();
-        }
+        initLocationPermission();
       }
     });
 
@@ -2200,7 +2189,13 @@
 
     function openLocationHelp() {
       const url = new URL('./location-help.html', window.location.href).href;
-      window.open(url, '_blank');
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
 
     function checkForUpdate() {
@@ -2242,7 +2237,10 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           () => updateLocationBtnState('granted'),
-          (err) => { if (err.code === 1) updateLocationBtnState('denied'); },
+          (err) => {
+            if (err.code === 1) updateLocationBtnState('denied');
+            else updateLocationBtnState('prompt'); // タイムアウト等 → denied でないので通常表示に戻す
+          },
           { timeout: 200, maximumAge: Infinity }
         );
       }
