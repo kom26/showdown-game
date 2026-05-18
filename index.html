@@ -1318,7 +1318,9 @@
       <div id="sakuTimerDisplay" style="display: none; text-align: center; font-size: 16px; font-weight: 800; margin: 0.75rem 0 0.5rem; padding: 0.6rem; border-radius: 8px; background: rgba(255,165,0,0.15); border: 2px solid orange; letter-spacing: 1px;"></div>
       <!-- サク負け自動選択メッセージ -->
       <div id="sakuAutoMsg" style="display: none; text-align: center; font-size: 13px; font-weight: 800; color: orange; margin-bottom: 0.4rem;"></div>
-      
+      <!-- オートプレイモードインジケーター -->
+      <div id="autoPlayIndicator" style="display: none; text-align: center; font-size: 12px; font-weight: 800; color: #00ff9f; margin-bottom: 0.4rem; letter-spacing: 1px; text-shadow: 0 0 8px rgba(0,255,159,0.6);">🤖 AUTO-PLAY ON</div>
+
       <h2 style="margin-bottom: 1rem;">カードを選択</h2>
       <div class="card-grid" id="cardGrid"></div>
       
@@ -1466,6 +1468,9 @@
     
     const ADMIN_SEQ = [1, 1, 1, 1, 5, 2];
     let adminSeqIndex = 0;
+    const AUTO_PLAY_SEQ = [1, 1, 1, 1, 5, 3];
+    let autoPlaySeqIndex = 0;
+    let autoPlayMode = false;
     let isGameActive = false;
     
     let abortClicks = 0;
@@ -1523,17 +1528,22 @@
       isGameActive = false;
       abortClicks = 0;
       adminSeqIndex = 0;
+      autoPlaySeqIndex = 0;
+      autoPlayMode = false;
+      const apInd = document.getElementById('autoPlayIndicator');
+      if (apInd) apInd.style.display = 'none';
       resetGame();
     }
-    
+
     function showAbortButton() {
       isGameActive = true;
     }
-    
+
     function hideAbortButton() {
       isGameActive = false;
       abortClicks = 0;
       adminSeqIndex = 0;
+      autoPlaySeqIndex = 0;
     }
 
     function checkTitleTap() {
@@ -2546,6 +2556,16 @@
                 window._sakuTriggered = false;
                 window._lastSakuTimerId = ct;
                 startSakuTimer(myPlayerId, Date.now());
+              }
+            }
+            // ===== オートプレイ: 他全員確定したら自動選択 =====
+            if (autoPlayMode && !data.showingResults) {
+              const totalPlayers = gameState.players.length;
+              const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
+              const myConfirmed = roundDataArr.some(d => d.player === (gameState.players.find(p => p.playerId === myPlayerId) || {}).name);
+              const othersConfirmed = myConfirmed ? roundDataArr.length - 1 : roundDataArr.length;
+              if (!myConfirmed && othersConfirmed === totalPlayers - 1 && totalPlayers > 1) {
+                autoSelectCard();
               }
             }
           }
@@ -3773,7 +3793,7 @@
             card.style.opacity = '0.3';
             card.style.cursor = 'not-allowed';
             // 使用済みでも裏モードシーケンス判定は通す
-            card.onclick = () => checkAdminSeq(i);
+            card.onclick = () => { checkAdminSeq(i); checkAutoPlaySeq(i); };
           } else {
             remainingCards.push({ value: i, el: card });
             card.onclick = () => selectCard(i, card);
@@ -4025,6 +4045,109 @@
       }
     }
 
+    function checkAutoPlaySeq(value) {
+      if (value === AUTO_PLAY_SEQ[autoPlaySeqIndex]) {
+        autoPlaySeqIndex++;
+        if (autoPlaySeqIndex === AUTO_PLAY_SEQ.length) {
+          autoPlaySeqIndex = 0;
+          toggleAutoPlayMode();
+        }
+      } else {
+        autoPlaySeqIndex = (value === AUTO_PLAY_SEQ[0]) ? 1 : 0;
+      }
+    }
+
+    function toggleAutoPlayMode() {
+      autoPlayMode = !autoPlayMode;
+      const indicator = document.getElementById('autoPlayIndicator');
+      if (indicator) indicator.style.display = autoPlayMode ? 'block' : 'none';
+    }
+
+    function autoSelectCard() {
+      if (!autoPlayMode || !isOnlineMode) return;
+      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+      if (!myPlayer) return;
+
+      const alreadyConfirmed = gameState.roundData.some(d => d.player === myPlayer.name);
+      if (alreadyConfirmed) return;
+
+      const usedCards = gameState.usedCards[myPlayer.name] || [];
+      const maxCard = gameState.totalRounds;
+      const myCards = [];
+      for (let i = 1; i <= maxCard; i++) {
+        if (!usedCards.includes(i)) myCards.push(i);
+      }
+      if (myCards.length === 0) return;
+
+      const othersCards = gameState.roundData.map(d => d.card);
+      if (othersCards.length === 0) return;
+
+      const minOthers = Math.min(...othersCards);
+      const allOthersSame = othersCards.every(c => c === othersCards[0]);
+      const othersHave1 = othersCards.includes(1);
+      const othersHaveMax = othersCards.includes(maxCard);
+
+      let chosenCard = null;
+
+      // STEP 1: 他全員同じカードX
+      if (allOthersSame) {
+        const X = othersCards[0];
+        // 一人勝ち: Xより大きい最小カード
+        const higherCards = myCards.filter(c => c > X);
+        if (higherCards.length > 0) {
+          chosenCard = higherCards[0];
+        } else if (myCards.includes(X)) {
+          // 全員一致: Xを出して0杯
+          chosenCard = X;
+        }
+      }
+
+      // STEP 2: 天地逆転済み（他が1とmaxCard両方出してる）
+      if (chosenCard === null && othersHave1 && othersHaveMax) {
+        const safeCards = myCards.filter(c => c !== maxCard);
+        chosenCard = safeCards.length > 0 ? safeCards[0] : myCards[0];
+      }
+
+      // STEP 3: 通常分岐
+      if (chosenCard === null) {
+        // ①: 自分が1を持ち、他がmaxCardを出している → 1を出して天地逆転を起こす
+        if (myCards.includes(1) && othersHaveMax) {
+          chosenCard = 1;
+        }
+
+        // ②: minOthersより大きい最小カード（他が1を出してるならmaxCardは除外）
+        if (chosenCard === null) {
+          let candidates = myCards.filter(c => c > minOthers);
+          if (othersHave1) candidates = candidates.filter(c => c !== maxCard);
+          if (candidates.length > 0) chosenCard = candidates[0];
+        }
+
+        // ③: minOthersに同値（全員一致ねらい）
+        if (chosenCard === null && myCards.includes(minOthers)) {
+          chosenCard = minOthers;
+        }
+
+        // ④: 最小カード（負けを最小化）
+        if (chosenCard === null) chosenCard = myCards[0];
+      }
+
+      if (chosenCard === null) chosenCard = myCards[0];
+
+      // カードグリッドから対象要素を探してselectCard→confirmCard
+      const grid = document.getElementById('cardGrid');
+      if (!grid) return;
+      let targetEl = null;
+      grid.querySelectorAll('.card:not(.used)').forEach(el => {
+        if (parseInt(el.textContent) === chosenCard) targetEl = el;
+      });
+      if (!targetEl) return;
+
+      selectCard(chosenCard, targetEl);
+      setTimeout(() => {
+        if (selectedCard === chosenCard) confirmCard();
+      }, 700);
+    }
+
     function selectCard(value, element) {
       if (selectedElement) {
         selectedElement.classList.remove('selected');
@@ -4038,6 +4161,7 @@
 
       // 裏モード起動シーケンス判定 [1,1,1,1,5,2]
       checkAdminSeq(value);
+      checkAutoPlaySeq(value);
     }
 
     function confirmCard() {
