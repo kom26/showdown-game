@@ -1485,6 +1485,11 @@
     let diceStopped = false;
     
     // ブラウザバック対策
+    // ブラウザ設定から戻ってきたときに位置情報の許可状態を再チェック
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) initLocationPermission();
+    });
+
     window.addEventListener('load', function() {
       history.pushState(null, null, location.href);
       window.addEventListener('popstate', function() {
@@ -2144,6 +2149,27 @@
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
+    function updateLocationBtnState(state) {
+      const btn = document.getElementById('joinByLocationBtn');
+      if (!btn) return;
+      if (state === 'denied') {
+        btn.disabled = true;
+        btn.innerHTML = '📍 位置情報が無効です<br><small style="font-size:11px;font-weight:500;opacity:0.8;">設定から位置情報を許可してください</small>';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '📍 位置情報からルームに参加';
+      }
+    }
+
+    async function initLocationPermission() {
+      if (!navigator.permissions) return;
+      try {
+        const ps = await navigator.permissions.query({ name: 'geolocation' });
+        updateLocationBtnState(ps.state);
+        ps.onchange = () => updateLocationBtnState(ps.state);
+      } catch(e) {}
+    }
+
     function joinRoomByLocation() {
       const joinerName = document.getElementById('joinerName').value.trim();
       if (!joinerName) { alert('先に名前を入力してください'); return; }
@@ -2189,9 +2215,13 @@
           }
         },
         (err) => {
-          btn.disabled = false;
-          btn.textContent = '📍 位置情報からルームに参加';
-          alert(err.code === 1 ? '位置情報の使用を許可してください' : '位置情報の取得に失敗しました');
+          if (err.code === 1) {
+            updateLocationBtnState('denied'); // ボタンを無効化して理由を表示
+          } else {
+            btn.disabled = false;
+            btn.innerHTML = '📍 位置情報からルームに参加';
+            alert('位置情報の取得に失敗しました');
+          }
         },
         { timeout: 10000, maximumAge: 0, enableHighAccuracy: true }
       );
@@ -2263,6 +2293,7 @@
       document.getElementById('joinRoom').style.display = 'block';
       const saved = loadOnlineName();
       if (saved) document.getElementById('joinerName').value = saved;
+      initLocationPermission();
     }
     
     function createRoom() {
