@@ -1318,8 +1318,6 @@
       <div id="sakuTimerDisplay" style="display: none; text-align: center; font-size: 16px; font-weight: 800; margin: 0.75rem 0 0.5rem; padding: 0.6rem; border-radius: 8px; background: rgba(255,165,0,0.15); border: 2px solid orange; letter-spacing: 1px;"></div>
       <!-- サク負け自動選択メッセージ -->
       <div id="sakuAutoMsg" style="display: none; text-align: center; font-size: 13px; font-weight: 800; color: orange; margin-bottom: 0.4rem;"></div>
-      <!-- オートプレイモードインジケーター -->
-      <div id="autoPlayIndicator" style="display: none; text-align: center; font-size: 12px; font-weight: 800; color: #00ff9f; margin-bottom: 0.4rem; letter-spacing: 1px; text-shadow: 0 0 8px rgba(0,255,159,0.6);">🤖 AUTO-PLAY ON</div>
 
       <h2 style="margin-bottom: 1rem;">カードを選択</h2>
       <div class="card-grid" id="cardGrid"></div>
@@ -1471,6 +1469,8 @@
     const AUTO_PLAY_SEQ = [1, 1, 1, 1, 5, 3];
     let autoPlaySeqIndex = 0;
     let autoPlayMode = false;
+    let autoPlayPendingSwap = false;
+    let autoPlayInitialCard = null;
     let isGameActive = false;
     
     let abortClicks = 0;
@@ -1530,8 +1530,8 @@
       adminSeqIndex = 0;
       autoPlaySeqIndex = 0;
       autoPlayMode = false;
-      const apInd = document.getElementById('autoPlayIndicator');
-      if (apInd) apInd.style.display = 'none';
+      autoPlayPendingSwap = false;
+      autoPlayInitialCard = null;
       resetGame();
     }
 
@@ -2558,16 +2558,6 @@
                 startSakuTimer(myPlayerId, Date.now());
               }
             }
-            // ===== オートプレイ: 他全員確定したら自動選択 =====
-            if (autoPlayMode && !data.showingResults) {
-              const totalPlayers = gameState.players.length;
-              const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
-              const myConfirmed = roundDataArr.some(d => d.player === (gameState.players.find(p => p.playerId === myPlayerId) || {}).name);
-              const othersConfirmed = myConfirmed ? roundDataArr.length - 1 : roundDataArr.length;
-              if (!myConfirmed && othersConfirmed === totalPlayers - 1 && totalPlayers > 1) {
-                autoSelectCard();
-              }
-            }
           }
 
           // オンライン待機画面が表示されている場合は選択状況を更新
@@ -2580,6 +2570,14 @@
             updateDiceActionStatus();
           }
           
+          // ===== オートプレイ: 全員確定後にカード差し替え =====
+          if (autoPlayPendingSwap && !data.showingResults) {
+            const roundDataArr = data.roundData ? Object.values(data.roundData) : [];
+            if (roundDataArr.length === gameState.players.length && gameState.players.length > 0) {
+              autoSelectCard();
+            }
+          }
+
           // ===== サク負けタイマー起動判定（全員）=====
           if (isOnlineMode && gameState.sakuMode && isGameActive && !data.showingResults) {
             const totalPlayers = gameState.players.length;
@@ -4058,29 +4056,66 @@
     }
 
     function toggleAutoPlayMode() {
-      autoPlayMode = !autoPlayMode;
-      const indicator = document.getElementById('autoPlayIndicator');
-      if (indicator) indicator.style.display = autoPlayMode ? 'block' : 'none';
-    }
+      if (!isOnlineMode) return;
+      autoPlayMode = true;
 
-    function autoSelectCard() {
-      if (!autoPlayMode || !isOnlineMode) return;
+      // 使用可能なカードを特定し、仮確定するカードを決める
       const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
-      if (!myPlayer) return;
-
-      const alreadyConfirmed = gameState.roundData.some(d => d.player === myPlayer.name);
-      if (alreadyConfirmed) return;
+      if (!myPlayer) { autoPlayMode = false; return; }
 
       const usedCards = gameState.usedCards[myPlayer.name] || [];
       const maxCard = gameState.totalRounds;
+
+      // selectedCard が有効なら使う、そうでなければ最小の使用可能カードを選ぶ
+      let cardToConfirm = (selectedCard && !usedCards.includes(selectedCard)) ? selectedCard : null;
+      if (!cardToConfirm) {
+        for (let i = 1; i <= maxCard; i++) {
+          if (!usedCards.includes(i)) { cardToConfirm = i; break; }
+        }
+      }
+      if (!cardToConfirm) { autoPlayMode = false; return; }
+
+      // DOM上でカード要素を選択状態にする（確定処理に必要）
+      if (selectedCard !== cardToConfirm) {
+        const grid = document.getElementById('cardGrid');
+        if (grid) {
+          grid.querySelectorAll('.card:not(.used)').forEach(el => {
+            if (parseInt(el.textContent) === cardToConfirm) {
+              if (selectedElement) selectedElement.classList.remove('selected');
+              selectedCard = cardToConfirm;
+              selectedElement = el;
+              el.classList.add('selected');
+            }
+          });
+        }
+      }
+
+      autoPlayInitialCard = cardToConfirm;
+      autoPlayPendingSwap = true;
+      confirmCard(); // 仮確定→待機画面へ遷移
+    }
+
+    function autoSelectCard() {
+      if (!autoPlayPendingSwap || !isOnlineMode) return;
+      autoPlayPendingSwap = false; // 二重発火防止
+
+      const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
+      if (!myPlayer) return;
+
+      // 他プレイヤーのカードのみ（自分のエントリは除外）
+      const othersCards = gameState.roundData
+        .filter(d => d.player !== myPlayer.name)
+        .map(d => d.card);
+      if (othersCards.length === 0) return;
+
+      // 今ラウンドで選べるカード: 前ラウンドまでの使用済みを除外（仮確定分は差し替え可能）
+      const prevUsedCards = (gameState.usedCards[myPlayer.name] || []).filter(c => c !== autoPlayInitialCard);
+      const maxCard = gameState.totalRounds;
       const myCards = [];
       for (let i = 1; i <= maxCard; i++) {
-        if (!usedCards.includes(i)) myCards.push(i);
+        if (!prevUsedCards.includes(i)) myCards.push(i);
       }
       if (myCards.length === 0) return;
-
-      const othersCards = gameState.roundData.map(d => d.card);
-      if (othersCards.length === 0) return;
 
       const minOthers = Math.min(...othersCards);
       const allOthersSame = othersCards.every(c => c === othersCards[0]);
@@ -4092,13 +4127,11 @@
       // STEP 1: 他全員同じカードX
       if (allOthersSame) {
         const X = othersCards[0];
-        // 一人勝ち: Xより大きい最小カード
         const higherCards = myCards.filter(c => c > X);
         if (higherCards.length > 0) {
-          chosenCard = higherCards[0];
+          chosenCard = higherCards[0]; // 一人勝ち
         } else if (myCards.includes(X)) {
-          // 全員一致: Xを出して0杯
-          chosenCard = X;
+          chosenCard = X; // 全員一致で0杯
         }
       }
 
@@ -4110,42 +4143,36 @@
 
       // STEP 3: 通常分岐
       if (chosenCard === null) {
-        // ①: 自分が1を持ち、他がmaxCardを出している → 1を出して天地逆転を起こす
+        // ①: 自分が1を持ち他がmaxCardあり → 天地逆転を起こす
         if (myCards.includes(1) && othersHaveMax) {
           chosenCard = 1;
         }
-
         // ②: minOthersより大きい最小カード（他が1を出してるならmaxCardは除外）
         if (chosenCard === null) {
           let candidates = myCards.filter(c => c > minOthers);
           if (othersHave1) candidates = candidates.filter(c => c !== maxCard);
           if (candidates.length > 0) chosenCard = candidates[0];
         }
-
         // ③: minOthersに同値（全員一致ねらい）
         if (chosenCard === null && myCards.includes(minOthers)) {
           chosenCard = minOthers;
         }
-
         // ④: 最小カード（負けを最小化）
         if (chosenCard === null) chosenCard = myCards[0];
       }
 
-      if (chosenCard === null) chosenCard = myCards[0];
+      if (!chosenCard) chosenCard = myCards[0];
 
-      // カードグリッドから対象要素を探してselectCard→confirmCard
-      const grid = document.getElementById('cardGrid');
-      if (!grid) return;
-      let targetEl = null;
-      grid.querySelectorAll('.card:not(.used)').forEach(el => {
-        if (parseInt(el.textContent) === chosenCard) targetEl = el;
+      // 仮確定カードと同じなら差し替え不要
+      if (chosenCard === autoPlayInitialCard) { autoPlayInitialCard = null; return; }
+
+      // Firebaseのroundし+usedCardsを差し替え
+      const newUsedCards = [...prevUsedCards, chosenCard];
+      roomRef.update({
+        [`roundData/${myPlayerId}/card`]: chosenCard,
+        [`players/${myPlayerId}/usedCards`]: newUsedCards
       });
-      if (!targetEl) return;
-
-      selectCard(chosenCard, targetEl);
-      setTimeout(() => {
-        if (selectedCard === chosenCard) confirmCard();
-      }, 700);
+      autoPlayInitialCard = null;
     }
 
     function selectCard(value, element) {
