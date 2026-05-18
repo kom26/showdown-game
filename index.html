@@ -1499,8 +1499,8 @@
           if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
               () => updateLocationBtnState('granted'),
-              (err) => { if (err.code !== 1) updateLocationBtnState('granted'); },
-              { timeout: 100, maximumAge: 300000 }
+              (err) => { if (err.code !== 1) initLocationPermission(); },
+              { timeout: 3000, maximumAge: 300000 }
             );
           }
         } else {
@@ -2217,12 +2217,22 @@
     }
 
     async function initLocationPermission() {
-      if (!navigator.permissions) return;
-      try {
-        const ps = await navigator.permissions.query({ name: 'geolocation' });
-        updateLocationBtnState(ps.state);
-        ps.onchange = () => updateLocationBtnState(ps.state);
-      } catch(e) {}
+      if (navigator.permissions) {
+        try {
+          const ps = await navigator.permissions.query({ name: 'geolocation' });
+          ps.onchange = () => updateLocationBtnState(ps.state);
+          if (ps.state === 'denied') { updateLocationBtnState('denied'); return; }
+        } catch(e) {}
+      }
+      // iOS PWA では PermissionsAPI が "prompt" を返しても実際は denied の場合がある
+      // キャッシュ済み位置でプローブし、code 1 なら denied と確定する
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          () => updateLocationBtnState('granted'),
+          (err) => { if (err.code === 1) updateLocationBtnState('denied'); },
+          { timeout: 200, maximumAge: Infinity }
+        );
+      }
     }
 
     function joinRoomByLocation() {
