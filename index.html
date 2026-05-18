@@ -4174,6 +4174,65 @@
       return chosen || myCards[0];
     }
 
+    function computeSekoGuard(sekoName, roundData, sekoCard, guardRemaining, hasLoneBonus, currentRound, totalRounds, maxCard) {
+      if (guardRemaining <= 0 || currentRound === totalRounds) return { useGuard: false, target: null };
+      const isSecondToLast = currentRound === totalRounds - 1;
+
+      // 全カードで天地逆転判定 → losers / winners 確定
+      const allCards = roundData.map(d => d.player === sekoName ? sekoCard : d.card);
+      const reverseRule = allCards.includes(1) && allCards.includes(maxCard);
+      const minCard = Math.min(...allCards);
+      const losers = roundData.filter(d => {
+        const c = d.player === sekoName ? sekoCard : d.card;
+        return reverseRule ? c === maxCard : c === minCard;
+      }).map(d => d.player);
+      const winners = roundData.map(d => d.player).filter(p => !losers.includes(p));
+
+      // seko以外のGUARD先収集
+      const guardTargets = {};
+      roundData.forEach(d => { if (d.player !== sekoName && d.guardTarget) guardTargets[d.player] = d.guardTarget; });
+
+      // sekoをGUARDしているプレイヤーリスト
+      const guardersOfSeko = Object.entries(guardTargets).filter(([, t]) => t === sekoName).map(([g]) => g);
+
+      // seko以外の相思相愛ペア（互いにGUARDし合っているペア）
+      const seen = new Set();
+      const otherPairs = [];
+      Object.entries(guardTargets).forEach(([a, b]) => {
+        if (guardTargets[b] === a && !seen.has(a) && !seen.has(b)) {
+          otherPairs.push([a, b]);
+          seen.add(a); seen.add(b);
+        }
+      });
+
+      // P2: loneBonus庇い（P1より優先）
+      if (hasLoneBonus) {
+        const loserTargets = losers.filter(p => p !== sekoName);
+        if (loserTargets.length > 0) return { useGuard: true, target: loserTargets[0] };
+      }
+
+      // P1: メンヘラ心中狙い
+      if (otherPairs.length > 0) return { useGuard: true, target: otherPairs[0][0] };
+
+      // P3: 相思相愛狙い（1人からGUARDされていて第三者介入なし）
+      if (guardersOfSeko.length === 1) {
+        const partner = guardersOfSeko[0];
+        const thirdPartyGuarding = Object.entries(guardTargets).some(([, t]) => t === partner);
+        if (!thirdPartyGuarding) return { useGuard: true, target: partner };
+      }
+
+      // P4: 2人以上からGUARDされている → 不使用
+      if (guardersOfSeko.length >= 2) return { useGuard: false, target: null };
+
+      // P5: 消極的（N-1ラウンドのみ、勝ちの人をGUARDしてミス消化）
+      if (isSecondToLast) {
+        const winnerTargets = winners.filter(p => p !== sekoName);
+        if (winnerTargets.length > 0) return { useGuard: true, target: winnerTargets[0] };
+      }
+
+      return { useGuard: false, target: null };
+    }
+
     function sekoSwapCard() {
       if (!sekoPendingSwap || !isOnlineMode) return;
       sekoPendingSwap = false; // 二重発火防止
@@ -4196,20 +4255,48 @@
       }
       if (myCards.length === 0) return;
 
-      const chosenCard = computeSekoCard(myCards, othersCards, maxCard, gameState.players.length);
+      // GUARD状況確認（他プレイヤーのguardTargetから自分をGUARDしている人を収集）
+      const othersGuardTargets = {};
+      gameState.roundData.forEach(d => {
+        if (d.player !== myPlayer.name && d.guardTarget) othersGuardTargets[d.player] = d.guardTarget;
+      });
+      const guardersOfSeko = Object.entries(othersGuardTargets)
+        .filter(([, t]) => t === myPlayer.name).map(([g]) => g);
+      const willDoSoai = guardersOfSeko.length === 1 &&
+        !Object.entries(othersGuardTargets).some(([, t]) => t === guardersOfSeko[0]);
+
+      // カード選択：保護確定なら最小（1以外優先）、そうでなければ通常
+      const isProtected = guardersOfSeko.length >= 2 || willDoSoai;
+      let chosenCard;
+      if (isProtected) {
+        const nonOne = myCards.filter(c => c !== 1);
+        chosenCard = nonOne.length > 0 ? nonOne[0] : 1;
+      } else {
+        chosenCard = computeSekoCard(myCards, othersCards, maxCard, gameState.players.length);
+      }
+
+      // GUARD計画算出
+      const myRoundEntry = gameState.roundData.find(d => d.player === myPlayer.name);
+      const initialGuardTarget = myRoundEntry ? myRoundEntry.guardTarget : null;
+      const trueGuardRemaining = getGuardRemaining(myPlayer.name) + (initialGuardTarget ? 1 : 0);
+      const hasLoneBonus = !!gameState.loneWinnerBonus[myPlayer.name];
+      const guardPlan = computeSekoGuard(
+        myPlayer.name, gameState.roundData, chosenCard,
+        trueGuardRemaining, hasLoneBonus,
+        gameState.currentRound, gameState.totalRounds, maxCard
+      );
+      const finalGuardRemaining = trueGuardRemaining - (guardPlan.useGuard ? 1 : 0);
 
       sekoMode = false;
       sekoInitialCard = null;
       sekoPlayerName = null;
 
-      // 仮確定カードと同じなら差し替え不要
-      const myRoundEntry = gameState.roundData.find(d => d.player === myPlayer.name);
-      if (myRoundEntry && chosenCard === myRoundEntry.card) return;
-
       const newUsedCards = [...prevUsedCards, chosenCard];
       roomRef.update({
         [`roundData/${myPlayerId}/card`]: chosenCard,
-        [`players/${myPlayerId}/usedCards`]: newUsedCards
+        [`roundData/${myPlayerId}/guardTarget`]: guardPlan.target,
+        [`players/${myPlayerId}/usedCards`]: newUsedCards,
+        [`players/${myPlayerId}/guardUsed`]: finalGuardRemaining
       });
     }
 
@@ -4331,7 +4418,7 @@
     }
     
     function showReadyToShowResult() {
-      // セコモード（オフライン）: 全員確定後に最適カードへ差し替え
+      // セコモード（オフライン）: 全員確定後に最適カード・GUARDへ差し替え
       if (sekoPendingSwap && sekoPlayerName && !isOnlineMode) {
         sekoPendingSwap = false;
         const othersCards = gameState.roundData
@@ -4346,13 +4433,53 @@
             if (!prevUsedCards.includes(i)) myCards.push(i);
           }
           if (myCards.length > 0) {
-            const chosenCard = computeSekoCard(myCards, othersCards, maxCard, gameState.players.length);
+            // GUARD状況確認（他プレイヤーのguardTargetからsekoをGUARDしている人を収集）
+            const othersGuardTargets = {};
+            gameState.roundData.forEach(d => {
+              if (d.player !== sekoPlayerName && d.guardTarget) othersGuardTargets[d.player] = d.guardTarget;
+            });
+            const guardersOfSeko = Object.entries(othersGuardTargets)
+              .filter(([, t]) => t === sekoPlayerName).map(([g]) => g);
+            const willDoSoai = guardersOfSeko.length === 1 &&
+              !Object.entries(othersGuardTargets).some(([, t]) => t === guardersOfSeko[0]);
+
+            // カード選択：保護確定なら最小（1以外優先）、そうでなければ通常
+            const isProtected = guardersOfSeko.length >= 2 || willDoSoai;
+            let chosenCard;
+            if (isProtected) {
+              const nonOne = myCards.filter(c => c !== 1);
+              chosenCard = nonOne.length > 0 ? nonOne[0] : 1;
+            } else {
+              chosenCard = computeSekoCard(myCards, othersCards, maxCard, gameState.players.length);
+            }
+
             const entry = gameState.roundData.find(d => d.player === sekoPlayerName);
-            if (entry && chosenCard !== entry.card) {
-              entry.card = chosenCard;
-              const usedArr = gameState.usedCards[sekoPlayerName];
-              const idx = usedArr ? usedArr.lastIndexOf(sekoInitialCard) : -1;
-              if (idx !== -1) usedArr[idx] = chosenCard;
+            if (entry) {
+              // カード差し替え
+              if (chosenCard !== entry.card) {
+                const usedArr = gameState.usedCards[sekoPlayerName];
+                const idx = usedArr ? usedArr.lastIndexOf(sekoInitialCard) : -1;
+                if (idx !== -1) usedArr[idx] = chosenCard;
+                entry.card = chosenCard;
+              }
+
+              // GUARD計画算出（初期選択を復元してから再適用）
+              const initialGuardTarget = entry.guardTarget;
+              const trueGuardRemaining = getGuardRemaining(sekoPlayerName) + (initialGuardTarget ? 1 : 0);
+              const hasLoneBonus = !!gameState.loneWinnerBonus[sekoPlayerName];
+              const guardPlan = computeSekoGuard(
+                sekoPlayerName, gameState.roundData, chosenCard,
+                trueGuardRemaining, hasLoneBonus,
+                gameState.currentRound, gameState.totalRounds, maxCard
+              );
+
+              entry.guardTarget = guardPlan.target;
+              gameState.guardUsed[sekoPlayerName] = trueGuardRemaining - (guardPlan.useGuard ? 1 : 0);
+              if (guardPlan.useGuard) {
+                gameState.guardTargets[sekoPlayerName] = guardPlan.target;
+              } else {
+                delete gameState.guardTargets[sekoPlayerName];
+              }
             }
           }
         }
