@@ -881,7 +881,8 @@
         <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前（7文字まで）</label>
         <input type="text" id="joinerName" placeholder="名前を入力" maxlength="7" style="width: 100%;">
       </div>
-      <button id="joinByLocationBtn" onclick="joinRoomByLocation()" style="width: 100%; margin-bottom: 0.75rem; background: linear-gradient(135deg, #00d4ff 0%, #a855f7 100%); border: none; font-size: 16px; font-weight: 800;">📍 位置情報からルームに参加</button>
+      <a id="locationHelpLink" href="./location-help.html" target="_blank" rel="noreferrer" style="display:none; width:100%; margin-bottom:0.75rem; text-align:center; text-decoration:none; font-weight:800; font-size:16px; padding:0.9rem 1rem; border-radius:12px; background:rgba(255,80,0,0.15); color:#ff8040; border:2px solid rgba(255,80,0,0.4); box-sizing:border-box; line-height:1.4;">📍 位置情報が無効です<br><small style="font-size:11px;font-weight:500;opacity:0.8;">タップして許可方法を確認 →</small></a>
+      <button id="joinByLocationBtn" onclick="joinRoomByLocation()" style="width: 100%; margin-bottom: 0.75rem; background: linear-gradient(135deg, #00d4ff 0%, #a855f7 100%); border: none; font-size: 16px; font-weight: 800; display:none;">📍 位置情報からルームに参加</button>
       <div style="text-align: center; color: var(--color-text-secondary); font-size: 12px; margin-bottom: 0.75rem; letter-spacing: 2px;">── または ──</div>
       <div style="margin-bottom: 1rem;">
         <label class="info-label" style="display: block; margin-bottom: 8px;">ルームコード（4桁）</label>
@@ -2169,33 +2170,17 @@
 
     function updateLocationBtnState(state) {
       const btn = document.getElementById('joinByLocationBtn');
+      const link = document.getElementById('locationHelpLink');
       if (!btn) return;
       if (state === 'denied') {
-        btn.disabled = false;
-        btn.onclick = openLocationHelp;
-        btn.style.background = 'rgba(255,80,0,0.15)';
-        btn.style.color = '#ff8040';
-        btn.style.border = '2px solid rgba(255,80,0,0.4)';
-        btn.innerHTML = '📍 位置情報が無効です<br><small style="font-size:11px;font-weight:500;opacity:0.8;">タップして許可方法を確認 →</small>';
+        btn.style.display = 'none';
+        if (link) link.style.display = 'block';
       } else {
+        if (link) link.style.display = 'none';
+        btn.style.display = '';
         btn.disabled = false;
-        btn.onclick = joinRoomByLocation;
-        btn.style.background = 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)';
-        btn.style.color = '';
-        btn.style.border = 'none';
         btn.innerHTML = '📍 位置情報からルームに参加';
       }
-    }
-
-    function openLocationHelp() {
-      const url = new URL('./location-help.html', window.location.href).href;
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
     }
 
     function checkForUpdate() {
@@ -2225,24 +2210,28 @@
     }
 
     async function initLocationPermission() {
-      if (navigator.permissions) {
-        try {
-          const ps = await navigator.permissions.query({ name: 'geolocation' });
-          ps.onchange = () => updateLocationBtnState(ps.state);
-          if (ps.state === 'denied') { updateLocationBtnState('denied'); return; }
-        } catch(e) {}
-      }
-      // iOS PWA では PermissionsAPI が "prompt" を返しても実際は denied の場合がある
-      // キャッシュ済み位置でプローブし、code 1 なら denied と確定する
+      if (!navigator.permissions) { updateLocationBtnState('prompt'); return; }
+      try {
+        const ps = await navigator.permissions.query({ name: 'geolocation' });
+        ps.onchange = () => updateLocationBtnState(ps.state);
+        if (ps.state === 'granted') { updateLocationBtnState('granted'); return; }
+        if (ps.state === 'prompt')  { updateLocationBtnState('prompt');  return; }
+        // ps.state === 'denied': iOS PWA ではラグがあるためプローブで実際の状態を確認
+      } catch(e) { updateLocationBtnState('prompt'); return; }
+
+      // PermissionsAPI が 'denied' と言っている場合のみプローブ
+      // code 1 → 本当に denied / timeout 等 → 変更済み(ask/allow)
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           () => updateLocationBtnState('granted'),
           (err) => {
             if (err.code === 1) updateLocationBtnState('denied');
-            else updateLocationBtnState('prompt'); // タイムアウト等 → denied でないので通常表示に戻す
+            else updateLocationBtnState('prompt');
           },
-          { timeout: 200, maximumAge: Infinity }
+          { timeout: 300, maximumAge: Infinity }
         );
+      } else {
+        updateLocationBtnState('prompt');
       }
     }
 
