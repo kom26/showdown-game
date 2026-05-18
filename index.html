@@ -2640,7 +2640,8 @@
           }
           
           // 最終ラウンドアナウンスフラグがfalseで、アナウンス画面が表示されている場合
-          if (!data.showingLastRoundAnnounce && document.getElementById('lastRoundAnnounce').style.display === 'block') {
+          // showingResults が同時に true のときは showRoundResults() を優先し showCardSelect() を呼ばない
+          if (!data.showingLastRoundAnnounce && !data.showingResults && document.getElementById('lastRoundAnnounce').style.display === 'block') {
             showCardSelect();
           }
           
@@ -4515,6 +4516,7 @@
       document.getElementById('handover').style.display = 'none';
       document.getElementById('readyToShowResult').style.display = 'none';
       document.getElementById('onlineCardWaiting').style.display = 'none';
+      document.getElementById('lastRoundAnnounce').style.display = 'none';
       document.getElementById('roundResults').style.display = 'block';
       
       document.getElementById('resultRoundInfo').textContent = `第${gameState.currentRound}回戦`;
