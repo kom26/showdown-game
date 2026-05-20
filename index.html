@@ -748,34 +748,34 @@
       <div style="text-align:center; font-size:40px; margin-bottom:0.75rem;">📍</div>
       <div class="back-warning-title" style="text-align:center; font-size:18px; margin-bottom:1.25rem;">位置情報の許可方法</div>
 
-      <!-- iPhone -->
-      <div style="margin-bottom:1.25rem; background:rgba(255,255,255,0.05); border-radius:12px; padding:1rem;">
-        <div style="font-size:13px; font-weight:800; color:var(--color-neon-cyan); margin-bottom:0.75rem; letter-spacing:1px;">🍎 iPhone（Safari）</div>
-        <ol style="margin:0; padding-left:1.25rem; font-size:13px; color:var(--color-text-secondary); line-height:2;">
+      <!-- iOS 18+ -->
+      <div id="locationHelpIos18" style="display:none; margin-bottom:1.25rem; background:rgba(255,255,255,0.05); border-radius:12px; padding:1rem;">
+        <div style="font-size:13px; font-weight:800; color:var(--color-neon-cyan); margin-bottom:0.75rem; letter-spacing:1px;">🍎 iPhone（iOS 18以降 / Safari）</div>
+        <ol style="margin:0; padding-left:1.25rem; font-size:13px; color:var(--color-text-secondary); line-height:2.2;">
           <li>Safariでこのサイトを開く</li>
-          <li style="line-height:1.6;">アドレスバー左端のアイコンをタップ<br>
-            <span style="display:inline-flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
-              <span style="font-size:11px;color:rgba(255,255,255,0.45);">iOS 18+</span>
-              <span style="display:inline-flex;align-items:center;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.35);border-radius:5px;padding:3px 7px;vertical-align:middle;">
-                <svg width="16" height="15" viewBox="0 0 16 15" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="0.75" width="12" height="8" rx="2" stroke="white" stroke-width="1.5"/><line x1="2" y1="11.5" x2="14" y2="11.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/><line x1="2" y1="14" x2="10" y2="14" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
-              </span>
-              <span style="font-size:11px;color:rgba(255,255,255,0.45);">iOS 15-17</span>
-              <span style="display:inline-flex;align-items:center;gap:1px;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.35);border-radius:5px;padding:1px 6px;font-size:13px;font-weight:700;color:#fff;letter-spacing:-1px;vertical-align:middle;">ぁあ</span>
-            </span>
-          </li>
-          <li>
-            <span style="color:rgba(255,255,255,0.9);">iOS 18+</span>：<span style="display:inline-flex;align-items:center;gap:2px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:1px 6px;font-size:13px;font-weight:800;color:#fff;letter-spacing:1px;vertical-align:middle;">•••</span> をタップ → 「Webサイトの設定」<br>
-            <span style="color:rgba(255,255,255,0.9);">iOS 17以前</span>：そのまま「Webサイトの設定」をタップ
-          </li>
+          <li>アドレスバー左の <span style="display:inline-flex;align-items:center;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.35);border-radius:5px;padding:3px 7px;vertical-align:middle;"><svg width="16" height="15" viewBox="0 0 16 15" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="0.75" width="12" height="8" rx="2" stroke="white" stroke-width="1.5"/><line x1="2" y1="11.5" x2="14" y2="11.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/><line x1="2" y1="14" x2="10" y2="14" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span> をタップ</li>
+          <li><span style="display:inline-flex;align-items:center;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:1px 7px;font-size:13px;font-weight:800;color:#fff;letter-spacing:2px;vertical-align:middle;">•••</span> をタップ</li>
+          <li>一番下の「位置情報」→「許可」に変更</li>
+          <li>SHOWDOWNに戻る</li>
+        </ol>
+      </div>
+
+      <!-- iOS 17以前 -->
+      <div id="locationHelpIos17" style="display:none; margin-bottom:1.25rem; background:rgba(255,255,255,0.05); border-radius:12px; padding:1rem;">
+        <div style="font-size:13px; font-weight:800; color:var(--color-neon-cyan); margin-bottom:0.75rem; letter-spacing:1px;">🍎 iPhone（iOS 17以前 / Safari）</div>
+        <ol style="margin:0; padding-left:1.25rem; font-size:13px; color:var(--color-text-secondary); line-height:2.2;">
+          <li>Safariでこのサイトを開く</li>
+          <li>アドレスバー左の <span style="display:inline-flex;align-items:center;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.35);border-radius:5px;padding:1px 6px;font-size:13px;font-weight:700;color:#fff;letter-spacing:-1px;vertical-align:middle;">ぁあ</span> をタップ</li>
+          <li>「Webサイトの設定」をタップ</li>
           <li>「位置情報」→「許可」に変更</li>
           <li>SHOWDOWNに戻る</li>
         </ol>
       </div>
 
       <!-- Android -->
-      <div style="margin-bottom:1.25rem; background:rgba(255,255,255,0.05); border-radius:12px; padding:1rem;">
+      <div id="locationHelpAndroid" style="display:none; margin-bottom:1.25rem; background:rgba(255,255,255,0.05); border-radius:12px; padding:1rem;">
         <div style="font-size:13px; font-weight:800; color:var(--color-neon-purple); margin-bottom:0.75rem; letter-spacing:1px;">🤖 Android（Chrome）</div>
-        <ol style="margin:0; padding-left:1.25rem; font-size:13px; color:var(--color-text-secondary); line-height:2;">
+        <ol style="margin:0; padding-left:1.25rem; font-size:13px; color:var(--color-text-secondary); line-height:2.2;">
           <li>Chromeでこのサイトを開く</li>
           <li>アドレスバー左の <span style="display:inline-flex;align-items:center;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.3);border-radius:5px;padding:2px 7px;font-size:16px;vertical-align:middle;">🔒</span> をタップ</li>
           <li>「権限」→「位置情報」→「許可」</li>
@@ -2264,6 +2264,35 @@
     function openLocationHelpModal() {
       const urlEl = document.getElementById('locationHelpUrl');
       if (urlEl) urlEl.textContent = window.location.origin + window.location.pathname;
+
+      const ua = navigator.userAgent;
+      const iosMatch = ua.match(/OS (\d+)_/);
+      const iosVer = iosMatch ? parseInt(iosMatch[1]) : 0;
+      const isAndroid = /Android/.test(ua);
+
+      const ios18 = document.getElementById('locationHelpIos18');
+      const ios17 = document.getElementById('locationHelpIos17');
+      const android = document.getElementById('locationHelpAndroid');
+
+      if (iosVer >= 18) {
+        ios18.style.display = 'block';
+        ios17.style.display = 'none';
+        android.style.display = 'none';
+      } else if (iosVer > 0) {
+        ios18.style.display = 'none';
+        ios17.style.display = 'block';
+        android.style.display = 'none';
+      } else if (isAndroid) {
+        ios18.style.display = 'none';
+        ios17.style.display = 'none';
+        android.style.display = 'block';
+      } else {
+        // 判定不能 → 全部表示
+        ios18.style.display = 'block';
+        ios17.style.display = 'block';
+        android.style.display = 'block';
+      }
+
       document.getElementById('locationHelpModal').classList.add('show');
     }
 
