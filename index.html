@@ -741,7 +741,47 @@
       </button>
     </div>
   </div>
-  
+
+  <!-- 位置情報許可方法モーダル -->
+  <div class="back-warning" id="locationHelpModal">
+    <div class="back-warning-content" style="max-width:420px; text-align:left;">
+      <div style="text-align:center; font-size:40px; margin-bottom:0.75rem;">📍</div>
+      <div class="back-warning-title" style="text-align:center; font-size:18px; margin-bottom:1.25rem;">位置情報の許可方法</div>
+
+      <!-- iPhone -->
+      <div style="margin-bottom:1.25rem; background:rgba(255,255,255,0.05); border-radius:12px; padding:1rem;">
+        <div style="font-size:13px; font-weight:800; color:var(--color-neon-cyan); margin-bottom:0.75rem; letter-spacing:1px;">🍎 iPhone（Safari）</div>
+        <ol style="margin:0; padding-left:1.25rem; font-size:13px; color:var(--color-text-secondary); line-height:2;">
+          <li>Safariでこのサイトを開く</li>
+          <li>アドレスバー左の <span style="display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.3);border-radius:5px;padding:1px 6px;font-size:12px;font-weight:700;color:#fff;letter-spacing:-0.5px;vertical-align:middle;">ぁ<span style="font-size:14px;">あ</span></span> をタップ</li>
+          <li>「Webサイトの設定」をタップ</li>
+          <li>「位置情報」→「許可」に変更</li>
+          <li>SHOWDOWNに戻る</li>
+        </ol>
+      </div>
+
+      <!-- Android -->
+      <div style="margin-bottom:1.25rem; background:rgba(255,255,255,0.05); border-radius:12px; padding:1rem;">
+        <div style="font-size:13px; font-weight:800; color:var(--color-neon-purple); margin-bottom:0.75rem; letter-spacing:1px;">🤖 Android（Chrome）</div>
+        <ol style="margin:0; padding-left:1.25rem; font-size:13px; color:var(--color-text-secondary); line-height:2;">
+          <li>Chromeでこのサイトを開く</li>
+          <li>アドレスバー左の <span style="display:inline-flex;align-items:center;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.3);border-radius:5px;padding:2px 7px;font-size:16px;vertical-align:middle;">🔒</span> をタップ</li>
+          <li>「権限」→「位置情報」→「許可」</li>
+          <li>SHOWDOWNに戻る</li>
+        </ol>
+      </div>
+
+      <!-- URL copy -->
+      <div style="background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.3); border-radius:10px; padding:0.75rem; margin-bottom:1rem; text-align:center;">
+        <div style="font-size:11px; color:var(--color-text-secondary); margin-bottom:6px;">SafariにこのURLを貼り付ける</div>
+        <div id="locationHelpUrl" style="font-size:12px; color:var(--color-neon-cyan); word-break:break-all; margin-bottom:8px;"></div>
+        <button onclick="copyLocationUrl()" id="copyLocationUrlBtn" style="font-size:12px; padding:6px 16px; background:rgba(0,212,255,0.15); color:var(--color-neon-cyan); border:1.5px solid var(--color-neon-cyan); border-radius:20px; font-weight:700;">URLをコピー</button>
+      </div>
+
+      <button onclick="closeLocationHelpModal()" style="width:100%; font-size:15px;">閉じる</button>
+    </div>
+  </div>
+
   <div class="back-warning" id="roomDeletedModal">
     <div class="back-warning-content">
       <div class="back-warning-icon">🚪</div>
@@ -881,7 +921,7 @@
         <label class="info-label" style="display: block; margin-bottom: 8px;">あなたの名前（7文字まで）</label>
         <input type="text" id="joinerName" placeholder="名前を入力" maxlength="7" style="width: 100%;">
       </div>
-      <a id="locationHelpLink" href="./location-help.html" target="_blank" rel="noreferrer" style="display:none; width:100%; margin-bottom:0.75rem; text-align:center; text-decoration:none; font-weight:800; font-size:16px; padding:0.9rem 1rem; border-radius:12px; background:rgba(255,80,0,0.15); color:#ff8040; border:2px solid rgba(255,80,0,0.4); box-sizing:border-box; line-height:1.4;">📍 位置情報が無効です<br><small style="font-size:11px;font-weight:500;opacity:0.8;">タップして許可方法を確認 →</small></a>
+      <button id="locationHelpLink" onclick="openLocationHelpModal()" style="display:none; width:100%; margin-bottom:0.75rem; font-size:16px; font-weight:800; background:rgba(255,80,0,0.15); color:#ff8040; border:2px solid rgba(255,80,0,0.4); line-height:1.4;">📍 位置情報が無効です<br><small style="font-size:11px;font-weight:500;opacity:0.8;">タップして許可方法を確認 →</small></button>
       <button id="joinByLocationBtn" onclick="joinRoomByLocation()" style="width: 100%; margin-bottom: 0.75rem; background: linear-gradient(135deg, #00d4ff 0%, #a855f7 100%); border: none; font-size: 16px; font-weight: 800; display:none;">📍 位置情報からルームに参加</button>
       <div style="text-align: center; color: var(--color-text-secondary); font-size: 12px; margin-bottom: 0.75rem; letter-spacing: 2px;">── または ──</div>
       <div style="margin-bottom: 1rem;">
@@ -2207,6 +2247,28 @@
       el.textContent = '🔄 新しいバージョンが利用可能 — タップして更新';
       el.onclick = () => window.location.reload(true);
       document.body.appendChild(el);
+    }
+
+    function openLocationHelpModal() {
+      const urlEl = document.getElementById('locationHelpUrl');
+      if (urlEl) urlEl.textContent = window.location.origin + window.location.pathname;
+      document.getElementById('locationHelpModal').classList.add('show');
+    }
+
+    function closeLocationHelpModal() {
+      document.getElementById('locationHelpModal').classList.remove('show');
+    }
+
+    function copyLocationUrl() {
+      const url = window.location.origin + window.location.pathname;
+      const btn = document.getElementById('copyLocationUrlBtn');
+      navigator.clipboard.writeText(url).then(() => {
+        btn.textContent = 'コピーしました ✓';
+        setTimeout(() => { btn.textContent = 'URLをコピー'; }, 2000);
+      }).catch(() => {
+        btn.textContent = 'コピー失敗';
+        setTimeout(() => { btn.textContent = 'URLをコピー'; }, 2000);
+      });
     }
 
     async function initLocationPermission() {
