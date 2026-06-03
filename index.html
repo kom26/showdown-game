@@ -6670,7 +6670,8 @@
       const isSoso = ev.type === 'soso';
       const displayName = ev.playerName || '???';
       const myPlayer = gameState.players.find(p => p.playerId === myPlayerId);
-      const isMine = myPlayer && myPlayer.name === displayName;
+      // オフラインは1台で完結するため常に本人扱い（飲んだ！ボタンのみ表示）
+      const isMine = !isOnlineMode || (myPlayer && myPlayer.name === displayName);
       const cups = ev.cups || 1;
 
       const icon = isSoso ? '📱💥' : '📵💀';
