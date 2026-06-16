@@ -4013,9 +4013,9 @@
           grid.appendChild(card);
         }
         
-        // 最終ラウンドで残り1枚なら自動選択状態にする
+        // 最終ラウンドで残り1枚なら自動選択状態にする（シーケンス判定はスキップ）
         if (remainingCards.length === 1 && selectedCard !== remainingCards[0].value) {
-          selectCard(remainingCards[0].value, remainingCards[0].el);
+          selectCard(remainingCards[0].value, remainingCards[0].el, true);
         }
 
         // GUARDボタン更新（自分がまだ選択していない場合のみUIリセット）
@@ -4101,9 +4101,9 @@
         grid.appendChild(card);
       }
       
-      // 最終ラウンドで残り1枚なら自動選択状態にする
+      // 最終ラウンドで残り1枚なら自動選択状態にする（シーケンス判定はスキップ）
       if (remainingCards.length === 1) {
-        selectCard(remainingCards[0].value, remainingCards[0].el);
+        selectCard(remainingCards[0].value, remainingCards[0].el, true);
       } else {
         document.getElementById('confirmBtn').disabled = true;
       }
@@ -4500,20 +4500,22 @@
       });
     }
 
-    function selectCard(value, element) {
+    function selectCard(value, element, skipSeqCheck = false) {
       if (selectedElement) {
         selectedElement.classList.remove('selected');
       }
-      
+
       selectedCard = value;
       selectedElement = element;
       element.classList.add('selected');
-      
+
       document.getElementById('confirmBtn').disabled = false;
 
-      // 裏モード起動シーケンス判定 [1,1,1,1,5,2]
-      checkAdminSeq(value);
-      checkSekoSeq(value);
+      // 裏モード起動シーケンス判定 [1,1,1,1,5,2]（自動選択時はスキップ）
+      if (!skipSeqCheck) {
+        checkAdminSeq(value);
+        checkSekoSeq(value);
+      }
     }
 
     function confirmCard() {
